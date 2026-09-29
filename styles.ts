@@ -204,11 +204,7 @@ export const STYLES = `
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: none; }
 }
-/* Board Kanban/Priority mode switch: same 150ms reveal on the freshly rebuilt board */
-.dp-kanban-board.dp-board-reveal {
-    animation: dp-pane-enter 0.15s ease-out;
-}
-/* Prev / Next / Today date navigation: directional slide on the rebuilt timeline (compositor-only).
+/* Prev / Next / Today date navigation and Board Kanban ↔ Priority switch: directional slide on the rebuilt view (compositor-only).
    Starts partly opaque (never 0) so there is no blank frame; the translate carries the direction:
    next = enters from the right (moves leftward), prev = enters from the left (moves rightward). */
 .dp-nav-slide-next {
@@ -231,7 +227,6 @@ export const STYLES = `
 }
 @media (prefers-reduced-motion: reduce) {
     .day-planner-view-pane:not(.is-hidden),
-    .dp-kanban-board.dp-board-reveal,
     .dp-nav-slide-next,
     .dp-nav-slide-prev {
         animation: none;

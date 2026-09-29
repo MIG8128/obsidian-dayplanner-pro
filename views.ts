@@ -708,8 +708,6 @@ export abstract class DayPlannerBaseView extends ItemView {
     private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
     kanbanViewMode: 'kanban' | 'priority' = 'kanban';
-    /** Set by the Kanban/Priority toggle so only a mode switch (not every data refresh) plays the reveal animation */
-    boardModeSwitched = false;
 
     activeDragClickOffsetMin: number = 0;
     dragPreviewContainer: HTMLDivElement | null = null;
@@ -3333,11 +3331,8 @@ export abstract class DayPlannerBaseView extends ItemView {
         this.mountBoardModeToggle(parent.parentElement);
 
         const board = parent.createDiv({ cls: 'dp-kanban-board' });
-        // The board element is rebuilt on every render, so adding the class to the fresh node replays the keyframe
-        if (this.boardModeSwitched) {
-            board.addClass('dp-board-reveal');
-            this.boardModeSwitched = false;
-        }
+        // Mode toggle sets navDirection: the fresh board slides in from the side of the tab that was clicked
+        this.playNavSlide(board, parent);
 
         const boardScrollKey = `${this.getViewType()}:kanban-board`;
         board.addEventListener('scroll', () => {
@@ -3384,8 +3379,13 @@ export abstract class DayPlannerBaseView extends ItemView {
         const switchMode = (mode: 'kanban' | 'priority') => {
             if (this.kanbanViewMode === mode) return;
             this.kanbanViewMode = mode;
-            this.boardModeSwitched = true;
-            this.render();
+            // Priority is the right-hand tab → slide in from the right; Kanban (left tab) → from the left
+            this.navDirection = mode === 'priority' ? 'next' : 'prev';
+            try {
+                this.render();
+            } finally {
+                this.navDirection = null; // only this render animates, not later data refreshes
+            }
         };
         kanbanToggle.addEventListener('click', () => switchMode('kanban'));
         priorityToggle.addEventListener('click', () => switchMode('priority'));
@@ -4429,8 +4429,6 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
     dragPreviewContainer: HTMLDivElement | null = null;
     activeDragItems: any[] = [];
     kanbanViewMode: 'kanban' | 'priority' = 'kanban';
-    /** Set by the Kanban/Priority toggle so only a mode switch (not every data refresh) plays the reveal animation */
-    boardModeSwitched = false;
     ctx: any;
     filters: any;
     showFilterPanel: boolean = false;
