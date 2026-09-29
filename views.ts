@@ -4,8 +4,9 @@ import {
     cleanTaskTextForDisplay, 
     compareTasks, 
     createCustomCheckbox, 
-    openDailyNoteForDate, 
-    openWeeklyNoteForDate, 
+    openNoteForDate,
+    getHeaderDateInfo,
+    scrollToTarget,
     parseTaskLine, 
     scanVaultTasks, 
     updateTaskInFile as rawUpdateTaskInFile, 
@@ -748,7 +749,7 @@ export abstract class DayPlannerBaseView extends ItemView {
      * Today button → smooth scroll to target; saved position (tab switch / re-render) → instant restore;
      * first mount of this view kind → smooth scroll once; later unseen dates/months → instant jump (no replayed motion).
      */
-    applyAutoScroll(scroller: HTMLElement, scrollKey: string, viewKind: string, getTargetTop: () => number) {
+    applyAutoScroll(scroller: HTMLElement, scrollKey: string, viewKind: string, target: 'now' | 'today', fallbackTop: () => number = () => 0) {
         this.autoScrolledViews ??= new Set(); // code-block renderers get these methods via the prototype mixin
         const saved = this.savedScrollPositions[scrollKey];
         if (!this.scrollToTodayRequested && saved !== undefined) {
@@ -756,10 +757,9 @@ export abstract class DayPlannerBaseView extends ItemView {
             scroller.scrollLeft = saved.scrollLeft;
             return;
         }
-        const top = Math.max(0, getTargetTop());
         const smooth = this.scrollToTodayRequested || !this.autoScrolledViews.has(viewKind);
         this.autoScrolledViews.add(viewKind);
-        scroller.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+        const top = scrollToTarget(scroller, target, smooth ? 'smooth' : 'auto', fallbackTop);
         this.savedScrollPositions[scrollKey] = { scrollTop: top, scrollLeft: saved?.scrollLeft ?? 0 };
     }
 
@@ -1012,7 +1012,78 @@ export abstract class DayPlannerBaseView extends ItemView {
     }
 
     async handleDateClick(dateStr: string) {
-        await openDailyNoteForDate(this.app, dateStr, this.plugin.settings);
+        await this.openNoteForDate(dateStr, 'daily');
+    }
+
+    /** Opens (creating from template if needed) the daily or weekly note for a date (moment or YYYY-MM-DD). */
+    async openNoteForDate(date: any, type: 'daily' | 'weekly') {
+        await openNoteForDate(this.app, date, type, this.plugin.settings);
+    }
+
+    /**
+     * One all-day task chip, identical in Daily, Weekly and N-day:
+     * status checkbox · priority + title · ↗ jump to source; clicking the chip opens the edit modal.
+     */
+    renderAllDayTaskChip(task: TaskItem, containerEl: HTMLElement): HTMLElement {
+        let cls = 'dp-grid-task-item dp-allday-item';
+        if (task.statusChar === 'x') cls += ' completed';
+        else if (task.statusChar === '-') cls += ' cancelled';
+        const chip = containerEl.createDiv({ cls });
+
+        createCustomCheckbox(chip, task, async (newStatus) => {
+            await updateTaskInFile(this.app, task, { statusChar: newStatus });
+            await this.refreshTasks();
+        });
+
+        const priorityPrefix = task.priority !== 'normal'
+            ? { highest: '🔺', high: '⏫', medium: '🔼', low: '🔽', lowest: '⏬' }[task.priority] + ' ' : '';
+        chip.createSpan({ cls: 'dp-task-text', text: `${priorityPrefix}${cleanTaskTextForDisplay(task.text)}` });
+
+        const linkBtn = chip.createSpan({ text: '↗', cls: 'dp-task-link-btn' });
+        linkBtn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            await openTaskInEditor(this.app, task);
+        });
+
+        chip.addEventListener('click', (e) => {
+            if (e.target instanceof HTMLElement && (e.target.classList.contains('dp-custom-cb') || e.target === linkBtn)) return;
+            e.stopPropagation();
+            new TaskEditModal(this.app, task, null, async (data) => {
+                await updateTaskInFile(this.app, task, {
+                    text: data.text,
+                    statusChar: data.statusChar,
+                    priority: data.priority,
+                    date: data.date,
+                    startTime: data.startTime,
+                    endTime: data.endTime,
+                    recurrence: data.recurrence,
+                    dueDate: data.dueDate,
+                    scheduledDate: data.scheduledDate,
+                    startDate: data.startDate,
+                    completionDate: data.completionDate,
+                    cancelledDate: data.cancelledDate
+                });
+                await this.refreshTasks();
+            }).open();
+        });
+        return chip;
+    }
+
+    /** All-day Google Calendar chip, the event counterpart of renderAllDayTaskChip (same size, calendar colour stripe). */
+    renderAllDayEventChip(event: GCalEvent, dateStr: string, containerEl: HTMLElement): HTMLElement {
+        const chip = containerEl.createDiv({
+            cls: 'dp-grid-task-item dp-gcal-event dp-allday-item',
+            text: `🗓️ ${event.summary}${event.location ? ` (📍 ${event.location})` : ''}`
+        });
+        if (event.color) {
+            chip.style.cssText = `background-color: ${event.color}1c !important; border-left: 3px solid ${event.color} !important;`;
+        }
+        chip.addEventListener('click', () => {
+            new GCalEventEditModal(this.app, this.plugin, event, dateStr, async () => {
+                await this.refreshTasks(null, true);
+            }).open();
+        });
+        return chip;
     }
 
     async onOpen() {
@@ -1394,44 +1465,19 @@ export abstract class DayPlannerBaseView extends ItemView {
             await this.navigateWithSlide(1);
         });
 
-        let dateLabel = '';
-        const currentViewTab = this.getViewTabType();
-        const weekNum = this.currentDate.week();
-
-        // Header date: per-view text, and each segment links to the note that matches it (or nothing)
+        // Header date: text + note links come from the declarative getHeaderDateInfo() mapping
+        const info = getHeaderDateInfo(this.currentDate, this.getViewTabType(), this.plugin.settings.nDayViewDays || 4);
         const dateEl = nav.createDiv({ cls: 'dp-nav-date' });
-        const addSegment = (text: string, link?: { title: string; open: () => void }) => {
-            const seg = dateEl.createSpan({ cls: link ? 'dp-nav-date-link' : 'dp-nav-date-static', text });
-            if (link) {
-                seg.title = link.title;
-                seg.addEventListener('click', link.open);
+        const addSegment = (text: string, noteType?: 'daily' | 'weekly') => {
+            const seg = dateEl.createSpan({ cls: noteType ? 'dp-nav-date-link' : 'dp-nav-date-static', text });
+            if (noteType) {
+                seg.title = `Open ${noteType} note`;
+                seg.addEventListener('click', () => this.openNoteForDate(info.noteDate, noteType));
             }
-            dateLabel += (dateLabel ? ' ' : '') + text;
         };
-        const dailyLink = (d: any) => ({ title: 'Open daily note', open: () => this.handleDateClick(d.format('YYYY-MM-DD')) });
-        const weeklyLink = (d: any) => ({
-            title: 'Open weekly note',
-            open: () => openWeeklyNoteForDate(this.app, d.format('YYYY-MM-DD'), this.plugin.settings)
-        });
-
-        if (currentViewTab === 'daily') {
-            addSegment(this.currentDate.format('YYYY-MM-DD'), dailyLink(this.currentDate));
-            addSegment(`(Wk ${weekNum})`, weeklyLink(this.currentDate));
-        } else if (currentViewTab === 'multiDay') {
-            const days = Math.max(2, Math.min(14, this.plugin.settings.nDayViewDays || 4));
-            const endDay = this.currentDate.clone().add(days - 1, 'days');
-            addSegment(`${this.currentDate.format('MM/DD')} ~ ${endDay.format('MM/DD')} (${days} days)`);
-        } else if (currentViewTab === 'weekly') {
-            const startOfWeek = this.currentDate.clone().startOf('week');
-            const endOfWeek = this.currentDate.clone().endOf('week');
-            addSegment(`${startOfWeek.format('MM/DD')} ~ ${endOfWeek.format('MM/DD')} (Wk ${weekNum})`, weeklyLink(this.currentDate));
-        } else if (currentViewTab === 'board') {
-            const today = (window as any).moment();
-            addSegment(`${today.format('YYYY-MM-DD')} (Wk ${today.week()})`, dailyLink(today));
-        } else {
-            // monthly / list: month label only, not a link
-            addSegment(this.currentDate.format('YYYY-MM'));
-        }
+        addSegment(info.mainText, info.isClickable ? info.noteType : undefined);
+        if (info.subText) addSegment(info.subText, info.subNoteType);
+        const dateLabel = info.subText ? `${info.mainText} ${info.subText}` : info.mainText;
 
         const headerActions = headerTop.createDiv({ cls: 'dp-header-actions' });
         headerActions.style.cssText = 'display:flex; gap:4px; align-items:center;';
@@ -2423,71 +2469,13 @@ export abstract class DayPlannerBaseView extends ItemView {
             allDaySection.createDiv({ cls: 'dp-allday-label', text: 'All Day' });
             const listEl = allDaySection.createDiv({ cls: 'dp-allday-cell' });
 
-            untimedAllDayGCal.forEach(e => {
-                const card = listEl.createDiv({
-                    cls: 'dp-grid-task-item dp-gcal-event dp-allday-item',
-                    text: `🗓️ ${e.summary}${e.location ? ` (📍 ${e.location})` : ''}`
-                });
-                if (e.color) {
-                    card.style.cssText = `background-color: ${e.color}1c !important; border-left: 3px solid ${e.color} !important;`;
-                }
-
-                card.addEventListener('click', () => {
-                    new GCalEventEditModal(this.app, this.plugin, e, this.currentDate.format('YYYY-MM-DD'), async () => {
-                        await this.refreshTasks(null, true);
-                    }).open();
-                });
-            });
-
+            untimedAllDayGCal.forEach(e => this.renderAllDayEventChip(e, dateStr, listEl));
             untimedTasks.sort((a, b) => a.text.localeCompare(b.text));
-            untimedTasks.forEach(task => {
-                let cardClass = 'dp-grid-task-item dp-allday-item';
-                if (task.statusChar === 'x') cardClass += ' completed';
-                else if (task.statusChar === '-') cardClass += ' cancelled';
-
-                const card = listEl.createDiv({ cls: cardClass });
-
-                // Daily keeps its one-click status toggle (Weekly/N-day items have none)
-                createCustomCheckbox(card, task, async (newStatus) => {
-                    await updateTaskInFile(this.app, task, { statusChar: newStatus });
-                    await this.refreshTasks();
-                });
-
-                const displayTitle = cleanTaskTextForDisplay(task.text);
-                const priorityPrefix = task.priority !== 'normal' ? { highest: '🔺', high: '⏫', medium: '🔼', low: '🔽', lowest: '⏬' }[task.priority] + ' ' : '';
-                card.createSpan({ cls: 'dp-task-text', text: `${priorityPrefix}${displayTitle}` });
-
-                const linkBtn = card.createSpan({ text: '↗', cls: 'dp-task-link-btn' });
-                linkBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    await openTaskInEditor(this.app, task);
-                });
-                
-                card.addEventListener('click', (e) => {
-                    if (e.target instanceof HTMLElement && (e.target.classList.contains('dp-custom-cb') || e.target === linkBtn)) return;
-                    const modal = new TaskEditModal(this.app, task, null, async (data) => {
-                        await updateTaskInFile(this.app, task, {
-                            text: data.text,
-                            statusChar: data.statusChar,
-                            priority: data.priority,
-                            date: data.date,
-                            startTime: data.startTime,
-                            endTime: data.endTime,
-                            recurrence: data.recurrence,
-                            dueDate: data.dueDate,
-                            scheduledDate: data.scheduledDate,
-                            startDate: data.startDate,
-                            completionDate: data.completionDate,
-                            cancelledDate: data.cancelledDate
-                        });
-                        await this.refreshTasks();
-                    });
-                    modal.open();
-                });
-            });
+            untimedTasks.forEach(task => this.renderAllDayTaskChip(task, listEl));
         }
 
-        this.applyAutoScroll(parent, scrollKey, 'daily', () => this.getAutoScrollY([dateStr], startHour, hourHeight));
+        // 'now' line when today is shown; otherwise the earliest timed item of the day
+        this.applyAutoScroll(parent, scrollKey, 'daily', 'now', () => this.getAutoScrollY([dateStr], startHour, hourHeight));
         this.playNavSlide(timelineWrapper, parent);
     }
 
@@ -2582,62 +2570,9 @@ export abstract class DayPlannerBaseView extends ItemView {
 
             const cell = allDayGrid.createDiv({ cls: 'dp-allday-cell' });
 
-            untimedAllDayGCal.forEach(e => {
-                const gcalItem = cell.createDiv({
-                    cls: 'dp-grid-task-item dp-gcal-event dp-allday-item',
-                    text: `🗓️ ${e.summary}${e.location ? ` (📍 ${e.location})` : ''}`
-                });
-                if (e.color) {
-                    gcalItem.style.cssText = `background-color: ${e.color}1c !important; border-left: 3px solid ${e.color} !important;`;
-                }
-                gcalItem.addEventListener('click', () => {
-                    new GCalEventEditModal(this.app, this.plugin, e, this.currentDate.format('YYYY-MM-DD'), async () => {
-                        await this.refreshTasks(null, true);
-                    }).open();
-                });
-            });
-
+            untimedAllDayGCal.forEach(e => this.renderAllDayEventChip(e, loopDayStr, cell));
             untimedTasks.sort((a, b) => a.text.localeCompare(b.text));
-            untimedTasks.forEach(task => {
-                let itemClass = 'dp-grid-task-item dp-allday-item';
-                if (task.statusChar === 'x') itemClass += ' completed';
-                else if (task.statusChar === '-') itemClass += ' cancelled';
-
-                const item = cell.createDiv({ cls: itemClass });
-
-                const displayTitle = cleanTaskTextForDisplay(task.text);
-                const priorityPrefix = task.priority !== 'normal' ? { highest: '🔺', high: '⏫', medium: '🔼', low: '🔽', lowest: '⏬' }[task.priority] + ' ' : '';
-                const textSpan = item.createSpan({ text: `${priorityPrefix}${displayTitle}` });
-                
-                const linkBtn = item.createSpan({ text: '↗', cls: 'dp-task-link-btn' });
-                linkBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    await openTaskInEditor(this.app, task);
-                });
-
-                item.addEventListener('click', (e) => {
-                    if (e.target === linkBtn) return;
-                    e.stopPropagation();
-                    const modal = new TaskEditModal(this.app, task, null, async (data) => {
-                        await updateTaskInFile(this.app, task, {
-                            text: data.text,
-                            statusChar: data.statusChar,
-                            priority: data.priority,
-                            date: data.date,
-                            startTime: data.startTime,
-                            endTime: data.endTime,
-                            recurrence: data.recurrence,
-                            dueDate: data.dueDate,
-                            scheduledDate: data.scheduledDate,
-                            startDate: data.startDate,
-                            completionDate: data.completionDate,
-                            cancelledDate: data.cancelledDate
-                        });
-                        await this.refreshTasks();
-                    });
-                    modal.open();
-                });
-            });
+            untimedTasks.forEach(task => this.renderAllDayTaskChip(task, cell));
         }
 
         const timelineScroll = container.createDiv({ cls: 'dp-content' });
@@ -3166,7 +3101,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         }
 
         const visibleDates = Array.from({ length: daysCount }, (_, i) => startOfWeek.clone().add(i, 'days').format('YYYY-MM-DD'));
-        this.applyAutoScroll(timelineScroll, scrollKey, `weekly:${daysCount}`, () => this.getAutoScrollY(visibleDates, startHour, hourHeight));
+        this.applyAutoScroll(timelineScroll, scrollKey, `weekly:${daysCount}`, 'now', () => this.getAutoScrollY(visibleDates, startHour, hourHeight));
         this.playNavSlide(container, scrollWrapper);
     }
 
@@ -3249,7 +3184,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             });
 
             weekCell.addEventListener('click', () => {
-                openWeeklyNoteForDate(this.app, weekStartDate.format('YYYY-MM-DD'), this.plugin.settings);
+                this.openNoteForDate(weekStartDate, 'weekly');
             });
 
             for (let d = 0; d < 7; d++) {
@@ -4253,14 +4188,8 @@ export abstract class DayPlannerBaseView extends ItemView {
             }
         });
 
-        // Target: today's section, else the earliest upcoming day (rows are sorted by date); top of list if all are past
-        this.applyAutoScroll(listScroll, listScrollKey, 'list', () => {
-            const rows = Array.from(listScroll.querySelectorAll<HTMLElement>('.dp-gc-day-row'));
-            const target = rows.find(r => (r.dataset.date ?? '') >= todayStr);
-            if (!target) return 0;
-            const paddingTop = parseFloat(getComputedStyle(listScroll).paddingTop) || 0;
-            return target.getBoundingClientRect().top - listScroll.getBoundingClientRect().top + listScroll.scrollTop - paddingTop;
-        });
+        // Today's section, else the earliest upcoming day; top of list if every day is past
+        this.applyAutoScroll(listScroll, listScrollKey, 'list', 'today');
     }
 }
 

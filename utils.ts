@@ -124,72 +124,122 @@ export function createCustomCheckbox(parent: HTMLElement, task: TaskItem, onClic
     return cb;
 }
 
-// 데일리 노트 생성 또는 획득
-export async function openDailyNoteForDate(app: App, dateStr: string, settings: DayPlannerSettings) {
-    const folder = settings.dailyNotesFolder ? settings.dailyNotesFolder + '/' : '';
-    const fileName = (window as any).moment(dateStr).format(settings.dailyNotesFormat);
-    const filePath = `${folder}${fileName}.md`;
-    
-    let file = app.vault.getAbstractFileByPath(filePath);
-    if (!(file instanceof TFile)) {
-        if (settings.dailyNotesFolder) {
-            const folderExists = app.vault.getAbstractFileByPath(settings.dailyNotesFolder);
-            if (!folderExists) {
-                await app.vault.createFolder(settings.dailyNotesFolder);
+// Daily / weekly note settings, looked up by note type
+const NOTE_CONFIG = {
+    daily: (s: DayPlannerSettings) => ({ folder: s.dailyNotesFolder, format: s.dailyNotesFormat, template: s.dailyNoteTemplate }),
+    weekly: (s: DayPlannerSettings) => ({ folder: s.weeklyNotesFolder, format: s.weeklyNotesFormat, template: s.weeklyNoteTemplate })
+};
+
+/**
+ * Opens the daily or weekly note for a date in a new tab, creating it first (folder + template) when missing.
+ * `date` is a moment or a YYYY-MM-DD string. Template tokens: {{date}}, {{title}}, {{time}}.
+ */
+export async function openNoteForDate(app: App, date: any, type: 'daily' | 'weekly', settings: DayPlannerSettings): Promise<void> {
+    try {
+        const moment = (window as any).moment;
+        const m = moment(date);
+        const dateStr = m.format('YYYY-MM-DD');
+        const { folder, format, template } = NOTE_CONFIG[type](settings);
+        const fileName = m.format(format);
+        const filePath = `${folder ? folder + '/' : ''}${fileName}.md`;
+
+        let file = app.vault.getAbstractFileByPath(filePath);
+        if (!(file instanceof TFile)) {
+            if (folder && !app.vault.getAbstractFileByPath(folder)) {
+                await app.vault.createFolder(folder);
             }
-        }
-        
-        let noteContent = `# ${dateStr}\n\n`;
-        if (settings.dailyNoteTemplate) {
-            const templateFile = app.vault.getAbstractFileByPath(settings.dailyNoteTemplate);
-            if (templateFile instanceof TFile) {
-                let rawTemplate = await app.vault.read(templateFile);
-                const moment = (window as any).moment;
-                rawTemplate = rawTemplate.replace(/\{\{date\}\}/g, dateStr);
-                rawTemplate = rawTemplate.replace(/\{\{title\}\}/g, fileName);
-                rawTemplate = rawTemplate.replace(/\{\{time\}\}/g, moment().format('HH:mm'));
-                noteContent = rawTemplate;
+            let noteContent = type === 'daily' ? `# ${dateStr}\n\n` : `# Weekly Plan - ${fileName}\n\n`;
+            if (template) {
+                const templateFile = app.vault.getAbstractFileByPath(template);
+                if (templateFile instanceof TFile) {
+                    noteContent = (await app.vault.read(templateFile))
+                        .replace(/\{\{date\}\}/g, dateStr)
+                        .replace(/\{\{title\}\}/g, fileName)
+                        .replace(/\{\{time\}\}/g, moment().format('HH:mm'));
+                }
             }
+            file = await app.vault.create(filePath, noteContent);
         }
-        
-        file = await app.vault.create(filePath, noteContent);
+
+        await app.workspace.getLeaf('tab').openFile(file as TFile);
+    } catch (e) {
+        console.error(`Day Planner Pro: could not open ${type} note`, e);
+        new Notice(`Could not open the ${type} note: ${e instanceof Error ? e.message : String(e)}`);
     }
-    
-    const leaf = app.workspace.getLeaf('tab');
-    await leaf.openFile(file as TFile);
 }
 
-// 주간 노트 생성 또는 획득
-export async function openWeeklyNoteForDate(app: App, dateStr: string, settings: DayPlannerSettings) {
-    const folder = settings.weeklyNotesFolder ? settings.weeklyNotesFolder + '/' : '';
-    const fileName = (window as any).moment(dateStr).format(settings.weeklyNotesFormat);
-    const filePath = `${folder}${fileName}.md`;
-    
-    let file = app.vault.getAbstractFileByPath(filePath);
-    if (!(file instanceof TFile)) {
-        if (settings.weeklyNotesFolder) {
-            const folderExists = app.vault.getAbstractFileByPath(settings.weeklyNotesFolder);
-            if (!folderExists) {
-                await app.vault.createFolder(settings.weeklyNotesFolder);
-            }
+export type PlannerViewType = 'daily' | 'multiDay' | 'weekly' | 'monthly' | 'board' | 'list';
+
+export interface HeaderDateInfo {
+    mainText: string;
+    subText?: string;
+    isClickable: boolean;
+    /** Note opened by clicking mainText */
+    noteType?: 'daily' | 'weekly';
+    /** Note opened by clicking subText (Daily: the week number opens the weekly note) */
+    subNoteType?: 'daily' | 'weekly';
+    /** Date whose note the header links to (Board links to today, not the viewed date) */
+    noteDate: any;
+}
+
+/** Single declarative mapping for the top-right header date: label text and which note each part opens. */
+export function getHeaderDateInfo(date: any, viewType: PlannerViewType, nDayCount = 4): HeaderDateInfo {
+    const moment = (window as any).moment;
+    switch (viewType) {
+        case 'daily':
+            return { mainText: date.format('YYYY-MM-DD'), subText: `(Wk ${date.week()})`, isClickable: true,
+                noteType: 'daily', subNoteType: 'weekly', noteDate: date };
+        case 'multiDay': {
+            const days = Math.max(2, Math.min(14, nDayCount));
+            const end = date.clone().add(days - 1, 'days');
+            return { mainText: `${date.format('MM/DD')} ~ ${end.format('MM/DD')} (${days} days)`, isClickable: false, noteDate: date };
         }
-        let noteContent = `# Weekly Plan - ${fileName}\n\n`;
-        if (settings.weeklyNoteTemplate) {
-            const templateFile = app.vault.getAbstractFileByPath(settings.weeklyNoteTemplate);
-            if (templateFile instanceof TFile) {
-                let rawTemplate = await app.vault.read(templateFile);
-                const moment = (window as any).moment;
-                rawTemplate = rawTemplate.replace(/\{\{date\}\}/g, dateStr);
-                rawTemplate = rawTemplate.replace(/\{\{title\}\}/g, fileName);
-                rawTemplate = rawTemplate.replace(/\{\{time\}\}/g, moment().format('HH:mm'));
-                noteContent = rawTemplate;
-            }
+        case 'weekly': {
+            const start = date.clone().startOf('week');
+            const end = date.clone().endOf('week');
+            return { mainText: `${start.format('MM/DD')} ~ ${end.format('MM/DD')} (Wk ${date.week()})`, isClickable: true,
+                noteType: 'weekly', noteDate: date };
         }
-        file = await app.vault.create(filePath, noteContent);
+        case 'board': {
+            const today = moment();
+            return { mainText: `${today.format('YYYY-MM-DD')} (Wk ${today.week()})`, isClickable: true,
+                noteType: 'daily', noteDate: today };
+        }
+        default: // monthly, list
+            return { mainText: date.format('YYYY-MM'), isClickable: false, noteDate: date };
     }
-    
-    const leaf = app.workspace.getLeaf('tab');
-    await leaf.openFile(file as TFile);
+}
+
+/**
+ * Pixel scrollTop that brings `target` into view inside a scroll container, or null when the target is not rendered:
+ * 'now'   → the current-time line (Daily / Weekly / N-day), with one hour of context above it and below any sticky all-day row;
+ * 'today' → today's List section, else the earliest upcoming day (rows carry data-date).
+ */
+export function getScrollTargetTop(containerEl: HTMLElement, target: 'now' | 'today'): number | null {
+    const offsetInScroller = (el: HTMLElement) =>
+        el.getBoundingClientRect().top - containerEl.getBoundingClientRect().top + containerEl.scrollTop;
+
+    if (target === 'now') {
+        const line = containerEl.querySelector<HTMLElement>('.dp-timeline-current-indicator');
+        if (!line) return null;
+        const hourHeight = parseFloat(getComputedStyle(containerEl).getPropertyValue('--dp-hour-height')) || 60;
+        const stickyRow = containerEl.querySelector<HTMLElement>(':scope > .dp-daily-allday');
+        return Math.max(0, offsetInScroller(line) - hourHeight - (stickyRow?.offsetHeight ?? 0));
+    }
+
+    const todayStr = (window as any).moment().format('YYYY-MM-DD');
+    const row = Array.from(containerEl.querySelectorAll<HTMLElement>('.dp-gc-day-row'))
+        .find(r => (r.dataset.date ?? '') >= todayStr);
+    if (!row) return null;
+    const paddingTop = parseFloat(getComputedStyle(containerEl).paddingTop) || 0;
+    return Math.max(0, offsetInScroller(row) - paddingTop);
+}
+
+/** Scrolls a container to 'now' / 'today' (falling back to `fallbackTop` when the target isn't rendered). Returns the top used. */
+export function scrollToTarget(containerEl: HTMLElement, target: 'now' | 'today', behavior: 'smooth' | 'auto', fallbackTop: () => number = () => 0): number {
+    const top = Math.max(0, getScrollTargetTop(containerEl, target) ?? fallbackTop());
+    containerEl.scrollTo({ top, behavior });
+    return top;
 }
 
 // 마크다운의 한 줄을 분석하여 TaskItem으로 반환
