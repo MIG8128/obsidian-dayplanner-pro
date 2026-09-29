@@ -1595,11 +1595,12 @@ export abstract class DayPlannerBaseView extends ItemView {
     /**
      * Single entry point for "go to today": toolbar button, T hotkey and the command palette.
      * Slides toward today like a real navigation (forward from the past, backward from the future);
-     * already on today's day (week, in Weekly) → no slide, just the smooth scroll to now.
+     * already on today's period (day; week in Weekly; month in Monthly/List) → no slide, just the smooth scroll.
      */
     async goToToday() {
         const today = (window as any).moment();
-        const unit = this.getViewTabType() === 'weekly' ? 'week' : 'day';
+        const tab = this.getViewTabType();
+        const unit = tab === 'weekly' ? 'week' : (tab === 'monthly' || tab === 'list') ? 'month' : 'day';
         this.navDirection = this.currentDate.isSame(today, unit) ? null
             : this.currentDate.isBefore(today, unit) ? 'next' : 'prev';
         this.currentDate = today;
@@ -3301,6 +3302,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             }
         }
         grid.appendChild(cells);
+        this.playNavSlide(container, scrollWrapper); // month pagination / Today slide
     }
 
     /**
@@ -3960,6 +3962,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         });
 
         const listScroll = container.createDiv({ cls: 'dp-gc-list-scroll' });
+        this.playNavSlide(listScroll, container); // month pagination / Today slide (before the empty-month early return)
         const listScrollKey = `${this.getViewType()}:${this.currentDate.format('YYYY-MM')}:list-scroll`;
         listScroll.addEventListener('scroll', () => {
             this.savedScrollPositions[listScrollKey] = {
