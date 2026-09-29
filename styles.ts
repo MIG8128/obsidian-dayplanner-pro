@@ -78,23 +78,32 @@ export const STYLES = `
     font-size: 0.8em;
     height: 26px;
 }
+/* Header date: segments are either note links (.dp-nav-date-link) or plain labels (.dp-nav-date-static) */
 .dp-nav-date {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 4px;
     font-weight: bold;
     font-size: 1.15em;
     color: var(--text-normal);
-    cursor: pointer;
-    text-decoration: none;
+    cursor: default;
     border-bottom: 2px solid var(--interactive-accent);
-    padding: 2px 6px;
-    transition: all 0.15s ease-in-out;
+    padding: 2px 4px;
     text-align: right;
     white-space: nowrap;
 }
-.dp-nav-date:hover {
-    color: var(--text-accent);
-    border-bottom-color: var(--text-accent);
-    background-color: var(--background-modifier-hover);
+.dp-nav-date-static {
+    cursor: default;
+}
+.dp-nav-date-link {
+    cursor: pointer;
+    padding: 0 2px;
     border-radius: 4px;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+}
+.dp-nav-date-link:hover {
+    color: var(--text-accent);
+    background-color: var(--background-modifier-hover);
 }
 
 /* Segmented control: transparent track, rounded pill items, no divider lines */
@@ -1528,6 +1537,17 @@ export const STYLES = `
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+/* List view: day heading opens that day's daily note */
+.dp-gc-day-link {
+    cursor: pointer;
+}
+.dp-gc-day-link:hover .dp-gc-day-meta {
+    color: var(--text-accent);
+    text-decoration: underline;
+}
+.dp-gc-day-row:not(.is-today) .dp-gc-day-link:hover .dp-gc-day-number {
+    color: var(--text-accent);
 }
 .dp-gc-day-row.is-today .dp-gc-day-number {
     background-color: var(--interactive-accent);

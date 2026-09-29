@@ -1325,30 +1325,40 @@ export abstract class DayPlannerBaseView extends ItemView {
         const currentViewTab = this.getViewTabType();
         const weekNum = this.currentDate.week();
 
+        // Header date: per-view text, and each segment links to the note that matches it (or nothing)
+        const dateEl = nav.createDiv({ cls: 'dp-nav-date' });
+        const addSegment = (text: string, link?: { title: string; open: () => void }) => {
+            const seg = dateEl.createSpan({ cls: link ? 'dp-nav-date-link' : 'dp-nav-date-static', text });
+            if (link) {
+                seg.title = link.title;
+                seg.addEventListener('click', link.open);
+            }
+            dateLabel += (dateLabel ? ' ' : '') + text;
+        };
+        const dailyLink = (d: any) => ({ title: 'Open daily note', open: () => this.handleDateClick(d.format('YYYY-MM-DD')) });
+        const weeklyLink = (d: any) => ({
+            title: 'Open weekly note',
+            open: () => openWeeklyNoteForDate(this.app, d.format('YYYY-MM-DD'), this.plugin.settings)
+        });
+
         if (currentViewTab === 'daily') {
-            dateLabel = `${this.currentDate.format('YYYY-MM-DD')} (Wk ${weekNum})`;
+            addSegment(this.currentDate.format('YYYY-MM-DD'), dailyLink(this.currentDate));
+            addSegment(`(Wk ${weekNum})`, weeklyLink(this.currentDate));
         } else if (currentViewTab === 'multiDay') {
             const days = Math.max(2, Math.min(14, this.plugin.settings.nDayViewDays || 4));
             const endDay = this.currentDate.clone().add(days - 1, 'days');
-            dateLabel = `${this.currentDate.format('MM/D')} ~ ${endDay.format('M/D')} (${days} days)`;
+            addSegment(`${this.currentDate.format('MM/DD')} ~ ${endDay.format('MM/DD')} (${days} days)`);
         } else if (currentViewTab === 'weekly') {
             const startOfWeek = this.currentDate.clone().startOf('week');
             const endOfWeek = this.currentDate.clone().endOf('week');
-            dateLabel = `${startOfWeek.format('MM/D')} ~ ${endOfWeek.format('M/D')} (Wk ${weekNum})`;
-        } else if (currentViewTab === 'list') {
-            dateLabel = `${this.currentDate.format('YYYY-MM')} (Wk ${weekNum})`;
+            addSegment(`${startOfWeek.format('MM/DD')} ~ ${endOfWeek.format('MM/DD')} (Wk ${weekNum})`, weeklyLink(this.currentDate));
+        } else if (currentViewTab === 'board') {
+            const today = (window as any).moment();
+            addSegment(`${today.format('YYYY-MM-DD')} (Wk ${today.week()})`, dailyLink(today));
         } else {
-            dateLabel = `${this.currentDate.format('YYYY-MM')} (Wk ${weekNum})`;
+            // monthly / list: month label only, not a link
+            addSegment(this.currentDate.format('YYYY-MM'));
         }
-
-        const dateSpan = nav.createEl('span', { cls: 'dp-nav-date', text: dateLabel });
-        dateSpan.addEventListener('click', () => {
-            if (currentViewTab === 'weekly') {
-                openWeeklyNoteForDate(this.app, this.currentDate.format('YYYY-MM-DD'), this.plugin.settings);
-            } else {
-                this.handleDateClick(this.currentDate.format('YYYY-MM-DD'));
-            }
-        });
 
         const headerActions = headerTop.createDiv({ cls: 'dp-header-actions' });
         headerActions.style.cssText = 'display:flex; gap:4px; align-items:center;';
@@ -4030,8 +4040,10 @@ export abstract class DayPlannerBaseView extends ItemView {
                 cls: `dp-gc-day-row ${isToday ? 'is-today' : ''}` 
             });
 
-            // Left Sidebar
-            const sidebar = dayRow.createDiv({ cls: 'dp-gc-day-sidebar' });
+            // Left Sidebar: the day heading links to that day's daily note
+            const sidebar = dayRow.createDiv({ cls: 'dp-gc-day-sidebar dp-gc-day-link' });
+            sidebar.title = 'Open daily note';
+            sidebar.addEventListener('click', () => this.handleDateClick(dateStr));
             
             const numberDiv = sidebar.createDiv({ 
                 cls: 'dp-gc-day-number',
