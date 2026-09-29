@@ -987,9 +987,7 @@ export abstract class DayPlannerBaseView extends ItemView {
 
             if (key === 't') {
                 e.preventDefault();
-                this.currentDate = (window as any).moment();
-                await this.refreshTasks(null, true);
-                new Notice('Go to Today');
+                await this.goToToday();
             } else if (key === 'p' || key === 'k') {
                 e.preventDefault();
                 await this.navigateWithSlide(-1);
@@ -1332,22 +1330,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         });
 
         const todayBtn = navBtns.createEl('button', { text: 'Today' });
-        todayBtn.addEventListener('click', async () => {
-            // Slide toward today like a real navigation: forward from the past, backward from the future.
-            // Already on today's day (week, in Weekly) → no slide, just the smooth scroll to now.
-            const today = (window as any).moment();
-            const unit = this.getViewTabType() === 'weekly' ? 'week' : 'day';
-            this.navDirection = this.currentDate.isSame(today, unit) ? null
-                : this.currentDate.isBefore(today, unit) ? 'next' : 'prev';
-            this.currentDate = today;
-            this.scrollToTodayRequested = true; // explicit request: always smooth-scroll to now in the active view
-            try {
-                await this.refreshTasks(null, true);
-            } finally {
-                this.scrollToTodayRequested = false;
-                this.navDirection = null;
-            }
-        });
+        todayBtn.addEventListener('click', () => this.goToToday());
 
         const nextBtn = navBtns.createEl('button', { text: '>' });
         nextBtn.addEventListener('click', async () => {
@@ -1505,6 +1488,26 @@ export abstract class DayPlannerBaseView extends ItemView {
 
     /** Direction of the date navigation being rendered right now; timeline renderers read it to play the slide */
     navDirection: 'next' | 'prev' | null = null;
+
+    /**
+     * Single entry point for "go to today": toolbar button, T hotkey and the command palette.
+     * Slides toward today like a real navigation (forward from the past, backward from the future);
+     * already on today's day (week, in Weekly) → no slide, just the smooth scroll to now.
+     */
+    async goToToday() {
+        const today = (window as any).moment();
+        const unit = this.getViewTabType() === 'weekly' ? 'week' : 'day';
+        this.navDirection = this.currentDate.isSame(today, unit) ? null
+            : this.currentDate.isBefore(today, unit) ? 'next' : 'prev';
+        this.currentDate = today;
+        this.scrollToTodayRequested = true;
+        try {
+            await this.refreshTasks(null, true);
+        } finally {
+            this.scrollToTodayRequested = false;
+            this.navDirection = null;
+        }
+    }
 
     async navigateWithSlide(direction: number) {
         this.navigateDate(direction);

@@ -689,6 +689,22 @@ export default class DayPlannerPlugin extends Plugin {
             callback: () => this.activateView(VIEW_TYPES.DAILY)
         });
         this.addCommand({
+            id: 'go-to-today',
+            name: 'Day Planner Pro: Go to Today',
+            callback: async () => {
+                // Prefer the focused planner view, else the first open one; same animated path as the Today button
+                const active = this.app.workspace.getActiveViewOfType(DayPlannerCombinedView)
+                    ?? this.app.workspace.getActiveViewOfType(DayPlannerDailyView);
+                const view = active ?? [VIEW_TYPES.COMBINED, VIEW_TYPES.DAILY]
+                    .flatMap(t => this.app.workspace.getLeavesOfType(t))
+                    .map(leaf => leaf.view)
+                    .find((v): v is DayPlannerCombinedView | DayPlannerDailyView =>
+                        v instanceof DayPlannerCombinedView || v instanceof DayPlannerDailyView);
+                if (view) await view.goToToday();
+                else new Notice('Open a Day Planner view first.');
+            }
+        });
+        this.addCommand({
             id: 'insert-inline-view',
             name: 'Day Planner Pro: Insert Inline View (dayplanner block)',
             editorCallback: (editor) => {
