@@ -216,6 +216,78 @@ export const STYLES = `
     display: flex;
     min-height: calc(var(--dp-hours-count, 24) * var(--dp-hour-height)); /* 설정된 시작~종료 시간 범위만큼만 높이 확보 */
 }
+/* Daily all-day section: sticks to the top of the .dp-content scroller while the hourly grid scrolls under it.
+   top/margin of -12px cancel the scroller's padding so no cards peek through above the pinned block;
+   z-index sits above timeline cards (selected cards use 99) and the sticky hour column (20). */
+.dp-daily-allday {
+    position: sticky;
+    top: -12px;
+    z-index: 100;
+    flex-shrink: 0;
+    margin: -12px -12px 8px;
+    padding: 4px 12px;
+    background-color: var(--background-primary);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+/* Inline code blocks render the daily timeline in an unpadded scroller */
+.dp-codeblock-container .dp-daily-allday {
+    top: 0;
+    margin: 0 0 8px;
+}
+.dp-daily-allday-label {
+    margin: 2px 0 4px 0;
+    font-size: var(--font-ui-smaller, 11px);
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.dp-daily-allday-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 35vh; /* a long all-day list scrolls on its own instead of burying the timeline */
+    overflow-y: auto;
+}
+/* All-day items: slim single-line chips (overrides the roomy .dp-kanban-card base they share) */
+.dp-daily-allday-list > .dp-allday-pill {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    flex-shrink: 0;
+    height: 24px;
+    margin: 0;
+    padding: 2px 8px;
+    box-sizing: border-box;
+    border-radius: 5px;
+    font-size: var(--font-ui-small, 12px);
+    line-height: 1;
+    box-shadow: none;
+    cursor: pointer;
+}
+.dp-allday-pill-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0; /* lets the text ellipsize instead of widening the pill */
+}
+.dp-allday-pill-text {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dp-daily-allday .dp-allday-pill .dp-custom-cb { /* 3 classes: outranks the later .dp-custom-cb.status-* borders */
+    width: 14px;
+    height: 14px;
+    font-size: 9px;
+    border-width: 1.5px;
+}
+.dp-allday-pill .dp-badge-priority,
+.dp-allday-pill .dp-task-link-btn {
+    flex-shrink: 0;
+}
 .dp-timeline-hours {
     width: 48px;
     flex-shrink: 0;

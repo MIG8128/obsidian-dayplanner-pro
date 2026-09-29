@@ -2305,25 +2305,23 @@ export abstract class DayPlannerBaseView extends ItemView {
         const untimedAllDayGCal = dayGCal.filter(e => e.isAllDay);
 
         if (untimedTasks.length > 0 || untimedAllDayGCal.length > 0) {
-            const headerEl = parent.createDiv({ text: 'All-Day Tasks (No Time Specified)' });
-            headerEl.style.cssText = 'font-weight: bold; margin-top: 10px; margin-bottom: 8px; font-size: 0.9em; color: var(--text-muted);';
+            // Pinned above the hourly grid (sticky inside this scroller), like the Weekly/N-day all-day row
+            const allDaySection = parent.createDiv({ cls: 'dp-daily-allday' });
+            parent.insertBefore(allDaySection, timelineWrapper);
 
-            const listEl = parent.createDiv();
-            listEl.style.cssText = 'display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px;';
-
-            parent.insertBefore(headerEl, timelineWrapper);
-            parent.insertBefore(listEl, timelineWrapper);
+            allDaySection.createDiv({ cls: 'dp-daily-allday-label', text: 'All Day' });
+            const listEl = allDaySection.createDiv({ cls: 'dp-daily-allday-list' });
 
             untimedAllDayGCal.forEach(e => {
-                let inlineStyle = 'margin-bottom: 0; cursor: pointer;';
+                const card = listEl.createDiv({ cls: 'dp-kanban-card dp-gcal-event dp-allday-pill' });
                 if (e.color) {
-                    inlineStyle += ` background-color: ${e.color}1c !important; border-left: 4px solid ${e.color} !important;`;
+                    card.style.cssText = `background-color: ${e.color}1c !important; border-left: 3px solid ${e.color} !important;`;
                 }
-                const card = listEl.createDiv({ cls: 'dp-kanban-card dp-gcal-event' });
-                card.style.cssText = inlineStyle;
-                
-                const summarySpan = card.createSpan();
-                summarySpan.setText(`🗓️ ${e.summary}${e.location ? ` (📍 ${e.location})` : ''}`);
+
+                card.createSpan({
+                    cls: 'dp-allday-pill-text',
+                    text: `🗓️ ${e.summary}${e.location ? ` (📍 ${e.location})` : ''}`
+                });
 
                 card.addEventListener('click', () => {
                     new GCalEventEditModal(this.app, this.plugin, e, this.currentDate.format('YYYY-MM-DD'), async () => {
@@ -2334,23 +2332,20 @@ export abstract class DayPlannerBaseView extends ItemView {
 
             untimedTasks.sort((a, b) => a.text.localeCompare(b.text));
             untimedTasks.forEach(task => {
-                let cardClass = 'dp-kanban-card';
+                let cardClass = 'dp-kanban-card dp-allday-pill';
                 if (task.statusChar === 'x') cardClass += ' completed';
                 else if (task.statusChar === '-') cardClass += ' cancelled';
 
                 const card = listEl.createDiv({ cls: cardClass });
-                card.style.cssText = 'margin-bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px;';
-                
-                const leftSide = card.createDiv();
-                leftSide.style.cssText = 'display: flex; align-items: center; flex-grow: 1; gap: 6px;';
+
+                const leftSide = card.createDiv({ cls: 'dp-allday-pill-main' });
                 createCustomCheckbox(leftSide, task, async (newStatus) => {
                     await updateTaskInFile(this.app, task, { statusChar: newStatus });
                     await this.refreshTasks();
                 });
 
                 const displayTitle = cleanTaskTextForDisplay(task.text);
-                const cardSpan = leftSide.createEl('span', { text: `${displayTitle}` });
-                cardSpan.style.cssText = 'font-size: 0.9em;';
+                leftSide.createSpan({ cls: 'dp-allday-pill-text', text: displayTitle });
 
                 if (task.priority !== 'normal') {
                     const priorityEmojis = { highest: '🔺', high: '⏫', medium: '🔼', low: '🔽', lowest: '⏬' };
