@@ -1520,14 +1520,19 @@ export abstract class DayPlannerBaseView extends ItemView {
         const navBtns = nav.createDiv({ cls: 'dp-nav-buttons-group' });
         const prevBtn = navBtns.createEl('button', { text: '<' });
         prevBtn.addEventListener('click', async () => {
+            triggerHaptic('selection');
             await this.navigateWithSlide(-1);
         });
 
         const todayBtn = navBtns.createEl('button', { text: 'Today' });
-        todayBtn.addEventListener('click', () => this.goToToday());
+        todayBtn.addEventListener('click', () => {
+            triggerHaptic('selection');
+            void this.goToToday();
+        });
 
         const nextBtn = navBtns.createEl('button', { text: '>' });
         nextBtn.addEventListener('click', async () => {
+            triggerHaptic('selection');
             await this.navigateWithSlide(1);
         });
 
@@ -3493,7 +3498,8 @@ export abstract class DayPlannerBaseView extends ItemView {
      * 4-A. 기본 스탠다드 칸반 보드 뷰 그리기
      */
     renderStandardKanbanBoard(board: HTMLDivElement) {
-        const referenceDate = this.currentDate || (window as any).moment();
+        // Columns are relative to the real calendar day, not the date the other tabs are paged to
+        const referenceDate = (window as any).moment().startOf('day');
         const todayStr = referenceDate.format('YYYY-MM-DD');
         const tomorrowStr = referenceDate.clone().add(1, 'day').format('YYYY-MM-DD');
 
@@ -4450,9 +4456,16 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         if (!this.usePhoneLayout()) return super.focusDay(dateStr);
         const target = (window as any).moment(dateStr, 'YYYY-MM-DD');
         if (this.activeTab !== 'daily') {
+            const fromMonthly = this.activeTab === 'monthly';
             this.currentDate = target;
             this.dataVersion++; // new date: every cached pane is stale
             await this.switchTab('daily');
+            // Monthly cell → Daily: the day "opens up" from the grid instead of the plain pane reveal
+            const pane = this.panes.get('daily')?.el;
+            if (fromMonthly && pane && !prefersReducedMotion()) {
+                pane.removeClass(REVEAL_CLASS);
+                playOnce(pane, 'dp-zoom-in');
+            }
             return;
         }
         if (target.isSame(this.currentDate, 'day')) return;

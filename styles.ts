@@ -223,6 +223,14 @@ export const STYLES = `
     from { opacity: 0.5; transform: translateX(-32px); }
     to { opacity: 1; transform: none; }
 }
+/* Monthly cell → Daily (phone focusDay): the day zooms in from the grid */
+@keyframes dayPlannerZoomIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.dp-zoom-in {
+    animation: dayPlannerZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
 /* Applied to the scroll host only while sliding, and only when it has no horizontal overflow of its own */
 .dp-slide-host {
     overflow-x: hidden !important;
@@ -230,6 +238,7 @@ export const STYLES = `
 /* The helpers already skip animating under reduced motion; this is the CSS-side safety net */
 @media (prefers-reduced-motion: reduce) {
     .day-planner-view-pane.dp-view-reveal,
+    .dp-zoom-in,
     .dp-slide-from-right,
     .dp-slide-from-left {
         animation: none;
@@ -1923,6 +1932,10 @@ export const STYLES = `
 /* 2-Day fits the screen (the inline min-width is sized for desktop), so the pane never scrolls sideways */
 .is-phone .dp-phone-shell .dp-weekly-container {
     min-width: 0 !important;
+}
+/* 2-Day: the date strip above already marks both days, so the column date row is redundant */
+.is-phone .dp-phone-shell .dp-weekly-header-grid {
+    display: none;
 }
 
 /* Monthly: 7 columns, compact cells, max 2 chips (+N); the whole cell is the tap target */
