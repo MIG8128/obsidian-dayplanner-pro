@@ -1831,29 +1831,30 @@ export const STYLES = `
    Phone shell: the combined view on phones only (.is-phone body + .dp-phone-shell root).
    Desktop, tablets, the sidebar Daily view and code blocks never match these rules.
    ------------------------------------------------------------- */
-/* Bottom navigation: last row of the view, clear of the home indicator */
+/* Bottom navigation: floating pill lifted above Obsidian's own mobile toolbar (which overlays the view's bottom edge) */
 .is-phone .dp-phone-shell > .dp-bottom-nav {
     flex-shrink: 0;
+    width: auto; /* .dp-tabs is 100% wide; auto lets the side margins inset the pill */
     gap: 2px;
-    padding: 6px 8px max(6px, env(safe-area-inset-bottom, 12px));
-    border: none;
-    border-top: 1px solid var(--dp-glass-border);
-    border-radius: 0;
+    margin: 0 12px calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
+    padding: 3px;
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 12px;
     background-color: var(--dp-glass-bg);
     backdrop-filter: blur(16px) saturate(160%);
     -webkit-backdrop-filter: blur(16px) saturate(160%);
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     z-index: 30;
 }
 .is-phone .dp-bottom-nav > .dp-tab {
     flex: 1 1 0;
     min-width: 0;
-    height: 48px;
-    padding: 0 2px;
+    height: auto;
+    padding: 4px 8px;
     flex-direction: column;
-    gap: 3px;
-    border-radius: 10px;
-    font-size: 0.68em;
+    gap: 2px;
+    border-radius: 9px;
+    font-size: 11px;
 }
 .is-phone .dp-bottom-nav > .dp-tab.active {
     color: var(--text-accent);
