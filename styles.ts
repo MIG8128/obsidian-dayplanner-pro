@@ -208,19 +208,21 @@ export const STYLES = `
 .dp-kanban-board.dp-board-reveal {
     animation: dp-pane-enter 0.15s ease-out;
 }
-/* Prev / Next date navigation: short directional slide + fade on the rebuilt timeline (compositor-only) */
+/* Prev / Next / Today date navigation: directional slide on the rebuilt timeline (compositor-only).
+   Starts partly opaque (never 0) so there is no blank frame; the translate carries the direction:
+   next = enters from the right (moves leftward), prev = enters from the left (moves rightward). */
 .dp-nav-slide-next {
-    animation: dp-nav-slide-next 0.18s ease-out;
+    animation: dp-nav-slide-next 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 .dp-nav-slide-prev {
-    animation: dp-nav-slide-prev 0.18s ease-out;
+    animation: dp-nav-slide-prev 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 @keyframes dp-nav-slide-next {
-    from { opacity: 0; transform: translateX(16px); }
+    from { opacity: 0.5; transform: translateX(32px); }
     to { opacity: 1; transform: none; }
 }
 @keyframes dp-nav-slide-prev {
-    from { opacity: 0; transform: translateX(-16px); }
+    from { opacity: 0.5; transform: translateX(-32px); }
     to { opacity: 1; transform: none; }
 }
 /* Applied to the scroll host only while sliding, and only when it has no horizontal overflow of its own */

@@ -1333,12 +1333,19 @@ export abstract class DayPlannerBaseView extends ItemView {
 
         const todayBtn = navBtns.createEl('button', { text: 'Today' });
         todayBtn.addEventListener('click', async () => {
-            this.currentDate = (window as any).moment();
+            // Slide toward today like a real navigation: forward from the past, backward from the future.
+            // Already on today's day (week, in Weekly) → no slide, just the smooth scroll to now.
+            const today = (window as any).moment();
+            const unit = this.getViewTabType() === 'weekly' ? 'week' : 'day';
+            this.navDirection = this.currentDate.isSame(today, unit) ? null
+                : this.currentDate.isBefore(today, unit) ? 'next' : 'prev';
+            this.currentDate = today;
             this.scrollToTodayRequested = true; // explicit request: always smooth-scroll to now in the active view
             try {
                 await this.refreshTasks(null, true);
             } finally {
                 this.scrollToTodayRequested = false;
+                this.navDirection = null;
             }
         });
 
