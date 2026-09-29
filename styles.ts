@@ -204,8 +204,13 @@ export const STYLES = `
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: none; }
 }
+/* Board Kanban/Priority mode switch: same 150ms reveal on the freshly rebuilt board */
+.dp-kanban-board.dp-board-reveal {
+    animation: dp-pane-enter 0.15s ease-out;
+}
 @media (prefers-reduced-motion: reduce) {
-    .day-planner-view-pane:not(.is-hidden) {
+    .day-planner-view-pane:not(.is-hidden),
+    .dp-kanban-board.dp-board-reveal {
         animation: none;
     }
 }

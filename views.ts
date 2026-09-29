@@ -685,6 +685,8 @@ export abstract class DayPlannerBaseView extends ItemView {
     private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
     kanbanViewMode: 'kanban' | 'priority' = 'kanban';
+    /** Set by the Kanban/Priority toggle so only a mode switch (not every data refresh) plays the reveal animation */
+    boardModeSwitched = false;
 
     activeDragClickOffsetMin: number = 0;
     dragPreviewContainer: HTMLDivElement | null = null;
@@ -3291,6 +3293,11 @@ export abstract class DayPlannerBaseView extends ItemView {
         this.mountBoardModeToggle(parent.parentElement);
 
         const board = parent.createDiv({ cls: 'dp-kanban-board' });
+        // The board element is rebuilt on every render, so adding the class to the fresh node replays the keyframe
+        if (this.boardModeSwitched) {
+            board.addClass('dp-board-reveal');
+            this.boardModeSwitched = false;
+        }
 
         const boardScrollKey = `${this.getViewType()}:kanban-board`;
         board.addEventListener('scroll', () => {
@@ -3334,14 +3341,14 @@ export abstract class DayPlannerBaseView extends ItemView {
             attr: { title: 'Priority Focus' }
         });
 
-        kanbanToggle.addEventListener('click', () => {
-            this.kanbanViewMode = 'kanban';
+        const switchMode = (mode: 'kanban' | 'priority') => {
+            if (this.kanbanViewMode === mode) return;
+            this.kanbanViewMode = mode;
+            this.boardModeSwitched = true;
             this.render();
-        });
-        priorityToggle.addEventListener('click', () => {
-            this.kanbanViewMode = 'priority';
-            this.render();
-        });
+        };
+        kanbanToggle.addEventListener('click', () => switchMode('kanban'));
+        priorityToggle.addEventListener('click', () => switchMode('priority'));
     }
 
     /**
@@ -4375,6 +4382,8 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
     dragPreviewContainer: HTMLDivElement | null = null;
     activeDragItems: any[] = [];
     kanbanViewMode: 'kanban' | 'priority' = 'kanban';
+    /** Set by the Kanban/Priority toggle so only a mode switch (not every data refresh) plays the reveal animation */
+    boardModeSwitched = false;
     ctx: any;
     filters: any;
     showFilterPanel: boolean = false;
