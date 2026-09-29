@@ -208,9 +208,30 @@ export const STYLES = `
 .dp-kanban-board.dp-board-reveal {
     animation: dp-pane-enter 0.15s ease-out;
 }
+/* Prev / Next date navigation: short directional slide + fade on the rebuilt timeline (compositor-only) */
+.dp-nav-slide-next {
+    animation: dp-nav-slide-next 0.18s ease-out;
+}
+.dp-nav-slide-prev {
+    animation: dp-nav-slide-prev 0.18s ease-out;
+}
+@keyframes dp-nav-slide-next {
+    from { opacity: 0; transform: translateX(16px); }
+    to { opacity: 1; transform: none; }
+}
+@keyframes dp-nav-slide-prev {
+    from { opacity: 0; transform: translateX(-16px); }
+    to { opacity: 1; transform: none; }
+}
+/* Applied to the scroll host only while sliding, and only when it has no horizontal overflow of its own */
+.dp-nav-slide-host {
+    overflow-x: hidden !important;
+}
 @media (prefers-reduced-motion: reduce) {
     .day-planner-view-pane:not(.is-hidden),
-    .dp-kanban-board.dp-board-reveal {
+    .dp-kanban-board.dp-board-reveal,
+    .dp-nav-slide-next,
+    .dp-nav-slide-prev {
         animation: none;
     }
 }

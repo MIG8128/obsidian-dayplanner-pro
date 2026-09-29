@@ -992,12 +992,10 @@ export abstract class DayPlannerBaseView extends ItemView {
                 new Notice('Go to Today');
             } else if (key === 'p' || key === 'k') {
                 e.preventDefault();
-                this.navigateDate(-1);
-                await this.refreshTasks(null, true);
+                await this.navigateWithSlide(-1);
             } else if (key === 'n' || key === 'j') {
                 e.preventDefault();
-                this.navigateDate(1);
-                await this.refreshTasks(null, true);
+                await this.navigateWithSlide(1);
             } else if (key === 'd') {
                 e.preventDefault();
                 if (this instanceof DayPlannerCombinedView) {
@@ -1330,8 +1328,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         const navBtns = nav.createDiv({ cls: 'dp-nav-buttons-group' });
         const prevBtn = navBtns.createEl('button', { text: '<' });
         prevBtn.addEventListener('click', async () => {
-            this.navigateDate(-1);
-            await this.refreshTasks(null, true);
+            await this.navigateWithSlide(-1);
         });
 
         const todayBtn = navBtns.createEl('button', { text: 'Today' });
@@ -1347,8 +1344,7 @@ export abstract class DayPlannerBaseView extends ItemView {
 
         const nextBtn = navBtns.createEl('button', { text: '>' });
         nextBtn.addEventListener('click', async () => {
-            this.navigateDate(1);
-            await this.refreshTasks(null, true);
+            await this.navigateWithSlide(1);
         });
 
         let dateLabel = '';
@@ -1499,6 +1495,38 @@ export abstract class DayPlannerBaseView extends ItemView {
 
     abstract getViewTabType(): 'daily' | 'weekly' | 'multiDay' | 'monthly' | 'board' | 'list';
     abstract navigateDate(direction: number): void;
+
+    /** Direction of the date navigation being rendered right now; timeline renderers read it to play the slide */
+    navDirection: 'next' | 'prev' | null = null;
+
+    async navigateWithSlide(direction: number) {
+        this.navigateDate(direction);
+        this.navDirection = direction > 0 ? 'next' : 'prev';
+        try {
+            await this.refreshTasks(null, true);
+        } finally {
+            this.navDirection = null; // stale panes re-rendered later must not replay it
+        }
+    }
+
+    /**
+     * Plays the prev/next slide on a freshly rendered timeline element. The scroll host hides horizontal overflow
+     * during the slide only when it has none of its own, so a real horizontal scrollbar never flickers away.
+     */
+    playNavSlide(el: HTMLElement, host: HTMLElement) {
+        if (!this.navDirection || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        const cls = this.navDirection === 'next' ? 'dp-nav-slide-next' : 'dp-nav-slide-prev';
+        const clipHost = host.scrollWidth <= host.clientWidth;
+        if (clipHost) host.addClass('dp-nav-slide-host');
+        el.addClass(cls);
+        const done = (e: AnimationEvent) => {
+            if (e.target !== el) return; // ignore animations bubbling up from descendants
+            el.removeEventListener('animationend', done);
+            el.removeClass(cls);
+            if (clipHost) host.removeClass('dp-nav-slide-host');
+        };
+        el.addEventListener('animationend', done);
+    }
 
     /**
      * 현재 실행 중인 실시간 업무 트래킹 상태 바 렌더러
@@ -2407,6 +2435,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         }
 
         this.applyAutoScroll(parent, scrollKey, 'daily', () => this.getAutoScrollY([dateStr], startHour, hourHeight));
+        this.playNavSlide(timelineWrapper, parent);
     }
 
     /**
@@ -3085,6 +3114,7 @@ export abstract class DayPlannerBaseView extends ItemView {
 
         const visibleDates = Array.from({ length: daysCount }, (_, i) => startOfWeek.clone().add(i, 'days').format('YYYY-MM-DD'));
         this.applyAutoScroll(timelineScroll, scrollKey, `weekly:${daysCount}`, () => this.getAutoScrollY(visibleDates, startHour, hourHeight));
+        this.playNavSlide(container, scrollWrapper);
     }
 
     /**
