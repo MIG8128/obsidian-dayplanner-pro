@@ -30,6 +30,7 @@ export const STYLES = `
     overflow: hidden;
     user-select: none;
     --dp-hour-height: 60px; /* 세로 1시간 간격 CSS 변수 바인딩 */
+    container: dp-planner / inline-size; /* narrow layout keys off the pane width, not the device */
 }
 
 /* 상단 컨트롤 헤더 */
@@ -1767,5 +1768,62 @@ export const STYLES = `
 /* Lighter dimming so the frost actually picks up the workspace behind it */
 .modal-container:has(.dp-modal-buttons, .dp-selector-modal-tabs) > .modal-bg {
     opacity: 0.45;
+}
+
+/* -------------------------------------------------------------
+   Narrow layout: one rule set for a ~300px desktop sidebar and a phone,
+   driven by the planner's own width (container query), not device checks
+   ------------------------------------------------------------- */
+@container dp-planner (max-width: 400px) {
+    .dp-header {
+        padding: 8px 10px;
+        gap: 6px;
+    }
+    .dp-title {
+        display: none;
+    }
+    .dp-nav {
+        gap: 6px;
+    }
+    .dp-nav-date {
+        font-size: 1em;
+    }
+    .dp-tabs > .dp-tab {
+        padding: 0 8px;
+        font-size: 0.75em;
+    }
+    .dp-timeline-hour-mark {
+        font-size: 0.66em;
+    }
+    .dp-timeline-event {
+        padding: 6px !important;
+        font-size: 0.78em !important;
+    }
+    .dp-current-task-bar {
+        margin: 6px 8px;
+        padding: 6px 10px;
+        gap: 8px;
+    }
+}
+
+/* Touch devices: finger-sized hit areas (Obsidian sets .is-mobile on <body>) */
+.is-mobile .dp-resize-handle::after {
+    top: -12px;
+    bottom: -12px;
+    left: -16px;
+    right: -16px;
+}
+.is-mobile .dp-resize-handle.dp-small-handle::after {
+    top: -8px;
+    bottom: -8px;
+    left: -10px;
+    right: -10px;
+}
+.is-mobile .dp-nav-buttons-group button {
+    height: 32px;
+    padding: 4px 10px;
+}
+.is-mobile .dp-tabs > .dp-tab {
+    height: 30px;
 }
 `;

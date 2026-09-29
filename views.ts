@@ -16,7 +16,8 @@ import {
     formatMinutesNice,
     getTargetTaskFilePath,
     isSyncConflictPath,
-    addMinutesToTime
+    addMinutesToTime,
+    triggerHaptic
 } from './utils';
 import { patchGoogleCalendarEvent, updateGoogleCalendarEvent, syncTaskToGCal, syncAllTasksToGCal } from './gcalApi';
 import { TaskEditModal, GCalEventEditModal, AddChoiceModal, TaskSyncModal } from './modals';
@@ -808,6 +809,9 @@ export abstract class DayPlannerBaseView extends ItemView {
         previewContainerEl?: HTMLDivElement;
     }> = [];
 
+    /** Last slot the drag preview snapped to, so haptics fire once per slot change */
+    lastDragSnapKey = '';
+
     initDragPreview(e: DragEvent, primaryTaskId: string, clickOffsetMin: number, parentElement: HTMLElement) {
         if (!e.dataTransfer) return;
 
@@ -839,6 +843,8 @@ export abstract class DayPlannerBaseView extends ItemView {
         this.clearDragPreview(parentElement);
         this.activePrimaryTaskId = primaryTaskId;
         this.activeDragItems = [];
+        this.lastDragSnapKey = '';
+        triggerHaptic('light'); // drag start
 
         const rootSearchContainer = this.containerEl || parentElement;
 
@@ -931,6 +937,12 @@ export abstract class DayPlannerBaseView extends ItemView {
         const primarySnappedY = (snappedMinutes - (startHour * 60)) * ratio;
 
         const currentDateStr = currentColumn.getAttribute('data-date') || '';
+        // One tick per 15-minute slot (or day column) crossed, not per dragover event
+        const snapKey = `${currentDateStr}@${snappedMinutes}`;
+        if (snapKey !== this.lastDragSnapKey) {
+            if (this.lastDragSnapKey) triggerHaptic('light');
+            this.lastDragSnapKey = snapKey;
+        }
         const primaryItem = this.activeDragItems.find(it => it.id === this.activePrimaryTaskId) || this.activeDragItems[0];
         const primaryDateStr = primaryItem ? (primaryItem.itemDateStr || currentDateStr) : currentDateStr;
 
@@ -1714,8 +1726,9 @@ export abstract class DayPlannerBaseView extends ItemView {
         let startY = 0;
         let marquee: HTMLElement | null = null;
 
-        const onMouseDown = (e: MouseEvent) => {
-            if (e.button !== 0) return;
+        // Pointer events cover mouse + pen; touch is left to native scrolling
+        const onMouseDown = (e: PointerEvent) => {
+            if (e.button !== 0 || e.pointerType === 'touch') return;
             const target = e.target as HTMLElement;
             if (target.closest('.dp-timeline-event') || target.closest('button') || target.closest('.dp-custom-cb') || target.closest('.dp-task-link-btn') || target.closest('.dp-resize-handle')) {
                 return;
@@ -1738,11 +1751,12 @@ export abstract class DayPlannerBaseView extends ItemView {
                 this.selectedTaskIds.clear();
             }
 
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('pointermove', onMouseMove);
+            document.addEventListener('pointerup', onMouseUp);
+            document.addEventListener('pointercancel', onMouseUp);
         };
 
-        const onMouseMove = (e: MouseEvent) => {
+        const onMouseMove = (e: PointerEvent) => {
             if (!isSelecting || !marquee) return;
 
             const rect = eventsCol.getBoundingClientRect();
@@ -1793,12 +1807,13 @@ export abstract class DayPlannerBaseView extends ItemView {
                 marquee.remove();
                 marquee = null;
             }
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+            document.removeEventListener('pointermove', onMouseMove);
+            document.removeEventListener('pointerup', onMouseUp);
+            document.removeEventListener('pointercancel', onMouseUp);
             this.render();
         };
 
-        eventsCol.addEventListener('mousedown', onMouseDown);
+        eventsCol.addEventListener('pointerdown', onMouseDown);
     }
 
     /**
@@ -1845,11 +1860,17 @@ export abstract class DayPlannerBaseView extends ItemView {
             const [eh, em] = item.endTime.split(':').map(Number);
             const originalStartMin = sh * 60 + sm;
             const originalEndMin = eh * 60 + em;
+            let lastDeltaMin = 0;
+            triggerHaptic('light'); // resize start
 
             const onPointerMove = (moveEvent: PointerEvent) => {
                 moveEvent.preventDefault();
                 const deltaY = moveEvent.clientY - startY;
                 const deltaMin = Math.round((deltaY / ratio) / 15) * 15; // ratio 기반 환산
+                if (deltaMin !== lastDeltaMin) {
+                    lastDeltaMin = deltaMin;
+                    triggerHaptic('light'); // snapped to a new 15-minute slot
+                }
 
                 let newStartMin = originalStartMin;
                 let newEndMin = originalEndMin;
@@ -2271,7 +2292,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                 let clickStartY = 0;
                 let clickDragged = false;
 
-                eventCard.addEventListener('mousedown', (e) => {
+                eventCard.addEventListener('pointerdown', (e) => {
                     clickStartX = e.clientX;
                     clickStartY = e.clientY;
                     clickDragged = false;
@@ -3050,7 +3071,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                     let clickStartY = 0;
                     let clickDragged = false;
 
-                    eventCard.addEventListener('mousedown', (e) => {
+                    eventCard.addEventListener('pointerdown', (e) => {
                         clickStartX = e.clientX;
                         clickStartY = e.clientY;
                         clickDragged = false;
@@ -3384,6 +3405,7 @@ export abstract class DayPlannerBaseView extends ItemView {
 
         const switchMode = (mode: 'kanban' | 'priority') => {
             if (this.kanbanViewMode === mode) return;
+            triggerHaptic('selection');
             this.kanbanViewMode = mode;
             // Priority is the right-hand tab → slide in from the right; Kanban (left tab) → from the left
             this.navDirection = mode === 'priority' ? 'next' : 'prev';
@@ -4321,6 +4343,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     /** Instant tab change: no vault scan, no blocking GCal fetch, and no rebuild of an up-to-date pane. */
     async switchTab(tab: typeof this.activeTab) {
         if (tab === this.activeTab) return;
+        triggerHaptic('selection');
         const current = this.panes.get(this.activeTab);
         if (current) {
             // display:none drops scroll offsets, so remember them for when this pane is shown again
@@ -5267,6 +5290,7 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
                     const val = parseInt(select.value, 10);
                     this.plugin.settings.nDayViewDays = val;
                     await this.plugin.saveSettings();
+                    triggerHaptic('selection');
                     this.viewType = 'multiDay';
                     this.plugin.refreshActiveViews();
                 });
@@ -5276,6 +5300,7 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
                     text: tab.label
                 });
                 btn.addEventListener('click', async () => {
+                    if (this.viewType !== tab.key) triggerHaptic('selection');
                     this.viewType = tab.key;
                     await this.refreshTasks(); // tab change: cached GCal ranges only, no forced fetch
                     this.updateCodeBlockInFile(this.viewType, this.filters);

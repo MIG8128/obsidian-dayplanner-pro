@@ -23,7 +23,8 @@ import {
     isSyncConflictPath,
     cleanTaskTextForDisplay,
     parseTaskLine,
-    formatMinutesNice
+    formatMinutesNice,
+    setHapticsEnabled
 } from './utils';
 import {
     deleteGoogleCalendarEvent,
@@ -378,6 +379,18 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
+        new Setting(containerEl).setName('Mobile').setHeading();
+        new Setting(containerEl)
+            .setName('Haptic Feedback')
+            .setDesc('Vibrate briefly when completing tasks, switching tabs or modes, and dragging or resizing timeline items. Only on mobile devices that support vibration.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableMobileHaptics ?? true)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableMobileHaptics = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
         // 📐 타임라인 세로 간격 및 노출 시간 범위 조절 설정 UI 추가
         new Setting(containerEl).setName('Timeline spacing & hour range').setHeading();
         
@@ -676,6 +689,10 @@ export default class DayPlannerPlugin extends Plugin {
 
         this.addRibbonIcon('calendar-glyph', 'Day Planner Pro (Combined View)', () => {
             this.activateView(VIEW_TYPES.COMBINED);
+        });
+        // Sidebar timeline: right sidebar on desktop, the slide-out right drawer on Obsidian Mobile
+        this.addRibbonIcon('calendar-clock', 'Day Planner Pro (Daily Timeline)', () => {
+            this.activateView(VIEW_TYPES.DAILY);
         });
 
         this.addCommand({
@@ -1018,9 +1035,11 @@ export default class DayPlannerPlugin extends Plugin {
                 enabled: true
             }];
         }
+        setHapticsEnabled(this.settings.enableMobileHaptics);
     }
 
     async saveSettings() {
+        setHapticsEnabled(this.settings.enableMobileHaptics);
         await this.saveData(this.settings);
     }
 
@@ -1036,7 +1055,8 @@ export default class DayPlannerPlugin extends Plugin {
             leaf = leaves[0];
         } else {
             if (viewType === VIEW_TYPES.DAILY) {
-                leaf = workspace.getRightLeaf(false);
+                // Right sidebar (desktop) / right drawer (mobile); fall back to a tab if no sidebar leaf is available
+                leaf = workspace.getRightLeaf(false) ?? workspace.getLeaf('tab');
             } else {
                 leaf = workspace.getLeaf('tab');
             }
@@ -1049,7 +1069,8 @@ export default class DayPlannerPlugin extends Plugin {
         }
 
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            // Expands a collapsed sidebar on desktop and slides the drawer open on mobile
+            await workspace.revealLeaf(leaf);
             if (viewType === VIEW_TYPES.COMBINED && tab) {
                 const combinedView = leaf.view as DayPlannerCombinedView;
                 if (combinedView && typeof combinedView.activeTab !== 'undefined') {

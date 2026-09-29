@@ -1,5 +1,28 @@
-import { App, TFile, Notice } from 'obsidian';
+import { App, TFile, Notice, Platform } from 'obsidian';
 import { TaskItem, DayPlannerSettings } from './types';
+
+// ---------------------------------------------------------------------------------------------
+// Haptics: one safe entry point. No-op on desktop, when the setting is off, or where vibrate() is unsupported
+// (iOS WebKit has no Vibration API, so iPhone/iPad silently get nothing).
+// ---------------------------------------------------------------------------------------------
+export type HapticType = 'selection' | 'light' | 'success' | 'warning';
+
+let hapticsEnabled = true;
+/** Mirrors the `enableMobileHaptics` setting; called by the plugin on load and on every settings save. */
+export function setHapticsEnabled(enabled: boolean) {
+    hapticsEnabled = enabled;
+}
+
+export function triggerHaptic(type: HapticType = 'light', enabled = hapticsEnabled): void {
+    if (!enabled || !Platform.isMobile || typeof navigator.vibrate !== 'function') return;
+    const patterns: Record<HapticType, number | number[]> = {
+        selection: 6,
+        light: 10,
+        success: [10, 35, 15],
+        warning: [20, 50, 20]
+    };
+    try { navigator.vibrate(patterns[type]); } catch { /* vibration blocked by the OS */ }
+}
 
 // 헬퍼 함수: 특정 시간에 분을 가산하여 반환
 export function addMinutesToTime(timeStr: string, minutes: number): string {
@@ -117,7 +140,8 @@ export function createCustomCheckbox(parent: HTMLElement, task: TaskItem, onClic
         else if (task.statusChar === '/') nextStatus = 'x';
         else if (task.statusChar === 'x') nextStatus = '-';
         else nextStatus = ' ';
-        
+
+        triggerHaptic(nextStatus === 'x' ? 'success' : 'selection');
         onClick(nextStatus);
     });
     

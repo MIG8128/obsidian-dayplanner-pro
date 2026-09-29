@@ -74,6 +74,7 @@ export interface DayPlannerSettings {
     nDayViewDays: number;
     weeklyNoteTemplate: string; // 주간 노트 생성 시 사용할 템플릿 파일 경로
     collapsedColumns?: string[];
+    enableMobileHaptics: boolean; // Vibration feedback on supported mobile devices
 }
 
 // 기본 설정 값 정의
@@ -102,7 +103,8 @@ export const DEFAULT_SETTINGS: DayPlannerSettings = {
     excludeMatchMode: 'any',
     weeklyNoteTemplate: '',
     nDayViewDays: 4,
-    collapsedColumns: []
+    collapsedColumns: [],
+    enableMobileHaptics: true
 };
 
 // 뷰 타입 상수 정의
