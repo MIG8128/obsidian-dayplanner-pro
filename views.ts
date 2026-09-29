@@ -41,6 +41,65 @@ function animateActiveTabPill(tabsContainer: HTMLElement, owner: { tabPillMemo?:
     owner.tabPillMemo = { key: activeKey, left, width };
 }
 
+// ---------------------------------------------------------------------------------------------
+// View transitions: every slide / reveal in the planner goes through these two helpers.
+// ---------------------------------------------------------------------------------------------
+
+export type SlideDirection = 'next' | 'prev' | 'forward' | 'backward';
+const SLIDE_CLASSES = ['dp-slide-from-right', 'dp-slide-from-left'];
+const REVEAL_CLASS = 'dp-view-reveal';
+
+function prefersReducedMotion(): boolean {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Adds an animation class for one playback and removes it (plus any extra cleanup) when that animation ends. */
+function playOnce(el: HTMLElement, cls: string, onDone?: () => void) {
+    const done = (e: AnimationEvent) => {
+        if (e.target !== el) return; // ignore animations bubbling up from descendants
+        el.removeEventListener('animationend', done);
+        el.removeClass(cls);
+        onDone?.();
+    };
+    el.addEventListener('animationend', done);
+    el.addClass(cls);
+}
+
+/**
+ * Directional slide for date pagination, Today and the Board mode switch.
+ * next/forward = enters from the right; prev/backward = enters from the left.
+ * scrollHost (optional) clips horizontal overflow during the slide, but only when it has no horizontal
+ * scrollbar of its own, so a real scrollbar never flickers away.
+ */
+function applySlideTransition(el: HTMLElement, direction: SlideDirection, scrollHost?: HTMLElement): void {
+    if (prefersReducedMotion()) return;
+    if (SLIDE_CLASSES.some(c => el.hasClass(c))) {
+        el.removeClass(...SLIDE_CLASSES);
+        void el.offsetWidth; // restart the keyframe when the same element is slid again mid-animation
+    }
+    const cls = direction === 'next' || direction === 'forward' ? SLIDE_CLASSES[0] : SLIDE_CLASSES[1];
+    const clip = !!scrollHost && scrollHost.scrollWidth <= scrollHost.clientWidth;
+    if (clip) scrollHost!.addClass('dp-slide-host');
+    playOnce(el, cls, () => { if (clip) scrollHost!.removeClass('dp-slide-host'); });
+}
+
+/**
+ * Top-level view switch: shows the target keep-alive pane, hides and deactivates every sibling pane,
+ * and plays the 150ms reveal only when the target was not already the visible pane.
+ */
+function applyViewReveal(targetPaneEl: HTMLElement): void {
+    const parent = targetPaneEl.parentElement;
+    parent?.querySelectorAll<HTMLElement>(':scope > .day-planner-view-pane').forEach(p => {
+        if (p === targetPaneEl) return;
+        p.removeClass('is-active', REVEAL_CLASS);
+        p.addClass('is-hidden');
+    });
+    const wasVisible = targetPaneEl.hasClass('is-active') && !targetPaneEl.hasClass('is-hidden');
+    targetPaneEl.removeClass('is-hidden');
+    targetPaneEl.addClass('is-active');
+    if (!wasVisible && !prefersReducedMotion()) playOnce(targetPaneEl, REVEAL_CLASS);
+}
+
 function showTaskUndoNotice(
     app: App,
     task: TaskItem,
@@ -1517,23 +1576,9 @@ export abstract class DayPlannerBaseView extends ItemView {
         }
     }
 
-    /**
-     * Plays the prev/next slide on a freshly rendered timeline element. The scroll host hides horizontal overflow
-     * during the slide only when it has none of its own, so a real horizontal scrollbar never flickers away.
-     */
+    /** Slides a freshly rendered view in when this render was caused by a directional navigation. */
     playNavSlide(el: HTMLElement, host: HTMLElement) {
-        if (!this.navDirection || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-        const cls = this.navDirection === 'next' ? 'dp-nav-slide-next' : 'dp-nav-slide-prev';
-        const clipHost = host.scrollWidth <= host.clientWidth;
-        if (clipHost) host.addClass('dp-nav-slide-host');
-        el.addClass(cls);
-        const done = (e: AnimationEvent) => {
-            if (e.target !== el) return; // ignore animations bubbling up from descendants
-            el.removeEventListener('animationend', done);
-            el.removeClass(cls);
-            if (clipHost) host.removeClass('dp-nav-slide-host');
-        };
-        el.addEventListener('animationend', done);
+        if (this.navDirection) applySlideTransition(el, this.navDirection, host);
     }
 
     /**
@@ -4358,12 +4403,8 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             };
             this.panes.set(this.activeTab, pane);
         }
-        // Strict mutual exclusion: exactly one pane is shown, every other one is hidden
-        this.panes.forEach((p, key) => {
-            const isActive = key === this.activeTab;
-            p.el.toggleClass('is-hidden', !isActive);
-            p.el.toggleClass('is-active', isActive);
-        });
+        // Strict mutual exclusion: exactly one pane is shown (with the reveal if it was hidden), every other one hidden
+        applyViewReveal(pane.el);
 
         if (pane.version !== this.dataVersion) {
             pane.version = this.dataVersion;

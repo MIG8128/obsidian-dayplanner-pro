@@ -189,10 +189,10 @@ export const STYLES = `
 }
 
 /* Keep-alive view panes (combined view): cached panes are hidden, never destroyed.
-   A transition can't start from display:none, so the reveal is a 150ms keyframe that replays each time a pane
-   regains its box. Only opacity/transform are animated (compositor-only). The resting state is transform: none
+   The 150ms reveal is added by applyViewReveal() only when a pane becomes visible, and removed on animationend.
+   Only opacity/transform are animated (compositor-only). The resting state is transform: none
    (not translateY(0)) so an idle pane never becomes a containing block / stacking context for its contents. */
-.day-planner-view-pane:not(.is-hidden) {
+.day-planner-view-pane.dp-view-reveal {
     animation: dp-pane-enter 0.15s ease-out;
 }
 /* !important: view-specific pane layouts (e.g. ".dp-content:has(> .dp-kanban-board) { display: flex }", same
@@ -204,31 +204,31 @@ export const STYLES = `
     from { opacity: 0; transform: translateY(4px); }
     to { opacity: 1; transform: none; }
 }
-/* Prev / Next / Today date navigation and Board Kanban ↔ Priority switch: directional slide on the rebuilt view (compositor-only).
-   Starts partly opaque (never 0) so there is no blank frame; the translate carries the direction:
-   next = enters from the right (moves leftward), prev = enters from the left (moves rightward). */
-.dp-nav-slide-next {
-    animation: dp-nav-slide-next 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+/* Directional slide (applySlideTransition): date pagination, Today, Board Kanban ↔ Priority (compositor-only).
+   Starts partly opaque (never 0) so there is no blank frame; the translate carries the direction. */
+.dp-slide-from-right {
+    animation: dp-slide-from-right 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.dp-nav-slide-prev {
-    animation: dp-nav-slide-prev 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+.dp-slide-from-left {
+    animation: dp-slide-from-left 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@keyframes dp-nav-slide-next {
+@keyframes dp-slide-from-right {
     from { opacity: 0.5; transform: translateX(32px); }
     to { opacity: 1; transform: none; }
 }
-@keyframes dp-nav-slide-prev {
+@keyframes dp-slide-from-left {
     from { opacity: 0.5; transform: translateX(-32px); }
     to { opacity: 1; transform: none; }
 }
 /* Applied to the scroll host only while sliding, and only when it has no horizontal overflow of its own */
-.dp-nav-slide-host {
+.dp-slide-host {
     overflow-x: hidden !important;
 }
+/* The helpers already skip animating under reduced motion; this is the CSS-side safety net */
 @media (prefers-reduced-motion: reduce) {
-    .day-planner-view-pane:not(.is-hidden),
-    .dp-nav-slide-next,
-    .dp-nav-slide-prev {
+    .day-planner-view-pane.dp-view-reveal,
+    .dp-slide-from-right,
+    .dp-slide-from-left {
         animation: none;
     }
 }
