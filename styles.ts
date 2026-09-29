@@ -120,6 +120,8 @@ export const STYLES = `
     box-sizing: border-box;
     overflow-x: auto;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch; /* momentum swipe on iOS */
+    overscroll-behavior-x: contain;    /* swiping past the ends doesn't drag the workspace / trigger back-swipe */
 }
 .dp-tabs::-webkit-scrollbar {
     display: none;

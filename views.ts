@@ -42,6 +42,30 @@ function animateActiveTabPill(tabsContainer: HTMLElement, owner: { tabPillMemo?:
     owner.tabPillMemo = { key: activeKey, left, width };
 }
 
+/**
+ * The tab bar is rebuilt on every render, which would reset its horizontal scroll to 0 on narrow/mobile panes.
+ * Restores the last scroll offset instantly, tracks further scrolling, then brings the active tab into view.
+ * Scrolls only the tab bar itself (scrollIntoView would also scroll overflow:hidden ancestors of the view).
+ */
+function keepActiveTabInView(tabsContainer: HTMLElement, owner: { tabScrollLeft?: number }) {
+    tabsContainer.scrollLeft = owner.tabScrollLeft ?? 0;
+    tabsContainer.addEventListener('scroll', () => { owner.tabScrollLeft = tabsContainer.scrollLeft; }, { passive: true });
+
+    const active = tabsContainer.querySelector<HTMLElement>(':scope > .dp-tab.active');
+    if (!active || tabsContainer.clientWidth === 0) return; // 0 = hidden leaf, nothing to measure
+    const pad = 8; // keep a little of the neighbouring tab visible
+    const viewLeft = tabsContainer.scrollLeft;
+    const viewRight = viewLeft + tabsContainer.clientWidth;
+    const tabLeft = active.offsetLeft;
+    const tabRight = tabLeft + active.offsetWidth;
+    let target: number | null = null;
+    if (tabLeft < viewLeft + pad) target = tabLeft - pad;                                   // clipped on the left
+    else if (tabRight > viewRight - pad) target = tabRight - tabsContainer.clientWidth + pad; // clipped on the right
+    if (target !== null) {
+        tabsContainer.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    }
+}
+
 // ---------------------------------------------------------------------------------------------
 // View transitions: every slide / reveal in the planner goes through these two helpers.
 // ---------------------------------------------------------------------------------------------
@@ -4276,6 +4300,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             }
         });
         animateActiveTabPill(tabsContainer, this as any, this.activeTab);
+        keepActiveTabInView(tabsContainer, this as any);
 
         this.mountActivePane(rootEl);
         if (this.activeTab === 'daily') this.renderCurrentTaskTracker(rootEl);
@@ -5258,6 +5283,7 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
             }
         });
         animateActiveTabPill(tabsContainer, this as any, this.viewType);
+        keepActiveTabInView(tabsContainer, this as any);
 
         this.renderFilterPanel(rootEl);
 
