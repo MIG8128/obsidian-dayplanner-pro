@@ -679,7 +679,30 @@ export abstract class DayPlannerBaseView extends ItemView {
     }
     
     savedScrollPositions: Record<string, { scrollTop: number; scrollLeft: number }> = {};
-    lastScrolledKey: string = '';
+    /** View kinds that already played their one-time smooth auto-scroll ('daily', 'weekly:7', 'list', …) */
+    autoScrolledViews: Set<string> = new Set();
+    /** Set by the Today button: the next render smooth-scrolls the active view to now / today's section */
+    scrollToTodayRequested = false;
+
+    /**
+     * Scroll policy for timeline and list views:
+     * Today button → smooth scroll to target; saved position (tab switch / re-render) → instant restore;
+     * first mount of this view kind → smooth scroll once; later unseen dates/months → instant jump (no replayed motion).
+     */
+    applyAutoScroll(scroller: HTMLElement, scrollKey: string, viewKind: string, getTargetTop: () => number) {
+        this.autoScrolledViews ??= new Set(); // code-block renderers get these methods via the prototype mixin
+        const saved = this.savedScrollPositions[scrollKey];
+        if (!this.scrollToTodayRequested && saved !== undefined) {
+            scroller.scrollTop = saved.scrollTop;
+            scroller.scrollLeft = saved.scrollLeft;
+            return;
+        }
+        const top = Math.max(0, getTargetTop());
+        const smooth = this.scrollToTodayRequested || !this.autoScrolledViews.has(viewKind);
+        this.autoScrolledViews.add(viewKind);
+        scroller.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
+        this.savedScrollPositions[scrollKey] = { scrollTop: top, scrollLeft: saved?.scrollLeft ?? 0 };
+    }
 
     selectedTaskIds: Set<string> = new Set();
     private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -1314,7 +1337,12 @@ export abstract class DayPlannerBaseView extends ItemView {
         const todayBtn = navBtns.createEl('button', { text: 'Today' });
         todayBtn.addEventListener('click', async () => {
             this.currentDate = (window as any).moment();
-            await this.refreshTasks(null, true);
+            this.scrollToTodayRequested = true; // explicit request: always smooth-scroll to now in the active view
+            try {
+                await this.refreshTasks(null, true);
+            } finally {
+                this.scrollToTodayRequested = false;
+            }
         });
 
         const nextBtn = navBtns.createEl('button', { text: '>' });
@@ -2378,21 +2406,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             });
         }
 
-        const savedScroll = this.savedScrollPositions[scrollKey];
-        if (savedScroll !== undefined) {
-            parent.scrollTop = savedScroll.scrollTop;
-            parent.scrollLeft = savedScroll.scrollLeft;
-        } else {
-            if (this.lastScrolledKey !== scrollKey) {
-                this.lastScrolledKey = scrollKey;
-                const targetScrollY = this.getAutoScrollY([dateStr], startHour, hourHeight);
-                parent.scrollTo({ top: targetScrollY, behavior: 'smooth' });
-                this.savedScrollPositions[scrollKey] = {
-                    scrollTop: targetScrollY,
-                    scrollLeft: 0
-                };
-            }
-        }
+        this.applyAutoScroll(parent, scrollKey, 'daily', () => this.getAutoScrollY([dateStr], startHour, hourHeight));
     }
 
     /**
@@ -3069,22 +3083,8 @@ export abstract class DayPlannerBaseView extends ItemView {
             });
         }
 
-        const savedScroll = this.savedScrollPositions[scrollKey];
-        if (savedScroll !== undefined) {
-            timelineScroll.scrollTop = savedScroll.scrollTop;
-            timelineScroll.scrollLeft = savedScroll.scrollLeft;
-        } else {
-            if (this.lastScrolledKey !== scrollKey) {
-                this.lastScrolledKey = scrollKey;
-                const visibleDates = Array.from({ length: daysCount }, (_, i) => startOfWeek.clone().add(i, 'days').format('YYYY-MM-DD'));
-                const targetScrollY = this.getAutoScrollY(visibleDates, startHour, hourHeight);
-                timelineScroll.scrollTo({ top: targetScrollY, behavior: 'smooth' });
-                this.savedScrollPositions[scrollKey] = {
-                    scrollTop: targetScrollY,
-                    scrollLeft: 0
-                };
-            }
-        }
+        const visibleDates = Array.from({ length: daysCount }, (_, i) => startOfWeek.clone().add(i, 'days').format('YYYY-MM-DD'));
+        this.applyAutoScroll(timelineScroll, scrollKey, `weekly:${daysCount}`, () => this.getAutoScrollY(visibleDates, startHour, hourHeight));
     }
 
     /**
@@ -3940,7 +3940,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         });
 
         const listScroll = container.createDiv({ cls: 'dp-gc-list-scroll' });
-        const listScrollKey = `${this.getViewType()}:list-scroll`;
+        const listScrollKey = `${this.getViewType()}:${this.currentDate.format('YYYY-MM')}:list-scroll`;
         listScroll.addEventListener('scroll', () => {
             this.savedScrollPositions[listScrollKey] = {
                 scrollTop: listScroll.scrollTop,
@@ -4023,8 +4023,9 @@ export abstract class DayPlannerBaseView extends ItemView {
                 return timeA.localeCompare(timeB);
             });
 
-            const dayRow = listScroll.createDiv({ 
-                cls: `dp-gc-day-row ${isToday ? 'is-today' : ''}` 
+            const dayRow = listScroll.createDiv({
+                cls: `dp-gc-day-row ${isToday ? 'is-today' : ''}`,
+                attr: { 'data-date': dateStr }
             });
 
             // Left Sidebar: the day heading links to that day's daily note
@@ -4167,8 +4168,14 @@ export abstract class DayPlannerBaseView extends ItemView {
             }
         });
 
-        const savedListScroll = this.savedScrollPositions[listScrollKey];
-        if (savedListScroll) listScroll.scrollTop = savedListScroll.scrollTop;
+        // Target: today's section, else the earliest upcoming day (rows are sorted by date); top of list if all are past
+        this.applyAutoScroll(listScroll, listScrollKey, 'list', () => {
+            const rows = Array.from(listScroll.querySelectorAll<HTMLElement>('.dp-gc-day-row'));
+            const target = rows.find(r => (r.dataset.date ?? '') >= todayStr);
+            if (!target) return 0;
+            const paddingTop = parseFloat(getComputedStyle(listScroll).paddingTop) || 0;
+            return target.getBoundingClientRect().top - listScroll.getBoundingClientRect().top + listScroll.scrollTop - paddingTop;
+        });
     }
 }
 
