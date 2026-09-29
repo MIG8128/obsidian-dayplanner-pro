@@ -1837,15 +1837,15 @@ export const STYLES = `
 }
 
 /* -------------------------------------------------------------
-   Phone shell: the combined view on phones only (.is-phone body + .dp-phone-shell root).
-   Desktop, tablets, the sidebar Daily view and code blocks never match these rules.
+   Compact shell (.dp-compact-shell root): the combined view on phones and the Sidebar Day Planner Pro view.
+   .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
 /* Bottom navigation: floating pill lifted above Obsidian's own mobile toolbar (which overlays the view's bottom edge) */
-.is-phone .dp-phone-shell > .dp-bottom-nav {
+.dp-container.dp-compact-shell > .dp-bottom-nav {
     flex-shrink: 0;
     width: auto; /* .dp-tabs is 100% wide; auto lets the side margins inset the pill */
     gap: 2px;
-    margin: 0 12px calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
+    margin: 0 12px 0;
     padding: 3px;
     border: 1px solid var(--dp-glass-border);
     border-radius: 12px;
@@ -1855,7 +1855,10 @@ export const STYLES = `
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     z-index: 30;
 }
-.is-phone .dp-bottom-nav > .dp-tab {
+.is-phone .dp-phone-shell > .dp-bottom-nav {
+    margin-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
+}
+.dp-compact-shell .dp-bottom-nav > .dp-tab {
     flex: 1 1 0;
     min-width: 0;
     height: auto;
@@ -1865,7 +1868,7 @@ export const STYLES = `
     border-radius: 9px;
     font-size: 11px;
 }
-.is-phone .dp-bottom-nav > .dp-tab.active {
+.dp-compact-shell .dp-bottom-nav > .dp-tab.active {
     color: var(--text-accent);
 }
 .dp-bottom-nav-icon {
@@ -1883,12 +1886,12 @@ export const STYLES = `
 }
 
 /* Daily / 2-Day: 7-day date strip under the header nav */
-.is-phone .dp-date-strip {
+.dp-compact-shell .dp-date-strip {
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 4px;
 }
-.is-phone .dp-date-strip > .dp-date-pill {
+.dp-compact-shell .dp-date-strip > .dp-date-pill {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1908,11 +1911,11 @@ export const STYLES = `
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
-.is-phone .dp-date-strip > .dp-date-pill.is-today {
+.dp-compact-shell .dp-date-strip > .dp-date-pill.is-today {
     color: var(--text-accent);
     font-weight: 600;
 }
-.is-phone .dp-date-strip > .dp-date-pill.is-shown {
+.dp-compact-shell .dp-date-strip > .dp-date-pill.is-shown {
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
 }
@@ -1926,49 +1929,49 @@ export const STYLES = `
 }
 
 /* Long-press drag lifts the card instead of opening the iOS callout / text selection */
-.is-phone .dp-phone-shell .dp-timeline-event {
+.dp-container.dp-compact-shell .dp-timeline-event {
     -webkit-touch-callout: none;
 }
 /* 2-Day fits the screen (the inline min-width is sized for desktop), so the pane never scrolls sideways */
-.is-phone .dp-phone-shell .dp-weekly-container {
+.dp-container.dp-compact-shell .dp-weekly-container {
     min-width: 0 !important;
 }
 /* 2-Day: the date strip above already marks both days, so the column date row is redundant */
-.is-phone .dp-phone-shell .dp-weekly-header-grid {
+.dp-container.dp-compact-shell .dp-weekly-header-grid {
     display: none;
 }
 
 /* Monthly: 7 columns, compact cells, max 2 chips (+N); the whole cell is the tap target */
-.is-phone .dp-monthly-compact {
+.dp-compact-shell .dp-monthly-compact {
     min-width: 0;
 }
-.is-phone .dp-monthly-compact .dp-monthly-header-grid,
-.is-phone .dp-monthly-compact .dp-grid-calendar {
+.dp-compact-shell .dp-monthly-compact .dp-monthly-header-grid,
+.dp-compact-shell .dp-monthly-compact .dp-grid-calendar {
     grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 3px;
 }
-.is-phone .dp-monthly-compact .dp-grid-calendar {
+.dp-compact-shell .dp-monthly-compact .dp-grid-calendar {
     grid-template-rows: repeat(var(--dp-week-count, 5), minmax(64px, 1fr));
 }
-.is-phone .dp-monthly-compact .dp-grid-header {
+.dp-compact-shell .dp-monthly-compact .dp-grid-header {
     padding: 4px 0;
     font-size: 0.72em;
 }
-.is-phone .dp-monthly-compact .dp-grid-cell {
+.dp-compact-shell .dp-monthly-compact .dp-grid-cell {
     padding: 3px;
     cursor: pointer;
 }
-.is-phone .dp-monthly-compact .dp-grid-cell-num {
+.dp-compact-shell .dp-monthly-compact .dp-grid-cell-num {
     margin-bottom: 2px;
     font-size: 0.72em;
 }
-.is-phone .dp-monthly-compact .dp-grid-task-list {
+.dp-compact-shell .dp-monthly-compact .dp-grid-task-list {
     gap: 2px;
     padding-right: 0;
     overflow: hidden;
     pointer-events: none;
 }
-.is-phone .dp-monthly-compact .dp-grid-task-item {
+.dp-compact-shell .dp-monthly-compact .dp-grid-task-item {
     height: 16px !important;
     min-height: 16px !important;
     max-height: 16px !important;
@@ -1977,7 +1980,7 @@ export const STYLES = `
     padding: 0 3px !important;
     margin-bottom: 0 !important;
 }
-.is-phone .dp-monthly-compact .dp-task-link-btn {
+.dp-compact-shell .dp-monthly-compact .dp-task-link-btn {
     display: none !important;
 }
 .dp-grid-more {
@@ -1988,7 +1991,7 @@ export const STYLES = `
 }
 
 /* Board: one full-width column, chosen from the switcher above it */
-.is-phone .dp-phone-shell .dp-board-col-switcher {
+.dp-container.dp-compact-shell .dp-board-col-switcher {
     display: flex;
     gap: 4px;
     flex-shrink: 0;
@@ -2001,7 +2004,7 @@ export const STYLES = `
 .dp-board-col-switcher::-webkit-scrollbar {
     display: none;
 }
-.is-phone .dp-board-col-switcher > .dp-board-col-tab {
+.dp-compact-shell .dp-board-col-switcher > .dp-board-col-tab {
     flex-shrink: 0;
     display: inline-flex;
     align-items: center;
@@ -2017,7 +2020,7 @@ export const STYLES = `
     font-size: 0.8em;
     white-space: nowrap;
 }
-.is-phone .dp-board-col-switcher > .dp-board-col-tab.active {
+.dp-compact-shell .dp-board-col-switcher > .dp-board-col-tab.active {
     background-color: var(--interactive-accent);
     border-color: transparent;
     color: var(--text-on-accent);
@@ -2027,44 +2030,44 @@ export const STYLES = `
     font-size: 0.85em;
     opacity: 0.75;
 }
-.is-phone .dp-phone-shell .dp-kanban-column {
+.dp-container.dp-compact-shell .dp-kanban-column {
     min-width: 0;
     max-width: none;
     width: 100%;
 }
-.is-phone .dp-phone-shell .dp-kanban-col-toggle {
+.dp-container.dp-compact-shell .dp-kanban-col-toggle {
     display: none;
 }
 
 /* List: time stacked under the title, and nothing wider than the screen (keeps month swipes unambiguous) */
-.is-phone .dp-gc-list-container,
-.is-phone .dp-gc-list-scroll {
+:is(.is-phone, .dp-compact-shell) .dp-gc-list-container,
+:is(.is-phone, .dp-compact-shell) .dp-gc-list-scroll {
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
     box-sizing: border-box;
 }
-.is-phone .dp-gc-list-scroll {
+:is(.is-phone, .dp-compact-shell) .dp-gc-list-scroll {
     padding: 10px 12px;
 }
-.is-phone .dp-gc-day-row {
+:is(.is-phone, .dp-compact-shell) .dp-gc-day-row {
     gap: 10px;
     min-width: 0;
 }
-.is-phone .dp-gc-day-sidebar {
+:is(.is-phone, .dp-compact-shell) .dp-gc-day-sidebar {
     width: 44px;
     flex-direction: column;
     align-items: center;
     gap: 0;
 }
-.is-phone .dp-gc-day-meta {
+:is(.is-phone, .dp-compact-shell) .dp-gc-day-meta {
     margin-top: 2px;
     font-size: 0.72em;
 }
-.is-phone .dp-gc-day-content {
+:is(.is-phone, .dp-compact-shell) .dp-gc-day-content {
     min-width: 0;
 }
-.is-phone .dp-gc-item {
+:is(.is-phone, .dp-compact-shell) .dp-gc-item {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas: "mark title file" "mark time file";
@@ -2072,21 +2075,21 @@ export const STYLES = `
     row-gap: 1px;
     min-width: 0;
 }
-.is-phone .dp-gc-item > .dp-custom-cb,
-.is-phone .dp-gc-item > .dp-gc-item-dot {
+:is(.is-phone, .dp-compact-shell) .dp-gc-item > .dp-custom-cb,
+:is(.is-phone, .dp-compact-shell) .dp-gc-item > .dp-gc-item-dot {
     grid-area: mark;
     align-self: center;
 }
-.is-phone .dp-gc-item-title {
+:is(.is-phone, .dp-compact-shell) .dp-gc-item-title {
     grid-area: title;
     min-width: 0;
 }
-.is-phone .dp-gc-item-time {
+:is(.is-phone, .dp-compact-shell) .dp-gc-item-time {
     grid-area: time;
     width: auto;
     font-size: 0.78em;
 }
-.is-phone .dp-gc-item-file {
+:is(.is-phone, .dp-compact-shell) .dp-gc-item-file {
     grid-area: file;
     align-self: center;
     max-width: 88px;

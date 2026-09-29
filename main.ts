@@ -684,15 +684,15 @@ export default class DayPlannerPlugin extends Plugin {
         styleEl.textContent = STYLES;
         document.head.appendChild(styleEl);
 
-        // 오직 통합 뷰와 독립 일간 뷰 두 가지만 등록 및 생성 제어
+        // Combined tab view + Sidebar Day Planner Pro (same planner, compact shell)
         this.registerView(VIEW_TYPES.COMBINED, (leaf) => new DayPlannerCombinedView(leaf, this));
         this.registerView(VIEW_TYPES.DAILY, (leaf) => new DayPlannerDailyView(leaf, this));
 
         this.addRibbonIcon('calendar-glyph', 'Day Planner Pro (Combined View)', () => {
             this.activateView(VIEW_TYPES.COMBINED);
         });
-        // Sidebar timeline: right sidebar on desktop, the slide-out right drawer on Obsidian Mobile
-        this.addRibbonIcon('calendar-clock', 'Day Planner Pro (Daily Timeline)', () => {
+        // Sidebar Day Planner Pro: compact 5-tab shell in the right sidebar (the right drawer on tablets)
+        this.addRibbonIcon('calendar-clock', 'Open Sidebar Day Planner Pro', () => {
             this.activateView(VIEW_TYPES.DAILY);
         });
 
@@ -703,7 +703,7 @@ export default class DayPlannerPlugin extends Plugin {
         });
         this.addCommand({
             id: 'open-day-planner-pro-daily',
-            name: 'Day Planner Pro: Open Daily Timeline View',
+            name: 'Open Sidebar Day Planner Pro',
             callback: () => this.activateView(VIEW_TYPES.DAILY)
         });
         this.addCommand({

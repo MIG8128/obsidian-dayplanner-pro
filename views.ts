@@ -817,14 +817,14 @@ export abstract class DayPlannerBaseView extends ItemView {
     phoneBoardColumn: Record<'kanban' | 'priority', string> = { kanban: 'today', priority: 'highest' };
     boardSwitcherScroll: { tabScrollLeft?: number } = {};
 
-    /** Phone shell (bottom tabs, date strip, swipes, long-press drag). Only the combined view on phones opts in. */
-    usePhoneLayout(): boolean {
+    /** Compact shell (bottom tabs, date strip, swipes, long-press drag): the combined view on phones and the sidebar view. */
+    useCompactLayout(): boolean {
         return false;
     }
 
     /** Days shown by the N-day tab: fixed at 2 in the phone layout, otherwise the setting (2–14). */
     getNDayCount(): number {
-        return this.usePhoneLayout() ? 2 : Math.max(2, Math.min(14, this.plugin.settings.nDayViewDays || 4));
+        return this.useCompactLayout() ? 2 : Math.max(2, Math.min(14, this.plugin.settings.nDayViewDays || 4));
     }
 
     /** Opens one day picked from a calendar cell. Desktop: its daily note; the phone shell shows it in the Daily tab instead. */
@@ -2133,7 +2133,8 @@ export abstract class DayPlannerBaseView extends ItemView {
         const HOLD_MS = 350;
         const SLOP = 8;  // px of finger jitter tolerated during the hold
         const EDGE = 48; // px band at the scroller's top/bottom that auto-scrolls while dragging
-        card.setAttribute('draggable', 'false'); // native touch drag-and-drop would compete with the long-press
+        // Native touch drag-and-drop would compete with the long-press; desktop (sidebar) keeps mouse dragging
+        if (Platform.isMobile) card.setAttribute('draggable', 'false');
         const scroller = card.closest<HTMLElement>('.dp-content');
         let holdTimer = 0, frame = 0, pointerId = -1;
         let startX = 0, startY = 0, lastX = 0, lastY = 0, grabOffset = 0;
@@ -2632,7 +2633,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                     this.clearDragPreview(eventsCol);
                 });
             }
-            if (this.usePhoneLayout()) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', eventsCol);
+            if (this.useCompactLayout()) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', eventsCol);
         });
 
         eventsCol.addEventListener('dragover', (e) => {
@@ -3173,7 +3174,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                         this.clearDragPreview(daysWrapper);
                     });
                 }
-                if (this.usePhoneLayout()) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', daysWrapper);
+                if (this.useCompactLayout()) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', daysWrapper);
             });
         }
 
@@ -3189,7 +3190,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         parent.empty();
         
         // Phone: 7 columns only (no week numbers), 2 chips per day, and a tap on a day opens it in the Daily tab
-        const phone = this.usePhoneLayout();
+        const phone = this.useCompactLayout();
         const scrollWrapper = parent.createDiv({ cls: 'dp-monthly-scroll-wrapper' });
         const container = scrollWrapper.createDiv({ cls: `dp-monthly-container${phone ? ' dp-monthly-compact' : ''}` });
 
@@ -3467,7 +3468,7 @@ export abstract class DayPlannerBaseView extends ItemView {
      * Returns the columns to render (all of them outside the phone layout).
      */
     pickPhoneBoardColumns<T extends { id: string; title: string }>(board: HTMLDivElement, columns: T[], countOf: (col: T) => number): T[] {
-        if (!this.usePhoneLayout()) return columns;
+        if (!this.useCompactLayout()) return columns;
         const mode = this.kanbanViewMode;
         const activeId = columns.some(c => c.id === this.phoneBoardColumn[mode]) ? this.phoneBoardColumn[mode] : columns[0].id;
         const activeIdx = columns.findIndex(c => c.id === activeId);
@@ -3540,7 +3541,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             this.collapsedColumns = new Set<string>();
         }
 
-        const phone = this.usePhoneLayout();
+        const phone = this.useCompactLayout();
         this.pickPhoneBoardColumns(board, columns, col => this.tasks.filter(col.filter).length).forEach(col => {
             const colTasks = this.tasks.filter(col.filter);
             colTasks.sort(compareTasks);
@@ -3789,7 +3790,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             { id: 'lowest', title: 'Lowest ⏬', priority: 'lowest' as const }
         ];
 
-        const phone = this.usePhoneLayout();
+        const phone = this.useCompactLayout();
         const openTasksOf = (col: typeof columns[number]) =>
             this.tasks.filter(t => (t.statusChar === ' ' || t.statusChar === '/') && t.priority === col.priority);
         this.pickPhoneBoardColumns(board, columns, col => openTasksOf(col).length).forEach(col => {
@@ -4332,12 +4333,12 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     getDisplayText(): string { return 'Day Planner Pro (Combined View)'; }
     getIcon(): string { return 'calendar-glyph'; }
     getViewTabType() { return this.activeTab; }
-    usePhoneLayout() { return Platform.isPhone; }
+    useCompactLayout() { return Platform.isPhone; }
 
     navigateDate(direction: number) {
         if (this.activeTab === 'daily') this.currentDate.add(direction, 'day');
         // Phone 2-Day pages one day at a time; elsewhere a whole N-day block
-        if (this.activeTab === 'multiDay') this.currentDate.add(direction * (this.usePhoneLayout() ? 1 : (this.plugin.settings.nDayViewDays || 4)), 'day');
+        if (this.activeTab === 'multiDay') this.currentDate.add(direction * (this.useCompactLayout() ? 1 : (this.plugin.settings.nDayViewDays || 4)), 'day');
         if (this.activeTab === 'weekly') this.currentDate.add(direction, 'week');
         if (this.activeTab === 'monthly') this.currentDate.add(direction, 'month');
         if (this.activeTab === 'list') {
@@ -4346,8 +4347,9 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     }
 
     renderRoot(rootEl: HTMLDivElement) {
-        const phone = this.usePhoneLayout();
-        rootEl.toggleClass('dp-phone-shell', phone);
+        const phone = this.useCompactLayout();
+        rootEl.toggleClass('dp-compact-shell', phone);
+        rootEl.toggleClass('dp-phone-shell', phone && Platform.isPhone); // phone-only extras (clearance for Obsidian's toolbar)
         const header = rootEl.createDiv({ cls: 'dp-header' });
         rootEl.prepend(header); // cached panes may still be mounted below
         this.renderNavHeader(header, true);
@@ -4453,7 +4455,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
 
     /** Phone: date pills and Monthly cells show that day in the Daily tab (never its note). */
     async focusDay(dateStr: string) {
-        if (!this.usePhoneLayout()) return super.focusDay(dateStr);
+        if (!this.useCompactLayout()) return super.focusDay(dateStr);
         const target = (window as any).moment(dateStr, 'YYYY-MM-DD');
         if (this.activeTab !== 'daily') {
             const fromMonthly = this.activeTab === 'monthly';
@@ -4543,7 +4545,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     isTabSwitch = false;
 
     render() {
-        if (this.usePhoneLayout() && this.activeTab === 'weekly') this.activeTab = 'multiDay'; // no Weekly tab on phones
+        if (this.useCompactLayout() && this.activeTab === 'weekly') this.activeTab = 'multiDay'; // no Weekly tab on phones
         if (!this.isTabSwitch) this.dataVersion++;
         super.render();
     }
@@ -4626,23 +4628,14 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
 }
 
 /**
- * 2. 독립 일간 타임라인 전용 뷰
+ * 2. Sidebar Day Planner Pro: the combined view's compact shell (5 bottom tabs, date strip, one-column Board,
+ * compact Monthly) in a narrow sidebar leaf, on every platform.
  */
-export class DayPlannerDailyView extends DayPlannerBaseView {
+export class DayPlannerDailyView extends DayPlannerCombinedView {
     getViewType(): string { return 'day-planner-pro-daily'; }
-    getDisplayText(): string { return 'Day Planner (Daily View)'; }
+    getDisplayText(): string { return 'Sidebar Day Planner Pro'; }
     getIcon(): string { return 'calendar-clock'; }
-    getViewTabType() { return 'daily' as const; }
-    navigateDate(direction: number) { this.currentDate.add(direction, 'day'); }
-
-    renderRoot(rootEl: HTMLDivElement) {
-        const header = rootEl.createDiv({ cls: 'dp-header' });
-        this.renderNavHeader(header, false);
-
-        const content = rootEl.createDiv({ cls: 'dp-content' });
-        this.renderDailyTimeline(content);
-        this.renderCurrentTaskTracker(rootEl);
-    }
+    useCompactLayout() { return true; }
 }
 
 export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
