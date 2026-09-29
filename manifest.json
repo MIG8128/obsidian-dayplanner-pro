@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-day-planner-pro",
+  "name": "Day Planner Pro",
+  "version": "3.3.1",
+  "minAppVersion": "1.0.0",
+  "description": "An advanced Day Planner with timelines, kanban boards, weekly/monthly calendar, and Google Calendar sync.",
+  "author": "Day Planner Team",
+  "authorUrl": "https://obsidian.md",
+  "isDesktopOnly": false
+}
