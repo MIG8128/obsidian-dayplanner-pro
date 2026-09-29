@@ -1826,4 +1826,256 @@ export const STYLES = `
 .is-mobile .dp-tabs > .dp-tab {
     height: 30px;
 }
+
+/* -------------------------------------------------------------
+   Phone shell: the combined view on phones only (.is-phone body + .dp-phone-shell root).
+   Desktop, tablets, the sidebar Daily view and code blocks never match these rules.
+   ------------------------------------------------------------- */
+/* Bottom navigation: last row of the view, clear of the home indicator */
+.is-phone .dp-phone-shell > .dp-bottom-nav {
+    flex-shrink: 0;
+    gap: 2px;
+    padding: 6px 8px max(6px, env(safe-area-inset-bottom, 12px));
+    border: none;
+    border-top: 1px solid var(--dp-glass-border);
+    border-radius: 0;
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+    z-index: 30;
+}
+.is-phone .dp-bottom-nav > .dp-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 48px;
+    padding: 0 2px;
+    flex-direction: column;
+    gap: 3px;
+    border-radius: 10px;
+    font-size: 0.68em;
+}
+.is-phone .dp-bottom-nav > .dp-tab.active {
+    color: var(--text-accent);
+}
+.dp-bottom-nav-icon {
+    display: inline-flex;
+}
+.dp-bottom-nav-icon svg {
+    width: 20px;
+    height: 20px;
+}
+.dp-bottom-nav-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Daily / 2-Day: 7-day date strip under the header nav */
+.is-phone .dp-date-strip {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+}
+.is-phone .dp-date-strip > .dp-date-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    height: 40px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    box-shadow: none;
+    background-color: var(--dp-segment-track);
+    color: var(--text-muted);
+    font-size: 0.72em;
+    line-height: 1.1;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+.is-phone .dp-date-strip > .dp-date-pill.is-today {
+    color: var(--text-accent);
+    font-weight: 600;
+}
+.is-phone .dp-date-strip > .dp-date-pill.is-shown {
+    background-color: var(--interactive-accent);
+    color: var(--text-on-accent);
+}
+.dp-date-pill-dow {
+    font-size: 0.85em;
+    opacity: 0.8;
+}
+.dp-date-pill-date {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Long-press drag lifts the card instead of opening the iOS callout / text selection */
+.is-phone .dp-phone-shell .dp-timeline-event {
+    -webkit-touch-callout: none;
+}
+/* 2-Day fits the screen (the inline min-width is sized for desktop), so the pane never scrolls sideways */
+.is-phone .dp-phone-shell .dp-weekly-container {
+    min-width: 0 !important;
+}
+
+/* Monthly: 7 columns, compact cells, max 2 chips (+N); the whole cell is the tap target */
+.is-phone .dp-monthly-compact {
+    min-width: 0;
+}
+.is-phone .dp-monthly-compact .dp-monthly-header-grid,
+.is-phone .dp-monthly-compact .dp-grid-calendar {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 3px;
+}
+.is-phone .dp-monthly-compact .dp-grid-calendar {
+    grid-template-rows: repeat(var(--dp-week-count, 5), minmax(64px, 1fr));
+}
+.is-phone .dp-monthly-compact .dp-grid-header {
+    padding: 4px 0;
+    font-size: 0.72em;
+}
+.is-phone .dp-monthly-compact .dp-grid-cell {
+    padding: 3px;
+    cursor: pointer;
+}
+.is-phone .dp-monthly-compact .dp-grid-cell-num {
+    margin-bottom: 2px;
+    font-size: 0.72em;
+}
+.is-phone .dp-monthly-compact .dp-grid-task-list {
+    gap: 2px;
+    padding-right: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+.is-phone .dp-monthly-compact .dp-grid-task-item {
+    height: 16px !important;
+    min-height: 16px !important;
+    max-height: 16px !important;
+    line-height: 14px !important;
+    font-size: 0.6em !important;
+    padding: 0 3px !important;
+    margin-bottom: 0 !important;
+}
+.is-phone .dp-monthly-compact .dp-task-link-btn {
+    display: none !important;
+}
+.dp-grid-more {
+    font-size: 0.6em;
+    line-height: 1.2;
+    color: var(--text-muted);
+    padding-left: 2px;
+}
+
+/* Board: one full-width column, chosen from the switcher above it */
+.is-phone .dp-phone-shell .dp-board-col-switcher {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-bottom: 10px;
+    padding: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+}
+.dp-board-col-switcher::-webkit-scrollbar {
+    display: none;
+}
+.is-phone .dp-board-col-switcher > .dp-board-col-tab {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 16px;
+    box-shadow: none;
+    background-color: var(--dp-segment-track);
+    color: var(--text-muted);
+    font-size: 0.8em;
+    white-space: nowrap;
+}
+.is-phone .dp-board-col-switcher > .dp-board-col-tab.active {
+    background-color: var(--interactive-accent);
+    border-color: transparent;
+    color: var(--text-on-accent);
+    font-weight: 600;
+}
+.dp-board-col-tab-count {
+    font-size: 0.85em;
+    opacity: 0.75;
+}
+.is-phone .dp-phone-shell .dp-kanban-column {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+}
+.is-phone .dp-phone-shell .dp-kanban-col-toggle {
+    display: none;
+}
+
+/* List: time stacked under the title, and nothing wider than the screen (keeps month swipes unambiguous) */
+.is-phone .dp-gc-list-container,
+.is-phone .dp-gc-list-scroll {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+.is-phone .dp-gc-list-scroll {
+    padding: 10px 12px;
+}
+.is-phone .dp-gc-day-row {
+    gap: 10px;
+    min-width: 0;
+}
+.is-phone .dp-gc-day-sidebar {
+    width: 44px;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+.is-phone .dp-gc-day-meta {
+    margin-top: 2px;
+    font-size: 0.72em;
+}
+.is-phone .dp-gc-day-content {
+    min-width: 0;
+}
+.is-phone .dp-gc-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "mark title file" "mark time file";
+    column-gap: 10px;
+    row-gap: 1px;
+    min-width: 0;
+}
+.is-phone .dp-gc-item > .dp-custom-cb,
+.is-phone .dp-gc-item > .dp-gc-item-dot {
+    grid-area: mark;
+    align-self: center;
+}
+.is-phone .dp-gc-item-title {
+    grid-area: title;
+    min-width: 0;
+}
+.is-phone .dp-gc-item-time {
+    grid-area: time;
+    width: auto;
+    font-size: 0.78em;
+}
+.is-phone .dp-gc-item-file {
+    grid-area: file;
+    align-self: center;
+    max-width: 88px;
+    margin-left: 0;
+}
 `;

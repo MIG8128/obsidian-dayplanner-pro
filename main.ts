@@ -7,7 +7,8 @@ import {
     setIcon,
     Notice,
     TFile,
-    parseYaml
+    parseYaml,
+    Platform
 } from 'obsidian';
 import { 
     DayPlannerSettings, 
@@ -1047,6 +1048,11 @@ export default class DayPlannerPlugin extends Plugin {
      * 뷰 활성화 및 타겟 탭 지정을 포함한 고급 뷰 포커스 내비게이터
      */
     async activateView(viewType: string, tab?: 'daily' | 'weekly' | 'multiDay' | 'monthly' | 'board' | 'list') {
+        // Phones: the combined view is the single planner shell (bottom tabs, date strip, swipes); "Daily" opens its Daily tab
+        if (Platform.isPhone && viewType === VIEW_TYPES.DAILY) {
+            viewType = VIEW_TYPES.COMBINED;
+            tab = 'daily';
+        }
         const { workspace } = this.app;
         let leaf: WorkspaceLeaf | null = null;
         const leaves = workspace.getLeavesOfType(viewType);

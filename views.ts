@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, Notice, App, Menu, MarkdownRenderChild } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, Notice, App, Menu, MarkdownRenderChild, Platform, setIcon } from 'obsidian';
 import { TaskItem, GCalEvent, GCAL_CACHE_TTL_MS } from './types';
 import { 
     cleanTaskTextForDisplay, 
@@ -660,7 +660,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         if (tabType === 'daily') {
             return { cacheKey: `daily_${center.format('YYYY-MM-DD')}`, timeMin: center.clone().startOf('day').toDate(), timeMax: center.clone().endOf('day').toDate() };
         } else if (tabType === 'multiDay') {
-            const days = Math.max(2, Math.min(14, this.plugin.settings.nDayViewDays || 4));
+            const days = this.getNDayCount();
             return { cacheKey: `multi_${center.format('YYYY-MM-DD')}_${days}`, timeMin: center.clone().startOf('day').toDate(), timeMax: center.clone().add(days - 1, 'days').endOf('day').toDate() };
         } else if (tabType === 'weekly') {
             return { cacheKey: `weekly_${center.clone().startOf('week').format('YYYY-MM-DD')}`, timeMin: center.clone().startOf('week').toDate(), timeMax: center.clone().endOf('week').toDate() };
@@ -811,14 +811,44 @@ export abstract class DayPlannerBaseView extends ItemView {
 
     /** Last slot the drag preview snapped to, so haptics fire once per slot change */
     lastDragSnapKey = '';
+    /** A phone long-press drag owns the current touch (swipe paging stands down) */
+    touchDragActive = false;
+    /** Phone Board: the single column shown per board mode */
+    phoneBoardColumn: Record<'kanban' | 'priority', string> = { kanban: 'today', priority: 'highest' };
+    boardSwitcherScroll: { tabScrollLeft?: number } = {};
 
-    initDragPreview(e: DragEvent, primaryTaskId: string, clickOffsetMin: number, parentElement: HTMLElement) {
-        if (!e.dataTransfer) return;
+    /** Phone shell (bottom tabs, date strip, swipes, long-press drag). Only the combined view on phones opts in. */
+    usePhoneLayout(): boolean {
+        return false;
+    }
+
+    /** Days shown by the N-day tab: fixed at 2 in the phone layout, otherwise the setting (2–14). */
+    getNDayCount(): number {
+        return this.usePhoneLayout() ? 2 : Math.max(2, Math.min(14, this.plugin.settings.nDayViewDays || 4));
+    }
+
+    /** Opens one day picked from a calendar cell. Desktop: its daily note; the phone shell shows it in the Daily tab instead. */
+    async focusDay(dateStr: string) {
+        await this.handleDateClick(dateStr);
+    }
+
+    /** Minutes at `y` px below the top of a timeline column, snapped to 15 minutes and clamped to the visible hours. */
+    snapTimelineMinutes(y: number): number {
+        const ratio = this.getHourHeight() / 60;
+        const startHour = this.plugin.settings.timelineStartHour ?? 0;
+        const endHour = this.plugin.settings.timelineEndHour ?? 24;
+        const snapped = Math.round((y / ratio) / 15) * 15 + startHour * 60;
+        return Math.min(Math.max(snapped, startHour * 60), endHour * 60 - 30);
+    }
+
+    /** `e` is null for touch drags (no native drag image to hide). */
+    initDragPreview(e: DragEvent | null, primaryTaskId: string, clickOffsetMin: number, parentElement: HTMLElement) {
+        if (e && !e.dataTransfer) return;
 
         // Set transparent drag image to hide native ghost preview
         const img = new Image();
         img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-        e.dataTransfer.setDragImage(img, 0, 0);
+        e?.dataTransfer?.setDragImage(img, 0, 0);
 
         const hourHeight = this.getHourHeight();
         const ratio = hourHeight / 60;
@@ -919,7 +949,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         });
     }
 
-    updateDragPreview(e: DragEvent, currentColumn: HTMLElement, clickOffsetMin: number) {
+    updateDragPreview(e: { clientY: number }, currentColumn: HTMLElement, clickOffsetMin: number) {
         if (!this.activeDragItems || this.activeDragItems.length === 0) return;
 
         const hourHeight = this.getHourHeight();
@@ -1502,7 +1532,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         });
 
         // Header date: text + note links come from the declarative getHeaderDateInfo() mapping
-        const info = getHeaderDateInfo(this.currentDate, this.getViewTabType(), this.plugin.settings.nDayViewDays || 4);
+        const info = getHeaderDateInfo(this.currentDate, this.getViewTabType(), this.getNDayCount());
         const dateEl = nav.createDiv({ cls: 'dp-nav-date' });
         const addSegment = (text: string, noteType?: 'daily' | 'weekly') => {
             const seg = dateEl.createSpan({ cls: noteType ? 'dp-nav-date-link' : 'dp-nav-date-static', text });
@@ -1971,6 +2001,239 @@ export abstract class DayPlannerBaseView extends ItemView {
     }
 
     /**
+     * Moves every selected timeline item (tasks and Google events) so the primary item starts at `snappedMinutes`
+     * on `targetDateStr`; the others keep their time and day offsets. Shared by mouse drops and phone long-press drags.
+     */
+    async moveSelectedTimelineItems(primaryTaskId: string, isGCal: boolean, snappedMinutes: number, targetDateStr: string) {
+        // [통합 동시 드래그 시스템]: 구글 캘린더와 마크다운 Task 구분 없이 모두 동시 이동 처리 (상대적 날짜 유지)
+        let primaryItemStartMin = 0;
+        let primaryDateStr = targetDateStr;
+        if (isGCal) {
+            const gcalEvent = this.plugin.gcalCache.find(ev => ev.id === primaryTaskId);
+            if (gcalEvent && gcalEvent.startTimeStr) {
+                const [sh, sm] = gcalEvent.startTimeStr.split(':').map(Number);
+                primaryItemStartMin = sh * 60 + sm;
+                if (gcalEvent.dateStr) primaryDateStr = gcalEvent.dateStr;
+            }
+        } else {
+            const primaryItem = this.tasks.find(t => t.id === primaryTaskId);
+            if (primaryItem && primaryItem.startTime) {
+                const [sh, sm] = primaryItem.startTime.split(':').map(Number);
+                primaryItemStartMin = sh * 60 + sm;
+                if (primaryItem.date) primaryDateStr = primaryItem.date;
+            }
+        }
+
+        const deltaMin = snappedMinutes - primaryItemStartMin;
+        const moment = (window as any).moment;
+        const primaryMom = moment(primaryDateStr, 'YYYY-MM-DD');
+        const targetMom = moment(targetDateStr, 'YYYY-MM-DD');
+        const dayDelta = (targetMom.isValid() && primaryMom.isValid()) ? targetMom.diff(primaryMom, 'days') : 0;
+
+        let taskUpdateCount = 0;
+        let gcalUpdateCount = 0;
+
+        for (const taskId of this.selectedTaskIds) {
+            const task = this.tasks.find(t => t.id === taskId);
+            if (task && task.startTime && task.endTime) {
+                const [tsh, tsm] = task.startTime.split(':').map(Number);
+                const [teh, tem] = task.endTime.split(':').map(Number);
+
+                const newStartTotal = (tsh * 60 + tsm) + deltaMin;
+                const newEndTotal = (teh * 60 + tem) + deltaMin;
+
+                const nsh = Math.max(0, Math.min(23, Math.floor(newStartTotal / 60)));
+                const nsm = Math.max(0, Math.min(59, newStartTotal % 60));
+                const neh = Math.max(0, Math.min(24, Math.floor(newEndTotal / 60)));
+                const nem = Math.max(0, Math.min(59, newEndTotal % 60));
+
+                const newStartTime = `${String(nsh).padStart(2, '0')}:${String(nsm).padStart(2, '0')}`;
+                const newEndTime = `${String(neh).padStart(2, '0')}:${String(nem).padStart(2, '0')}`;
+
+                let taskTargetDate = targetDateStr;
+                if (task.date) {
+                    taskTargetDate = moment(task.date, 'YYYY-MM-DD').add(dayDelta, 'days').format('YYYY-MM-DD');
+                }
+
+                const success = await updateTaskInFile(this.app, task, {
+                    startTime: newStartTime,
+                    endTime: newEndTime,
+                    date: taskTargetDate
+                });
+                if (success) taskUpdateCount++;
+            } else {
+                // 선택된 ID가 구글 일정 캐시에 존재하는 경우 동시 이동 API 전송
+                const gcalEvent = this.plugin.gcalCache.find(ev => ev.id === taskId);
+                if (gcalEvent && gcalEvent.startTimeStr && gcalEvent.endTimeStr && !gcalEvent.isAllDay) {
+                    const previousState = {
+                        summary: gcalEvent.summary,
+                        description: gcalEvent.description || '',
+                        location: gcalEvent.location || '',
+                        dateStr: gcalEvent.dateStr,
+                        startTimeStr: gcalEvent.startTimeStr,
+                        endTimeStr: gcalEvent.endTimeStr,
+                        isAllDay: gcalEvent.isAllDay
+                    };
+                    const [sh, sm] = gcalEvent.startTimeStr.split(':').map(Number);
+                    const [eh, em] = gcalEvent.endTimeStr.split(':').map(Number);
+
+                    const newStartTotal = (sh * 60 + sm) + deltaMin;
+                    const newEndTotal = (eh * 60 + em) + deltaMin;
+
+                    const nsh = Math.max(0, Math.min(23, Math.floor(newStartTotal / 60)));
+                    const nsm = Math.max(0, Math.min(59, newStartTotal % 60));
+                    const neh = Math.max(0, Math.min(24, Math.floor(newEndTotal / 60)));
+                    const nem = Math.max(0, Math.min(59, newEndTotal % 60));
+
+                    const newStartTime = `${String(nsh).padStart(2, '0')}:${String(nsm).padStart(2, '0')}`;
+                    const newEndTime = `${String(neh).padStart(2, '0')}:${String(nem).padStart(2, '0')}`;
+
+                    let gcalTargetDate = targetDateStr;
+                    if (gcalEvent.dateStr) {
+                        gcalTargetDate = moment(gcalEvent.dateStr, 'YYYY-MM-DD').add(dayDelta, 'days').format('YYYY-MM-DD');
+                    }
+
+                    const success = await patchGoogleCalendarEvent(
+                        this.plugin,
+                        gcalEvent.calendarId,
+                        gcalEvent.id,
+                        gcalTargetDate,
+                        newStartTime,
+                        newEndTime
+                    );
+                    if (success) {
+                        gcalEvent.dateStr = gcalTargetDate;
+                        gcalEvent.startTimeStr = newStartTime;
+                        gcalEvent.endTimeStr = newEndTime;
+                        gcalUpdateCount++;
+                        showGCalEventUndoNotice(this.plugin, gcalEvent.calendarId, gcalEvent.id, previousState);
+                    }
+                }
+            }
+        }
+
+        if (taskUpdateCount > 0 || gcalUpdateCount > 0) {
+            new Notice(`🔄 Rescheduled ${taskUpdateCount} task(s) and ${gcalUpdateCount} Google event(s)`);
+            this.selectedTaskIds.clear();
+            await this.refreshTasks(null, gcalUpdateCount > 0);
+        }
+    }
+
+    /**
+     * Phone timeline drag (Daily / 2-Day): holding a card for 350ms lifts it with a light haptic, the finger then moves it
+     * through the same 15-minute snap preview as mouse dragging, and lifting the finger drops it.
+     * Until the hold completes the touch is left alone, so a normal swipe still scrolls or pages the timeline.
+     */
+    registerLongPressDrag(card: HTMLElement, refId: string, isGCal: boolean, previewRoot: HTMLElement) {
+        const HOLD_MS = 350;
+        const SLOP = 8;  // px of finger jitter tolerated during the hold
+        const EDGE = 48; // px band at the scroller's top/bottom that auto-scrolls while dragging
+        card.setAttribute('draggable', 'false'); // native touch drag-and-drop would compete with the long-press
+        const scroller = card.closest<HTMLElement>('.dp-content');
+        let holdTimer = 0, frame = 0, pointerId = -1;
+        let startX = 0, startY = 0, lastX = 0, lastY = 0, grabOffset = 0;
+        let dragging = false, moved = false, suppressClick = false;
+        let column: HTMLElement | null = null;
+
+        const updatePreview = () => {
+            const hit = document.elementFromPoint(lastX, lastY) as HTMLElement | null;
+            column = hit?.closest<HTMLElement>('.dp-weekly-day-col, .dp-timeline-events') ?? column;
+            if (column) this.updateDragPreview({ clientY: lastY }, column, grabOffset);
+        };
+        const autoScroll = () => {
+            if (!dragging) return;
+            if (scroller) {
+                const r = scroller.getBoundingClientRect();
+                const step = lastY < r.top + EDGE ? -8 : lastY > r.bottom - EDGE ? 8 : 0;
+                if (step) {
+                    scroller.scrollTop += step;
+                    updatePreview();
+                }
+            }
+            frame = requestAnimationFrame(autoScroll);
+        };
+        const detach = () => {
+            window.clearTimeout(holdTimer);
+            holdTimer = 0;
+            card.removeEventListener('pointermove', onMove);
+            card.removeEventListener('pointerup', onUp);
+            card.removeEventListener('pointercancel', onCancel);
+        };
+        const endDrag = () => {
+            dragging = false;
+            this.touchDragActive = false;
+            cancelAnimationFrame(frame);
+            this.clearDragPreview(previewRoot);
+        };
+        const onMove = (e: PointerEvent) => {
+            if (e.pointerId !== pointerId) return;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            const dist = Math.hypot(lastX - startX, lastY - startY);
+            if (!dragging) {
+                if (dist > SLOP) detach(); // moved before the hold completed: a scroll or swipe, not a drag
+                return;
+            }
+            moved = moved || dist > SLOP;
+            updatePreview();
+        };
+        const onCancel = () => {
+            detach();
+            if (dragging) endDrag();
+        };
+        const onUp = async (e: PointerEvent) => {
+            if (e.pointerId !== pointerId) return;
+            detach();
+            if (!dragging) return;
+            // The lift may still produce a click on this card: swallow it instead of opening the edit modal
+            suppressClick = true;
+            window.setTimeout(() => { suppressClick = false; }, 400);
+            const target = column;
+            endDrag();
+            if (!moved || !target) return;
+            const rect = target.getBoundingClientRect();
+            const dateStr = target.getAttribute('data-date') || this.currentDate.format('YYYY-MM-DD');
+            await this.moveSelectedTimelineItems(refId, isGCal, this.snapTimelineMinutes(lastY - rect.top - grabOffset), dateStr);
+        };
+
+        card.addEventListener('pointerdown', (e: PointerEvent) => {
+            if (e.pointerType !== 'touch' || !e.isPrimary || dragging) return;
+            if ((e.target as HTMLElement).closest('.dp-custom-cb, .dp-task-link-btn, .dp-resize-handle')) return;
+            pointerId = e.pointerId;
+            startX = lastX = e.clientX;
+            startY = lastY = e.clientY;
+            moved = false;
+            column = null;
+            card.addEventListener('pointermove', onMove);
+            card.addEventListener('pointerup', onUp);
+            card.addEventListener('pointercancel', onCancel);
+            holdTimer = window.setTimeout(() => {
+                holdTimer = 0;
+                dragging = true;
+                this.touchDragActive = true;
+                if (!this.selectedTaskIds.has(refId)) {
+                    this.selectedTaskIds.clear();
+                    this.selectedTaskIds.add(refId);
+                    previewRoot.querySelectorAll('.dp-timeline-event.selected').forEach(el => el.removeClass('selected'));
+                    card.addClass('selected');
+                }
+                grabOffset = startY - card.getBoundingClientRect().top;
+                this.initDragPreview(null, refId, grabOffset, previewRoot); // light haptic
+                updatePreview();
+                frame = requestAnimationFrame(autoScroll);
+            }, HOLD_MS);
+        });
+        // Once lifted, finger moves drive the drag: keep the browser from turning them into a scroll
+        card.addEventListener('touchmove', (e) => { if (dragging && e.cancelable) e.preventDefault(); }, { passive: false });
+        card.addEventListener('contextmenu', (e) => { if (holdTimer || dragging) e.preventDefault(); });
+        card.addEventListener('click', (e) => {
+            if (!suppressClick) return;
+            suppressClick = false;
+            e.stopImmediatePropagation();
+        }, true);
+    }
+
+    /**
      * 1. 일간 타임라인 그리기 구현
      */
     renderDailyTimeline(parent: HTMLDivElement) {
@@ -2364,6 +2627,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                     this.clearDragPreview(eventsCol);
                 });
             }
+            if (this.usePhoneLayout()) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', eventsCol);
         });
 
         eventsCol.addEventListener('dragover', (e) => {
@@ -2376,129 +2640,9 @@ export abstract class DayPlannerBaseView extends ItemView {
             if (!dataStr) return;
 
             try {
-                const dragData = JSON.parse(dataStr);
-                const { primaryTaskId, clickOffsetMin, isGCal, calendarId } = dragData;
-
+                const { primaryTaskId, clickOffsetMin, isGCal } = JSON.parse(dataStr);
                 const gridRect = eventsCol.getBoundingClientRect();
-                const dropY = e.clientY - gridRect.top - clickOffsetMin;
-
-                // 세로 비율(ratio) 및 시작 시간 오프셋 기반 환산 공식 적용
-                let snappedMinutes = Math.round((dropY / ratio) / 15) * 15 + (startHour * 60);
-                if (snappedMinutes < startHour * 60) snappedMinutes = startHour * 60;
-                if (snappedMinutes > (endHour * 60) - 30) snappedMinutes = (endHour * 60) - 30;
-
-                // [통합 동시 드래그 시스템]: 구글 캘린더와 마크다운 Task 구분 없이 모두 동시 이동 처리 (상대적 날짜 유지)
-                let primaryItemStartMin = 0;
-                let primaryDateStr = dateStr;
-                if (isGCal) {
-                    const gcalEvent = this.plugin.gcalCache.find(ev => ev.id === primaryTaskId);
-                    if (gcalEvent && gcalEvent.startTimeStr) {
-                        const [sh, sm] = gcalEvent.startTimeStr.split(':').map(Number);
-                        primaryItemStartMin = sh * 60 + sm;
-                        if (gcalEvent.dateStr) primaryDateStr = gcalEvent.dateStr;
-                    }
-                } else {
-                    const primaryItem = this.tasks.find(t => t.id === primaryTaskId);
-                    if (primaryItem && primaryItem.startTime) {
-                        const [sh, sm] = primaryItem.startTime.split(':').map(Number);
-                        primaryItemStartMin = sh * 60 + sm;
-                        if (primaryItem.date) primaryDateStr = primaryItem.date;
-                    }
-                }
-
-                const deltaMin = snappedMinutes - primaryItemStartMin;
-                const moment = (window as any).moment;
-                const primaryMom = moment(primaryDateStr, 'YYYY-MM-DD');
-                const targetMom = moment(dateStr, 'YYYY-MM-DD');
-                const dayDelta = (targetMom.isValid() && primaryMom.isValid()) ? targetMom.diff(primaryMom, 'days') : 0;
-
-                let taskUpdateCount = 0;
-                let gcalUpdateCount = 0;
-
-                for (const taskId of this.selectedTaskIds) {
-                    const task = this.tasks.find(t => t.id === taskId);
-                    if (task && task.startTime && task.endTime) {
-                        const [tsh, tsm] = task.startTime.split(':').map(Number);
-                        const [teh, tem] = task.endTime.split(':').map(Number);
-
-                        const newStartTotal = (tsh * 60 + tsm) + deltaMin;
-                        const newEndTotal = (teh * 60 + tem) + deltaMin;
-
-                        const nsh = Math.max(0, Math.min(23, Math.floor(newStartTotal / 60)));
-                        const nsm = Math.max(0, Math.min(59, newStartTotal % 60));
-                        const neh = Math.max(0, Math.min(24, Math.floor(newEndTotal / 60)));
-                        const nem = Math.max(0, Math.min(59, newEndTotal % 60));
-
-                        const newStartTime = `${String(nsh).padStart(2, '0')}:${String(nsm).padStart(2, '0')}`;
-                        const newEndTime = `${String(neh).padStart(2, '0')}:${String(nem).padStart(2, '0')}`;
-
-                        let taskTargetDate = dateStr;
-                        if (task.date) {
-                            taskTargetDate = moment(task.date, 'YYYY-MM-DD').add(dayDelta, 'days').format('YYYY-MM-DD');
-                        }
-
-                        const success = await updateTaskInFile(this.app, task, {
-                            startTime: newStartTime,
-                            endTime: newEndTime,
-                            date: taskTargetDate
-                        });
-                        if (success) taskUpdateCount++;
-                    } else {
-                        // 선택된 ID가 구글 일정 캐시에 존재하는 경우 동시 이동 API 전송
-                        const gcalEvent = this.plugin.gcalCache.find(ev => ev.id === taskId);
-                        if (gcalEvent && gcalEvent.startTimeStr && gcalEvent.endTimeStr && !gcalEvent.isAllDay) {
-                            const previousState = {
-                                summary: gcalEvent.summary,
-                                description: gcalEvent.description || '',
-                                location: gcalEvent.location || '',
-                                dateStr: gcalEvent.dateStr,
-                                startTimeStr: gcalEvent.startTimeStr,
-                                endTimeStr: gcalEvent.endTimeStr,
-                                isAllDay: gcalEvent.isAllDay
-                            };
-                            const [sh, sm] = gcalEvent.startTimeStr.split(':').map(Number);
-                            const [eh, em] = gcalEvent.endTimeStr.split(':').map(Number);
-
-                            const newStartTotal = (sh * 60 + sm) + deltaMin;
-                            const newEndTotal = (eh * 60 + em) + deltaMin;
-
-                            const nsh = Math.max(0, Math.min(23, Math.floor(newStartTotal / 60)));
-                            const nsm = Math.max(0, Math.min(59, newStartTotal % 60));
-                            const neh = Math.max(0, Math.min(24, Math.floor(newEndTotal / 60)));
-                            const nem = Math.max(0, Math.min(59, newEndTotal % 60));
-
-                            const newStartTime = `${String(nsh).padStart(2, '0')}:${String(nsm).padStart(2, '0')}`;
-                            const newEndTime = `${String(neh).padStart(2, '0')}:${String(nem).padStart(2, '0')}`;
-
-                            let gcalTargetDate = dateStr;
-                            if (gcalEvent.dateStr) {
-                                gcalTargetDate = moment(gcalEvent.dateStr, 'YYYY-MM-DD').add(dayDelta, 'days').format('YYYY-MM-DD');
-                            }
-
-                            const success = await patchGoogleCalendarEvent(
-                                this.plugin,
-                                gcalEvent.calendarId,
-                                gcalEvent.id,
-                                gcalTargetDate,
-                                newStartTime,
-                                newEndTime
-                            );
-                            if (success) {
-                                gcalEvent.dateStr = gcalTargetDate;
-                                gcalEvent.startTimeStr = newStartTime;
-                                gcalEvent.endTimeStr = newEndTime;
-                                gcalUpdateCount++;
-                                showGCalEventUndoNotice(this.plugin, gcalEvent.calendarId, gcalEvent.id, previousState);
-                            }
-                        }
-                    }
-                }
-
-                if (taskUpdateCount > 0 || gcalUpdateCount > 0) {
-                    new Notice(`🔄 일정이 재배치되었습니다: 할 일 ${taskUpdateCount}개, 구글 일정 ${gcalUpdateCount}개`);
-                    this.selectedTaskIds.clear();
-                    await this.refreshTasks(null, gcalUpdateCount > 0);
-                }
+                await this.moveSelectedTimelineItems(primaryTaskId, isGCal, this.snapTimelineMinutes(e.clientY - gridRect.top - clickOffsetMin), dateStr);
             } catch (err) {
                 console.error('Daily drop error:', err);
             }
@@ -2726,128 +2870,9 @@ export abstract class DayPlannerBaseView extends ItemView {
                 if (!dataStr) return;
 
                 try {
-                    const dragData = JSON.parse(dataStr);
-                    const { primaryTaskId, clickOffsetMin, isGCal, calendarId } = dragData;
-
+                    const { primaryTaskId, clickOffsetMin, isGCal } = JSON.parse(dataStr);
                     const rect = dayCol.getBoundingClientRect();
-                    const dropY = e.clientY - rect.top - clickOffsetMin;
-
-                    // 높이 조절 비율 및 시작 시간 오프셋 기반으로 분 환산 공식 대입
-                    let snappedMinutes = Math.round((dropY / ratio) / 15) * 15 + (startHour * 60);
-                    if (snappedMinutes < startHour * 60) snappedMinutes = startHour * 60;
-                    if (snappedMinutes > (endHour * 60) - 30) snappedMinutes = (endHour * 60) - 30;
-
-                    // [통합 동시 드래그 시스템]: 주간 뷰 드랍 시에도 구글 일정 및 로컬 할 일 동시 이동 처리 (상대적 날짜 유지)
-                    let primaryItemStartMin = 0;
-                    let primaryDateStr = loopDayStr;
-                    if (isGCal) {
-                        const gcalEvent = this.plugin.gcalCache.find(ev => ev.id === primaryTaskId);
-                        if (gcalEvent && gcalEvent.startTimeStr) {
-                            const [sh, sm] = gcalEvent.startTimeStr.split(':').map(Number);
-                            primaryItemStartMin = sh * 60 + sm;
-                            if (gcalEvent.dateStr) primaryDateStr = gcalEvent.dateStr;
-                        }
-                    } else {
-                        const primaryItem = this.tasks.find(t => t.id === primaryTaskId);
-                        if (primaryItem && primaryItem.startTime) {
-                            const [sh, sm] = primaryItem.startTime.split(':').map(Number);
-                            primaryItemStartMin = sh * 60 + sm;
-                            if (primaryItem.date) primaryDateStr = primaryItem.date;
-                        }
-                    }
-
-                    const deltaMin = snappedMinutes - primaryItemStartMin;
-                    const moment = (window as any).moment;
-                    const primaryMom = moment(primaryDateStr, 'YYYY-MM-DD');
-                    const targetMom = moment(loopDayStr, 'YYYY-MM-DD');
-                    const dayDelta = (targetMom.isValid() && primaryMom.isValid()) ? targetMom.diff(primaryMom, 'days') : 0;
-
-                    let taskUpdateCount = 0;
-                    let gcalUpdateCount = 0;
-
-                    for (const taskId of this.selectedTaskIds) {
-                        const task = this.tasks.find(t => t.id === taskId);
-                        if (task && task.startTime && task.endTime) {
-                            const [tsh, tsm] = task.startTime.split(':').map(Number);
-                            const [teh, tem] = task.endTime.split(':').map(Number);
-
-                            const newStartTotal = (tsh * 60 + tsm) + deltaMin;
-                            const newEndTotal = (teh * 60 + tem) + deltaMin;
-
-                            const nsh = Math.max(0, Math.min(23, Math.floor(newStartTotal / 60)));
-                            const nsm = Math.max(0, Math.min(59, newStartTotal % 60));
-                            const neh = Math.max(0, Math.min(24, Math.floor(newEndTotal / 60)));
-                            const nem = Math.max(0, Math.min(59, newEndTotal % 60));
-
-                            const newStartTime = `${String(nsh).padStart(2, '0')}:${String(nsm).padStart(2, '0')}`;
-                            const newEndTime = `${String(neh).padStart(2, '0')}:${String(nem).padStart(2, '0')}`;
-
-                            let taskTargetDate = loopDayStr;
-                            if (task.date) {
-                                taskTargetDate = moment(task.date, 'YYYY-MM-DD').add(dayDelta, 'days').format('YYYY-MM-DD');
-                            }
-
-                            const success = await updateTaskInFile(this.app, task, {
-                                startTime: newStartTime,
-                                endTime: newEndTime,
-                                date: taskTargetDate
-                            });
-                            if (success) taskUpdateCount++;
-                        } else {
-                            const gcalEvent = this.plugin.gcalCache.find(ev => ev.id === taskId);
-                            if (gcalEvent && gcalEvent.startTimeStr && gcalEvent.endTimeStr && !gcalEvent.isAllDay) {
-                                const previousState = {
-                                    summary: gcalEvent.summary,
-                                    description: gcalEvent.description || '',
-                                    location: gcalEvent.location || '',
-                                    dateStr: gcalEvent.dateStr,
-                                    startTimeStr: gcalEvent.startTimeStr,
-                                    endTimeStr: gcalEvent.endTimeStr,
-                                    isAllDay: gcalEvent.isAllDay
-                                };
-                                const [sh, sm] = gcalEvent.startTimeStr.split(':').map(Number);
-                                const [eh, em] = gcalEvent.endTimeStr.split(':').map(Number);
-
-                                const newStartTotal = (sh * 60 + sm) + deltaMin;
-                                const newEndTotal = (eh * 60 + em) + deltaMin;
-
-                                const nsh = Math.max(0, Math.min(23, Math.floor(newStartTotal / 60)));
-                                const nsm = Math.max(0, Math.min(59, newStartTotal % 60));
-                                const neh = Math.max(0, Math.min(24, Math.floor(newEndTotal / 60)));
-                                const nem = Math.max(0, Math.min(59, newEndTotal % 60));
-
-                                const newStartTime = `${String(nsh).padStart(2, '0')}:${String(nsm).padStart(2, '0')}`;
-                                const newEndTime = `${String(neh).padStart(2, '0')}:${String(nem).padStart(2, '0')}`;
-
-                                let gcalTargetDate = loopDayStr;
-                                if (gcalEvent.dateStr) {
-                                    gcalTargetDate = moment(gcalEvent.dateStr, 'YYYY-MM-DD').add(dayDelta, 'days').format('YYYY-MM-DD');
-                                }
-
-                                const success = await patchGoogleCalendarEvent(
-                                    this.plugin,
-                                    gcalEvent.calendarId,
-                                    gcalEvent.id,
-                                    gcalTargetDate,
-                                    newStartTime,
-                                    newEndTime
-                                );
-                                if (success) {
-                                    gcalEvent.dateStr = gcalTargetDate;
-                                    gcalEvent.startTimeStr = newStartTime;
-                                    gcalEvent.endTimeStr = newEndTime;
-                                    gcalUpdateCount++;
-                                    showGCalEventUndoNotice(this.plugin, gcalEvent.calendarId, gcalEvent.id, previousState);
-                                }
-                            }
-                        }
-                    }
-
-                    if (taskUpdateCount > 0 || gcalUpdateCount > 0) {
-                        new Notice(`🔄 주간 플래너 재배치: 할 일 ${taskUpdateCount}개, 구글 일정 ${gcalUpdateCount}개`);
-                        this.selectedTaskIds.clear();
-                        await this.refreshTasks(null, gcalUpdateCount > 0);
-                    }
+                    await this.moveSelectedTimelineItems(primaryTaskId, isGCal, this.snapTimelineMinutes(e.clientY - rect.top - clickOffsetMin), loopDayStr);
                 } catch (err) {
                     console.error('Weekly drop error:', err);
                 }
@@ -3143,6 +3168,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                         this.clearDragPreview(daysWrapper);
                     });
                 }
+                if (this.usePhoneLayout()) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', daysWrapper);
             });
         }
 
@@ -3157,8 +3183,10 @@ export abstract class DayPlannerBaseView extends ItemView {
     renderMonthlyCalendar(parent: HTMLDivElement) {
         parent.empty();
         
+        // Phone: 7 columns only (no week numbers), 2 chips per day, and a tap on a day opens it in the Daily tab
+        const phone = this.usePhoneLayout();
         const scrollWrapper = parent.createDiv({ cls: 'dp-monthly-scroll-wrapper' });
-        const container = scrollWrapper.createDiv({ cls: 'dp-monthly-container' });
+        const container = scrollWrapper.createDiv({ cls: `dp-monthly-container${phone ? ' dp-monthly-compact' : ''}` });
 
         const monthlyScrollKey = `${this.getViewType()}:${this.currentDate.format('YYYY-MM')}:monthly`;
         scrollWrapper.addEventListener('scroll', () => {
@@ -3175,7 +3203,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         }
 
         const headerGrid = container.createDiv({ cls: 'dp-monthly-header-grid' });
-        headerGrid.createDiv({ 
+        if (!phone) headerGrid.createDiv({ 
             cls: 'dp-grid-header', 
             text: 'Wk' 
         });
@@ -3221,17 +3249,19 @@ export abstract class DayPlannerBaseView extends ItemView {
             const weekStartDate = gridStartDate.clone().add(w * 7, 'days');
             const weekNum = weekStartDate.week();
 
-            const weekCell = cells.createDiv({ cls: 'dp-grid-week-cell' });
-            weekCell.createDiv({ 
-                text: `Wk ${weekNum}` 
-            });
-            weekCell.createDiv({ 
-                text: 'W' 
-            });
+            if (!phone) {
+                const weekCell = cells.createDiv({ cls: 'dp-grid-week-cell' });
+                weekCell.createDiv({ 
+                    text: `Wk ${weekNum}` 
+                });
+                weekCell.createDiv({ 
+                    text: 'W' 
+                });
 
-            weekCell.addEventListener('click', () => {
-                this.openNoteForDate(weekStartDate, 'weekly');
-            });
+                weekCell.addEventListener('click', () => {
+                    this.openNoteForDate(weekStartDate, 'weekly');
+                });
+            }
 
             for (let d = 0; d < 7; d++) {
                 const loopDay = weekStartDate.clone().add(d, 'days');
@@ -3246,8 +3276,10 @@ export abstract class DayPlannerBaseView extends ItemView {
                 cellNum.style.cssText = 'cursor: pointer; text-decoration: underline; color: var(--text-accent); font-weight: bold;';
                 cellNum.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    this.handleDateClick(loopDayStr);
+                    if (phone) void this.focusDay(loopDayStr);
+                    else this.handleDateClick(loopDayStr);
                 });
+                if (phone) cell.addEventListener('click', () => this.focusDay(loopDayStr));
 
                 const listWrapper = cell.createDiv({ cls: 'dp-grid-task-list' });
 
@@ -3259,8 +3291,11 @@ export abstract class DayPlannerBaseView extends ItemView {
                 });
 
                 const dayGCal = gcalByDate.get(loopDayStr) || [];
+                const chipLimit = phone ? 2 : Infinity;
+                let chipCount = 0;
 
                 dayGCal.forEach(e => {
+                    if (chipCount++ >= chipLimit) return;
                     let customStyle = '';
                     if (e.color) {
                         customStyle = `background-color: ${e.color}1c !important; border-left: 3px solid ${e.color} !important;`;
@@ -3283,6 +3318,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                 });
 
                 dayTasks.forEach(task => {
+                    if (chipCount++ >= chipLimit) return;
                     let itemClass = 'dp-grid-task-item';
                     if (task.statusChar === 'x') itemClass += ' completed';
                     else if (task.statusChar === '-') itemClass += ' cancelled';
@@ -3333,6 +3369,8 @@ export abstract class DayPlannerBaseView extends ItemView {
                         modal.open();
                     });
                 });
+                const hiddenCount = dayGCal.length + dayTasks.length - chipLimit;
+                if (hiddenCount > 0) listWrapper.createDiv({ cls: 'dp-grid-more', text: `+${hiddenCount}` });
 
                 cell.addEventListener('dblclick', (e) => {
                     if (e.target !== cell && e.target !== listWrapper) return;
@@ -3420,6 +3458,38 @@ export abstract class DayPlannerBaseView extends ItemView {
     }
 
     /**
+     * Phone Board: one full-width column at a time, picked from a scrollable switcher above the board.
+     * Returns the columns to render (all of them outside the phone layout).
+     */
+    pickPhoneBoardColumns<T extends { id: string; title: string }>(board: HTMLDivElement, columns: T[], countOf: (col: T) => number): T[] {
+        if (!this.usePhoneLayout()) return columns;
+        const mode = this.kanbanViewMode;
+        const activeId = columns.some(c => c.id === this.phoneBoardColumn[mode]) ? this.phoneBoardColumn[mode] : columns[0].id;
+        const activeIdx = columns.findIndex(c => c.id === activeId);
+
+        const switcher = createDiv({ cls: 'dp-board-col-switcher' });
+        board.before(switcher);
+        columns.forEach((col, idx) => {
+            const btn = switcher.createEl('button', { cls: `dp-tab dp-board-col-tab ${col.id === activeId ? 'active' : ''}` });
+            btn.createSpan({ text: col.title });
+            btn.createSpan({ cls: 'dp-board-col-tab-count', text: String(countOf(col)) });
+            btn.addEventListener('click', () => {
+                if (idx === activeIdx) return;
+                triggerHaptic('selection');
+                this.phoneBoardColumn[mode] = col.id;
+                this.navDirection = idx > activeIdx ? 'next' : 'prev';
+                try {
+                    this.render();
+                } finally {
+                    this.navDirection = null;
+                }
+            });
+        });
+        keepActiveTabInView(switcher, this.boardSwitcherScroll);
+        return columns.filter(c => c.id === activeId);
+    }
+
+    /**
      * 4-A. 기본 스탠다드 칸반 보드 뷰 그리기
      */
     renderStandardKanbanBoard(board: HTMLDivElement) {
@@ -3464,14 +3534,15 @@ export abstract class DayPlannerBaseView extends ItemView {
             this.collapsedColumns = new Set<string>();
         }
 
-        columns.forEach(col => {
+        const phone = this.usePhoneLayout();
+        this.pickPhoneBoardColumns(board, columns, col => this.tasks.filter(col.filter).length).forEach(col => {
             const colTasks = this.tasks.filter(col.filter);
             colTasks.sort(compareTasks);
 
             const colEl = board.createDiv({ cls: 'dp-kanban-column' });
             colEl.setAttribute('data-col-id', col.id);
 
-            const isCollapsed = this.collapsedColumns.has(col.id);
+            const isCollapsed = !phone && this.collapsedColumns.has(col.id);
             if (isCollapsed) {
                 colEl.addClass('collapsed');
                 colEl.style.minWidth = '44px';
@@ -3712,14 +3783,17 @@ export abstract class DayPlannerBaseView extends ItemView {
             { id: 'lowest', title: 'Lowest ⏬', priority: 'lowest' as const }
         ];
 
-        columns.forEach(col => {
-            const colTasks = this.tasks.filter(t => (t.statusChar === ' ' || t.statusChar === '/') && t.priority === col.priority);
+        const phone = this.usePhoneLayout();
+        const openTasksOf = (col: typeof columns[number]) =>
+            this.tasks.filter(t => (t.statusChar === ' ' || t.statusChar === '/') && t.priority === col.priority);
+        this.pickPhoneBoardColumns(board, columns, col => openTasksOf(col).length).forEach(col => {
+            const colTasks = openTasksOf(col);
             colTasks.sort(compareTasks);
 
             const colEl = board.createDiv({ cls: 'dp-kanban-column' });
             colEl.setAttribute('data-col-id', col.id);
 
-            const isCollapsed = this.collapsedColumns.has(col.id);
+            const isCollapsed = !phone && this.collapsedColumns.has(col.id);
             if (isCollapsed) {
                 colEl.addClass('collapsed');
                 colEl.style.minWidth = '44px';
@@ -4252,10 +4326,12 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     getDisplayText(): string { return 'Day Planner Pro (Combined View)'; }
     getIcon(): string { return 'calendar-glyph'; }
     getViewTabType() { return this.activeTab; }
+    usePhoneLayout() { return Platform.isPhone; }
 
     navigateDate(direction: number) {
         if (this.activeTab === 'daily') this.currentDate.add(direction, 'day');
-        if (this.activeTab === 'multiDay') this.currentDate.add(direction * (this.plugin.settings.nDayViewDays || 4), 'day');
+        // Phone 2-Day pages one day at a time; elsewhere a whole N-day block
+        if (this.activeTab === 'multiDay') this.currentDate.add(direction * (this.usePhoneLayout() ? 1 : (this.plugin.settings.nDayViewDays || 4)), 'day');
         if (this.activeTab === 'weekly') this.currentDate.add(direction, 'week');
         if (this.activeTab === 'monthly') this.currentDate.add(direction, 'month');
         if (this.activeTab === 'list') {
@@ -4264,12 +4340,24 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     }
 
     renderRoot(rootEl: HTMLDivElement) {
+        const phone = this.usePhoneLayout();
+        rootEl.toggleClass('dp-phone-shell', phone);
         const header = rootEl.createDiv({ cls: 'dp-header' });
         rootEl.prepend(header); // cached panes may still be mounted below
         this.renderNavHeader(header, true);
+        if (phone && (this.activeTab === 'daily' || this.activeTab === 'multiDay')) this.renderPhoneDateStrip(header);
 
-        const tabsContainer = header.createDiv({ cls: 'dp-tabs' });
-        const tabs: { key: typeof DayPlannerCombinedView.prototype.activeTab; label: string }[] = [
+        // Phones: thumb-reach bottom navigation (5 tabs, no Weekly); elsewhere the segmented control in the header
+        const tabsContainer = phone
+            ? rootEl.createDiv({ cls: 'dp-tabs dp-bottom-nav' })
+            : header.createDiv({ cls: 'dp-tabs' });
+        const tabs: { key: typeof DayPlannerCombinedView.prototype.activeTab; label: string; icon?: string }[] = phone ? [
+            { key: 'daily', label: 'Daily', icon: 'calendar-clock' },
+            { key: 'multiDay', label: '2-Day View', icon: 'calendar-range' },
+            { key: 'monthly', label: 'Monthly', icon: 'calendar-days' },
+            { key: 'board', label: 'Board', icon: 'layout-dashboard' },
+            { key: 'list', label: 'List', icon: 'list' }
+        ] : [
             { key: 'daily', label: 'Daily Timeline' },
             { key: 'multiDay', label: `${this.plugin.settings.nDayViewDays || 4}-day View` },
             { key: 'weekly', label: 'Weekly View' },
@@ -4279,7 +4367,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         ];
 
         tabs.forEach(tab => {
-            if (tab.key === 'multiDay') {
+            if (tab.key === 'multiDay' && !phone) {
                 const tabEl = tabsContainer.createEl('div', {
                     cls: `dp-tab dp-tab-nday ${this.activeTab === 'multiDay' ? 'active' : ''}`
                 });
@@ -4314,8 +4402,12 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             } else {
                 const btn = tabsContainer.createEl('button', {
                     cls: `dp-tab ${this.activeTab === tab.key ? 'active' : ''}`,
-                    text: tab.label
+                    text: tab.icon ? '' : tab.label
                 });
+                if (tab.icon) {
+                    setIcon(btn.createSpan({ cls: 'dp-bottom-nav-icon' }), tab.icon);
+                    btn.createSpan({ cls: 'dp-bottom-nav-label', text: tab.label });
+                }
                 btn.addEventListener('click', async () => {
                     await this.switchTab(tab.key);
                 });
@@ -4326,6 +4418,108 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
 
         this.mountActivePane(rootEl);
         if (this.activeTab === 'daily') this.renderCurrentTaskTracker(rootEl);
+        if (phone) {
+            rootEl.appendChild(tabsContainer); // bottom bar stays the last row, below panes created after it
+            this.registerSwipeNavigation(rootEl);
+        }
+    }
+
+    /** Phone Daily / 2-Day: the current week as M/D pills; the day(s) on screen are highlighted, a tap shows that day. */
+    renderPhoneDateStrip(parent: HTMLElement) {
+        const moment = (window as any).moment;
+        const shownDays = this.activeTab === 'multiDay' ? this.getNDayCount() : 1;
+        const shown = new Set(Array.from({ length: shownDays }, (_, i) => this.currentDate.clone().add(i, 'days').format('YYYY-MM-DD')));
+        const todayStr = moment().format('YYYY-MM-DD');
+        const weekStart = this.currentDate.clone().startOf('week');
+
+        const strip = parent.createDiv({ cls: 'dp-date-strip' });
+        for (let i = 0; i < 7; i++) {
+            const day = weekStart.clone().add(i, 'days');
+            const dateStr = day.format('YYYY-MM-DD');
+            const pill = strip.createEl('button', { cls: 'dp-date-pill' });
+            pill.toggleClass('is-shown', shown.has(dateStr));
+            pill.toggleClass('is-today', dateStr === todayStr);
+            pill.createSpan({ cls: 'dp-date-pill-dow', text: day.format('dd') });
+            pill.createSpan({ cls: 'dp-date-pill-date', text: day.format('M/D') });
+            pill.addEventListener('click', () => this.focusDay(dateStr));
+        }
+    }
+
+    /** Phone: date pills and Monthly cells show that day in the Daily tab (never its note). */
+    async focusDay(dateStr: string) {
+        if (!this.usePhoneLayout()) return super.focusDay(dateStr);
+        const target = (window as any).moment(dateStr, 'YYYY-MM-DD');
+        if (this.activeTab !== 'daily') {
+            this.currentDate = target;
+            this.dataVersion++; // new date: every cached pane is stale
+            await this.switchTab('daily');
+            return;
+        }
+        if (target.isSame(this.currentDate, 'day')) return;
+        triggerHaptic('selection');
+        this.navDirection = target.isAfter(this.currentDate, 'day') ? 'next' : 'prev';
+        this.currentDate = target;
+        try {
+            await this.refreshTasks();
+        } finally {
+            this.navDirection = null;
+        }
+    }
+
+    private swipeBound = false;
+
+    /**
+     * Phone: a horizontal swipe on the active view pages dates (Daily / 2-Day: 1 day, Monthly / List: 1 month) through
+     * navigateWithSlide. The touch is only claimed once it is clearly horizontal, so vertical scrolling stays native;
+     * touches starting at the screen edges or inside horizontally scrollable children are left alone.
+     */
+    registerSwipeNavigation(rootEl: HTMLElement) {
+        if (this.swipeBound) return;
+        this.swipeBound = true;
+        const EDGE = 24;     // px from the screen edge reserved for Obsidian's sidebar gestures
+        const LOCK = 10;     // px of travel before the gesture axis is decided
+        const MIN_DIST = 60; // px of horizontal travel that pages
+        let start: { x: number; y: number } | null = null;
+        let axis: 'x' | 'y' | null = null;
+        let dx = 0;
+
+        this.registerDomEvent(rootEl, 'touchstart', (e: TouchEvent) => {
+            start = null;
+            if (e.touches.length !== 1 || !['daily', 'multiDay', 'monthly', 'list'].includes(this.activeTab)) return;
+            const touch = e.touches[0];
+            if (touch.clientX < EDGE || touch.clientX > window.innerWidth - EDGE) return;
+            const target = e.target as HTMLElement;
+            if (!target.closest('.day-planner-view-pane') || target.closest('input, textarea, select, .dp-resize-handle')) return;
+            for (let el: HTMLElement | null = target; el && el !== rootEl; el = el.parentElement) {
+                if (el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return;
+            }
+            start = { x: touch.clientX, y: touch.clientY };
+            axis = null;
+            dx = 0;
+        }, { passive: true });
+
+        this.registerDomEvent(rootEl, 'touchmove', (e: TouchEvent) => {
+            if (!start) return;
+            if (this.touchDragActive) { start = null; return; }
+            const touch = e.touches[0];
+            dx = touch.clientX - start.x;
+            const dy = touch.clientY - start.y;
+            if (!axis && Math.hypot(dx, dy) > LOCK) axis = Math.abs(dx) > Math.abs(dy) * 1.5 ? 'x' : 'y';
+            if (axis === 'y') { start = null; return; } // vertical scroll: hands off
+            if (axis === 'x') {
+                if (e.cancelable) e.preventDefault(); // no diagonal scroll drift while paging
+                e.stopPropagation();                  // keep Obsidian's own swipe gestures out of it
+            }
+        }, { passive: false });
+
+        this.registerDomEvent(rootEl, 'touchend', () => {
+            const page = !!start && axis === 'x' && Math.abs(dx) >= MIN_DIST && !this.touchDragActive;
+            start = null;
+            if (!page) return;
+            triggerHaptic('selection');
+            void this.navigateWithSlide(dx < 0 ? 1 : -1); // swipe left → next
+        });
+        this.registerDomEvent(rootEl, 'touchcancel', () => { start = null; });
     }
 
     /** Keep-alive view panes: each tab renders once, then is only shown/hidden until its data goes stale. */
@@ -4336,6 +4530,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     isTabSwitch = false;
 
     render() {
+        if (this.usePhoneLayout() && this.activeTab === 'weekly') this.activeTab = 'multiDay'; // no Weekly tab on phones
         if (!this.isTabSwitch) this.dataVersion++;
         super.render();
     }
@@ -4404,7 +4599,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         if (this.activeTab === 'daily') {
             this.renderDailyTimeline(content);
         } else if (this.activeTab === 'multiDay') {
-            this.renderWeeklyView(content, Math.max(2, Math.min(14, this.plugin.settings.nDayViewDays || 4)), true);
+            this.renderWeeklyView(content, this.getNDayCount(), true);
         } else if (this.activeTab === 'weekly') {
             this.renderWeeklyView(content);
         } else if (this.activeTab === 'monthly') {
