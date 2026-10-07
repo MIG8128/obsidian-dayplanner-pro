@@ -1,491 +1,581 @@
-# Dayloom 사용자 가이드
+# Dayloom User Guide
 
-> Obsidian용 타임블록 플래너 **Dayloom** (버전 4.0.0) 사용 설명서입니다.
-> 처음 Obsidian을 써 보는 분도 따라 할 수 있도록 한 단계씩 설명합니다.
-> 화면에 보이는 메뉴·버튼 이름은 실제 플러그인 표기(영문) 그대로 적었습니다.
-
----
-
-## 목차
-
-1. [Dayloom 소개 & 핵심 개념](#1-dayloom-소개--핵심-개념)
-2. [구글 캘린더 OAuth 2.0 연동 튜토리얼](#2-구글-캘린더-oauth-20-연동-튜토리얼)
-3. [설정(Settings) 탭 완전 정복](#3-설정settings-탭-완전-정복)
-4. [사이드 드로어 & 타임박싱 워크플로우](#4-사이드-드로어--타임박싱-워크플로우)
-5. [타임라인 뷰 가이드 & 단축키 총정리](#5-타임라인-뷰-가이드--단축키-총정리)
-6. [마크다운 태스크 문법 & 인라인 코드블록](#6-마크다운-태스크-문법--인라인-코드블록)
-7. [자주 묻는 질문(FAQ) & 문제 해결](#7-자주-묻는-질문faq--문제-해결)
+> The user guide for **Dayloom** (version 4.4.3), a time-blocking planner for Obsidian.
+> It walks through everything step by step, so you can follow along even if you are new to Obsidian.
+>
+> 한국어 안내서: [README.ko.md](README.ko.md) (written for 4.0.0)
 
 ---
 
-## 1. Dayloom 소개 & 핵심 개념
+## Contents
 
-### Dayloom은 무엇인가요?
+1. [What is Dayloom? Key concepts](#1-what-is-dayloom-key-concepts)
+2. [Google Calendar OAuth 2.0 setup](#2-google-calendar-oauth-20-setup)
+3. [Settings, tab by tab](#3-settings-tab-by-tab)
+4. [The side drawer & timeboxing workflow](#4-the-side-drawer--timeboxing-workflow)
+5. [Views, search, selection & shortcuts](#5-views-search-selection--shortcuts)
+6. [Task syntax & inline code blocks](#6-task-syntax--inline-code-blocks)
+7. [FAQ & troubleshooting](#7-faq--troubleshooting)
 
-Dayloom은 Obsidian 노트 안의 **체크박스 할 일(`- [ ]`)** 을 모아서 시간표처럼 보여 주는 플래너입니다.
-할 일에 날짜와 시간을 적어 두면 타임라인에 블록으로 나타나고, 블록을 끌어서 옮기면 **노트의 글자도 자동으로 바뀝니다.**
-별도 데이터베이스가 없고, 모든 정보는 여러분의 마크다운 파일에 그대로 저장됩니다.
+---
 
-### 주요 기능 한눈에 보기
+## 1. What is Dayloom? Key concepts
 
-| 기능 | 설명 |
+### What it does
+
+Dayloom gathers the **checkbox tasks (`- [ ]`)** in your Obsidian notes and lays them out like a schedule.
+Give a task a date and a time and it appears as a block on the timeline; drag the block and **the text in your note changes with it.**
+There is no separate database: everything lives in your own Markdown files.
+
+### Features at a glance
+
+| Feature | Description |
 | --- | --- |
-| 6가지 보기 | 일간 타임라인, N일 보기(2~14일), 주간, 월간, 보드(칸반), 리스트 |
-| 타임박싱 | 할 일을 끌어서 시간대에 배치, 위/아래 손잡이로 길이 조절 |
-| 사이드 드로어 | 날짜 없는 할 일(Undated)과 지난 할 일(Overdue)을 모아 보고 바로 일정 배치 (데스크톱) |
-| 구글 캘린더 | 일정 불러오기·수정·생성, 시간이 정해진 할 일을 캘린더로 동기화 |
-| 알림 | 시작 시각(또는 5~30분 전)에 앱 알림 / 시스템 알림 + 알림음 |
-| 인라인 보기 | 노트 안에 ```` ```dayloom ```` 코드블록으로 플래너를 그대로 삽입, 필터 지원 |
-| Tasks 호환 | Obsidian Tasks 플러그인의 이모지 문법(📅 ⏳ 🛫 ✅ ❌ 🔁 🔺⏫🔼🔽⏬) 그대로 사용 |
+| 6 views | Daily timeline, N-day (2–14 days), Weekly, Monthly, Board (Kanban / Priority), List |
+| Timeboxing | Drag tasks onto time slots; resize blocks with their top / bottom handles |
+| Side drawer | Mini calendar, 🎯 Today's Focus, Overdue and Undated tasks, daily Stats; drag tasks straight onto the planner (desktop, every view) |
+| Search | `/` turns the header into a search bar; Enter lists every match |
+| Multi-select & delete | Ctrl/Cmd+click or box selection in every view; Delete removes tasks and events (with Undo for tasks) |
+| Google Calendar | Read, edit and create events; sync timed tasks to a calendar |
+| Reminders | In-app or system notifications at the start time (or 5–30 min before), with a chime |
+| Inline views | Embed the planner in any note with a ```` ```dayloom ```` code block, with filters |
+| Tasks compatible | Uses the Obsidian Tasks emoji syntax (📅 ⏳ 🛫 ✅ ❌ 🔁 🔺⏫🔼🔽⏬) |
+| Languages | English, 한국어, 日本語, 简体中文 (follows Obsidian, or pick one in Settings) |
 
-### 두 가지 창: Dayloom과 Dayloom Compact
+### Two windows: Dayloom and Dayloom Compact
 
-| 이름 | 여는 방법 | 특징 |
+| Name | How to open | What it is |
 | --- | --- | --- |
-| **Dayloom** | 왼쪽 리본의 달력 아이콘 *Open Dayloom*, 또는 명령 팔레트 `Open Dayloom` | 메인 탭 화면. 데스크톱에서는 사이드 드로어 사용 가능 |
-| **Dayloom Compact** | 리본의 시계 달력 아이콘 *Open Dayloom Compact*, 또는 명령 `Open Dayloom Compact` | 오른쪽 사이드바에 붙는 작은 화면. 하단 탭 5개(일간·2일·월간·보드·리스트) |
+| **Dayloom** | Ribbon calendar icon *Open Dayloom*, or the command `Open Dayloom` | The main tab. On desktop it has the side drawer |
+| **Dayloom Compact** | Ribbon clock-calendar icon *Open Dayloom Compact*, or the command `Open Dayloom Compact` | A small view docked in the right sidebar, with 5 bottom tabs (Daily · 2-Day · Monthly · Board · List) |
 
-> 💡 **명령 팔레트**는 `Ctrl+P`(Mac은 `Cmd+P`)로 엽니다. "Dayloom"을 입력하면 관련 명령이 모두 보입니다.
+> 💡 Open the **command palette** with `Ctrl+P` (`Cmd+P` on Mac) and type "Dayloom" to see every Dayloom command.
 
-### 꼭 알아 둘 기본 개념
+### Basic concepts
 
-- **할 일 = 체크박스 한 줄**입니다. `- [ ] 보고서 쓰기` 처럼 쓰면 Dayloom이 인식합니다.
-- **날짜**는 `⏳ 2026-10-07`(예정일) → `📅 2026-10-07`(마감일) → **데일리 노트 파일 이름** 순서로 결정됩니다.
-  즉, `2026-10-07.md` 같은 데일리 노트에 쓴 할 일은 날짜를 따로 적지 않아도 그날 할 일이 됩니다.
-- **시간**은 `⏰09:00-10:30` 처럼 적습니다. 시간이 있으면 타임라인에 블록으로, 없으면 "All Day(종일)" 줄에 표시됩니다.
-- **상태**는 체크박스 안의 글자로 구분합니다: `[ ]` 할 일, `[/]` 진행 중, `[x]` 완료, `[-]` 취소.
+- **A task is one checkbox line.** Write `- [ ] Write the report` and Dayloom picks it up.
+- **The date** comes from `⏳ 2026-10-07` (scheduled), then `📅 2026-10-07` (due), then the **daily note's file name**.
+  A task written in a daily note such as `2026-10-07.md` belongs to that day without any date of its own.
+- **The time** is written as `⏰09:00-10:30`. Timed tasks become blocks on the timeline; untimed ones sit in the "All Day" row.
+- **The status** is the character in the checkbox: `[ ]` to do, `[/]` in progress, `[x]` done, `[-]` cancelled.
 
 ---
 
-## 2. 구글 캘린더 OAuth 2.0 연동 튜토리얼
+## 2. Google Calendar OAuth 2.0 setup
 
-구글 캘린더 연동은 **선택 사항**입니다. 연동하지 않아도 Dayloom의 모든 할 일 기능은 그대로 쓸 수 있습니다.
+Google Calendar is **optional**. Every task feature in Dayloom works without it.
 
-### 먼저 알아 두기: Dayloom의 인증 방식
+### How Dayloom signs in
 
-Dayloom에는 "구글로 로그인" 버튼이 **없습니다.** 대신 다음 세 가지 값을 설정에 직접 넣습니다.
+Dayloom has **no "Sign in with Google" button.** Instead, you enter three values in the settings:
 
-| 설정 이름 | 의미 | 예시 모양 |
+| Setting | What it is | Looks like |
 | --- | --- | --- |
-| `Google Client ID` | 여러분이 만든 OAuth 앱의 ID | `xxxx.apps.googleusercontent.com` |
-| `Google Client Secret` | 그 앱의 비밀 키 | `GOCSPX-xxxx` |
-| `Google Refresh Token` | 오래 쓰는 인증 토큰(재발급용) | `1//0xxxx` |
+| `Google Client ID` | The ID of the OAuth app you create | `xxxx.apps.googleusercontent.com` |
+| `Google Client Secret` | That app's secret key | `GOCSPX-xxxx` |
+| `Google Refresh Token` | A long-lived token used to get new access tokens | `1//0xxxx` |
 
-Dayloom은 이 세 값으로 구글 서버(`https://oauth2.googleapis.com/token`)에서 짧게 쓰는 접근 토큰을 자동으로 받아 사용합니다.
-그래서 우리가 할 일은 **① 구글 클라우드에서 OAuth 앱을 만들고 ② Refresh Token을 한 번 발급받는 것**입니다.
-천천히 따라 하면 20~30분이면 끝납니다.
+With these, Dayloom fetches short-lived access tokens from Google (`https://oauth2.googleapis.com/token`) by itself.
+So your job is to **① create an OAuth app in Google Cloud and ② obtain a refresh token once.**
+Taken slowly, it takes 20–30 minutes.
 
-> ⚠️ 구글 콘솔 화면 구성은 수시로 바뀝니다. 메뉴 이름이 조금 달라도 같은 의미의 항목을 찾아 진행하세요.
+> ⚠️ The Google Cloud console changes its layout often. If a menu is named a little differently, look for the item with the same meaning.
 
-### 1단계: 구글 클라우드 프로젝트 만들기
+### Step 1: Create a Google Cloud project
 
-1. 브라우저에서 [Google Cloud Console](https://console.cloud.google.com/)에 접속해 구글 계정으로 로그인합니다.
-2. 화면 위쪽의 **프로젝트 선택** 드롭다운 → **새 프로젝트**를 누릅니다.
-3. 프로젝트 이름에 `Dayloom` 처럼 알아보기 쉬운 이름을 넣고 **만들기**를 누릅니다.
-4. 만들어지면 위쪽 드롭다운에서 방금 만든 프로젝트가 선택되어 있는지 확인합니다.
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and sign in with your Google account.
+2. Click the **project picker** at the top → **New project**.
+3. Name it something recognisable, such as `Dayloom`, and click **Create**.
+4. Make sure the new project is selected in the picker at the top.
 
-### 2단계: Google Calendar API 켜기
+### Step 2: Enable the Google Calendar API
 
-1. 왼쪽 메뉴 **API 및 서비스 → 라이브러리**로 이동합니다.
-2. 검색창에 `Google Calendar API`를 입력하고 결과를 엽니다.
-3. **사용(Enable)** 버튼을 누릅니다.
+1. In the left menu, open **APIs & Services → Library**.
+2. Search for `Google Calendar API` and open it.
+3. Click **Enable**.
 
-### 3단계: OAuth 동의 화면 구성
+### Step 3: Configure the OAuth consent screen
 
-(최근 콘솔에서는 **Google 인증 플랫폼(Google Auth Platform)** 이라는 이름으로 나옵니다.)
+(Newer consoles call this the **Google Auth Platform**.)
 
-1. **API 및 서비스 → OAuth 동의 화면**(또는 *Google 인증 플랫폼 → 브랜딩*)으로 이동해 **시작하기**를 누릅니다.
-2. 앱 정보 입력:
-   - **앱 이름**: `Dayloom` (아무 이름이나 괜찮습니다)
-   - **사용자 지원 이메일**: 본인 이메일
-3. **대상(Audience)/사용자 유형**: 개인 구글 계정이라면 **외부(External)** 를 고릅니다.
-4. 연락처 이메일을 넣고 동의 후 **만들기/저장**합니다.
-5. **테스트 사용자(Test users)** 에 **본인 구글 계정 이메일**을 추가합니다.
+1. Open **APIs & Services → OAuth consent screen** (or *Google Auth Platform → Branding*) and click **Get started**.
+2. App information:
+   - **App name**: `Dayloom` (any name works)
+   - **User support email**: your email
+3. **Audience / user type**: for a personal Google account, choose **External**.
+4. Enter a contact email, agree, and **Create / Save**.
+5. Under **Test users**, add **your own Google account's email**.
 
-> ⚠️ **중요: 7일 만료 문제**
-> 앱이 **테스트(Testing)** 상태이면 구글은 캘린더 권한의 Refresh Token을 **7일 뒤 만료**시킵니다.
-> 일주일마다 다시 발급받기 싫다면, 동의 화면(대상/Audience)에서 **앱 게시(Publish app) → 프로덕션(In production)** 으로 바꾼 뒤 토큰을 발급받으세요.
-> 본인만 쓰는 앱이라면 구글 검수 없이 게시해도 사용할 수 있습니다. 다만 로그인할 때 "Google에서 확인하지 않은 앱"이라는 경고가 나오는데, **고급 → (앱 이름)(으)로 이동**을 눌러 계속하면 됩니다.
+> ⚠️ **Important: the 7-day expiry**
+> While the app is in **Testing**, Google expires calendar refresh tokens **after 7 days**.
+> To avoid re-issuing a token every week, switch the app to **Publish app → In production** (on the consent screen / Audience page) *before* you get the token.
+> For an app only you use, publishing works without Google's review. Signing in will show a "Google hasn't verified this app" warning: click **Advanced → Go to (app name)** to continue.
 
-### 4단계: OAuth 클라이언트 ID / Secret 만들기
+### Step 4: Create the OAuth client ID / secret
 
-Dayloom 설정에는 이 값이 *OAuth Web Client* 로 설명되어 있으므로 **웹 애플리케이션** 유형으로 만듭니다.
+Dayloom's settings describe these as an *OAuth Web Client*, so create a **Web application** client.
 
-1. **API 및 서비스 → 사용자 인증 정보 → 사용자 인증 정보 만들기 → OAuth 클라이언트 ID**를 누릅니다.
-   (또는 *Google 인증 플랫폼 → 클라이언트 → 클라이언트 만들기*)
-2. **애플리케이션 유형**: `웹 애플리케이션`
-3. **이름**: `Dayloom Web Client` 등 자유롭게
-4. **승인된 리디렉션 URI** 에 아래 주소를 **정확히** 추가합니다. (다음 단계에서 토큰 발급에 쓰는 구글 공식 도구 주소입니다)
+1. Open **APIs & Services → Credentials → Create credentials → OAuth client ID**
+   (or *Google Auth Platform → Clients → Create client*).
+2. **Application type**: `Web application`
+3. **Name**: anything, e.g. `Dayloom Web Client`
+4. Under **Authorized redirect URIs**, add exactly this address (Google's own token tool, used in the next step):
    ```
    https://developers.google.com/oauthplayground
    ```
-5. **만들기**를 누르면 **클라이언트 ID**와 **클라이언트 보안 비밀(Secret)** 이 표시됩니다. 둘 다 메모장에 복사해 둡니다.
+5. Click **Create**. The **Client ID** and **Client secret** appear: copy both somewhere safe.
 
-### 5단계: Refresh Token 발급받기 (OAuth 2.0 Playground)
+### Step 5: Get a refresh token (OAuth 2.0 Playground)
 
-1. [OAuth 2.0 Playground](https://developers.google.com/oauthplayground)에 접속합니다.
-2. 오른쪽 위 **톱니바퀴(⚙️, OAuth 2.0 configuration)** 를 누릅니다.
-   - **Use your own OAuth credentials** 를 체크합니다.
-   - **OAuth Client ID** 와 **OAuth Client secret** 에 4단계에서 받은 값을 붙여 넣습니다.
-   - **Access type** 이 `Offline` 인지 확인합니다. (Refresh Token을 받으려면 꼭 Offline이어야 합니다)
-3. 왼쪽 **Step 1** 아래 입력란(*Input your own scopes*)에 다음 권한 범위를 입력합니다.
+1. Open the [OAuth 2.0 Playground](https://developers.google.com/oauthplayground).
+2. Click the **gear (⚙️, OAuth 2.0 configuration)** at the top right.
+   - Tick **Use your own OAuth credentials**.
+   - Paste the **OAuth Client ID** and **OAuth Client secret** from Step 4.
+   - Check that **Access type** is `Offline` (required to receive a refresh token).
+3. In the box under **Step 1** on the left (*Input your own scopes*), enter this scope:
    ```
    https://www.googleapis.com/auth/calendar.events
    ```
-   > Dayloom은 캘린더의 **일정(event)을 읽고, 만들고, 고치고, 지우는** 기능만 사용하므로 이 범위면 충분합니다.
-4. **Authorize APIs** 를 누르고, 3단계에서 테스트 사용자로 넣은 계정으로 로그인해 권한을 허용합니다.
-   (확인되지 않은 앱 경고가 나오면 *고급 → 이동* 을 누릅니다)
-5. **Step 2** 화면에서 **Exchange authorization code for tokens** 를 누릅니다.
-6. 표시된 **Refresh token** 값(`1//0` 으로 시작)을 복사합니다. 이것이 마지막 열쇠입니다. 🎉
+   > Dayloom only **reads, creates, edits and deletes events**, so this scope is enough.
+4. Click **Authorize APIs**, sign in with the account you added as a test user, and allow access.
+   (If you see the unverified-app warning, click *Advanced → Go to …*.)
+5. On the **Step 2** screen, click **Exchange authorization code for tokens**.
+6. Copy the **Refresh token** (it starts with `1//0`). That is the last key. 🎉
 
-> 🔒 Client Secret과 Refresh Token은 **비밀번호와 같습니다.** 다른 사람에게 보여 주지 마세요.
+> 🔒 Treat the client secret and refresh token **like passwords.** Never share them.
 
-### 6단계: Dayloom 설정에 입력하기
+### Step 6: Enter the values in Dayloom
 
-1. Obsidian **설정(⚙️) → 커뮤니티 플러그인 → Dayloom** 을 엽니다.
-2. 위쪽 탭에서 **☁️ Google Calendar** 를 누릅니다.
-3. **Enable Google Calendar Integration** 을 켭니다.
-4. **Google Calendar OAuth 2.0 (sync & editing)** 아래에 차례로 붙여 넣습니다.
+1. Open Obsidian **Settings (⚙️) → Community plugins → Dayloom**.
+2. Click the **☁️ Google Calendar** tab at the top.
+3. Turn on **Enable Google Calendar Integration**.
+4. Under **Google Calendar OAuth 2.0 (sync & editing)**, paste:
    - `Google Client ID`
    - `Google Client Secret`
    - `Google Refresh Token`
 
-### 7단계: 보고 싶은 캘린더 추가하기
+### Step 7: Add the calendars you want to see
 
-1. 같은 탭의 **Google Calendars 📅** 옆 **+ Add Calendar** 를 누릅니다.
-2. 새 줄에 다음을 채웁니다.
-   - **체크박스**: 켜 두면 표시, 끄면 숨김
-   - **Name**: 화면에 보일 이름 (예: 업무, 개인)
-   - **ID**: `primary` (기본 캘린더) 또는 캘린더 ID
-   - **색상**: 이 캘린더 일정의 색
-3. 기본 캘린더가 아닌 경우 캘린더 ID 찾는 법:
-   구글 캘린더 웹 → 왼쪽 목록에서 캘린더의 **⋮ → 설정 및 공유 → 캘린더 통합 → 캘린더 ID**
-   (보통 `xxxx@group.calendar.google.com` 형태이고, 기본 캘린더는 본인 Gmail 주소입니다)
-4. 필요 없는 캘린더는 **Delete** 로 지웁니다.
+1. On the same tab, click **+ Add Calendar** next to **Google Calendars 📅**.
+2. Fill in the new row:
+   - **Checkbox**: on = shown, off = hidden
+   - **Name**: the name shown in Dayloom (e.g. Work, Personal)
+   - **ID**: `primary` (your main calendar) or the calendar's ID
+   - **Color**: the color of this calendar's events
+3. To find the ID of another calendar:
+   Google Calendar on the web → the calendar's **⋮ → Settings and sharing → Integrate calendar → Calendar ID**
+   (usually `xxxx@group.calendar.google.com`; the main calendar's ID is your Gmail address).
+4. Remove calendars you don't need with **Delete**.
 
-### 8단계: 할 일 동기화용 캘린더 고르기 (선택)
+### Step 8: Choose a calendar for task sync (optional)
 
-**Task Sync Google Calendar** 에서 캘린더를 고르면, 날짜와 시간이 있는 할 일이 그 캘린더에 일정으로 만들어집니다.
+Pick a calendar under **Task Sync Google Calendar** and every task with a date and a time gets an event in that calendar.
 
-> 💡 **추천**: 구글 캘린더에 `Obsidian 할 일` 같은 **전용 캘린더를 새로 만들고**, 그것을 7단계에서 추가한 뒤 여기서 고르세요.
-> 동기화 캘린더의 일정은 원래 할 일과 **중복되지 않도록 Dayloom 타임라인에는 일정으로 따로 표시하지 않습니다.**
-> 회의 등이 들어 있는 기본 캘린더를 동기화 대상으로 고르면, 그 캘린더의 회의도 타임라인에서 보이지 않게 됩니다.
+> 💡 **Recommended**: create a **dedicated calendar** in Google Calendar (e.g. `Obsidian Tasks`), add it in Step 7, and pick it here.
+> To avoid duplicates, Dayloom **does not show the sync calendar's events as events** on the timeline (the tasks are already there).
+> If you pick your main calendar, its meetings will disappear from the timeline too.
 
-### 9단계: 연결 확인
+### Step 9: Test the connection
 
-1. Dayloom을 엽니다.
-2. 헤더의 **🔄 Sync** 버튼을 누르거나 `F5` 를 누릅니다.
-3. "✅ Sync complete! …" 또는 "✅ Google Calendar events refreshed!" 알림이 뜨고 일정이 보이면 성공입니다.
-4. 실패하면 "❌ Google OAuth Token 갱신 실패: …" 알림이 뜹니다. → [7장 FAQ](#7-자주-묻는-질문faq--문제-해결) 를 확인하세요.
+1. Open Dayloom.
+2. Click the **sync** button (↻) in the header toolbar, or press `F5`.
+3. A "✅ …" notice and your events on the timeline mean it works.
+4. If it fails, an OAuth error notice appears → see the [FAQ](#7-faq--troubleshooting).
 
-### 동기화는 이렇게 동작합니다
+### How sync works
 
-| 동작 | 결과 |
+| Action | Result |
 | --- | --- |
-| **🔄 Sync 버튼 / `F5` / `Ctrl+R`(Mac `Cmd+R`)** | 볼트의 할 일을 다시 읽고, 보이는 기간의 구글 일정을 새로 받고, 시간이 정해진 할 일을 동기화 캘린더로 보냅니다 (오늘 기준 60일 전 ~ 365일 후) |
-| **Sync 버튼 오른쪽 클릭** | *Synchronize Tasks with Google Calendar 📤* 창이 열려, 대상 캘린더를 골라 **Sync Tasks Now** 로 동기화합니다 |
-| **Dayloom 화면 안에서 할 일 수정** (끌어서 옮기기, 편집 창, 체크 등) | 그 할 일 하나만 바로 구글 캘린더에 반영됩니다 |
-| **노트에서 글자를 직접 고침** | 자동 반영되지 **않습니다.** 다음 Sync 때 반영됩니다 |
-| 할 일의 날짜·시간을 지움 | Dayloom이 만든 일정이면 캘린더에서 지워집니다 |
+| **Sync button / `F5` / `Ctrl+R` (`Cmd+R`)** | Re-reads your vault's tasks, refetches the events in view, and pushes timed tasks to the sync calendar (from 60 days ago to 365 days ahead) |
+| **Right-click the sync button** | Opens *Synchronize Tasks with Google Calendar 📤*: pick a target calendar and click **Sync Tasks Now** |
+| **Editing a task inside Dayloom** (drag, edit dialog, checkbox…) | That one task is updated in Google Calendar right away |
+| **Editing the text in a note** | **Not** sent automatically; the next Sync sends it |
+| Removing a task's date / time | If Dayloom created its event, the event is deleted from the calendar |
+| Deleting a synced task in Dayloom | Its calendar copy is deleted too |
 
-- 동기화된 할 일 줄 끝에는 `[gcalId:: …]` 표시가 붙습니다. 이것으로 할 일과 일정이 연결됩니다. (지우지 마세요)
-- Dayloom은 **자신이 만든 일정만** 지웁니다. 회의·초대 등 원래 있던 일정은 절대 지우지 않습니다.
-- 타임라인에서 구글 일정 블록을 끌어 옮기거나 클릭해서 편집하면 구글 캘린더에도 바로 저장됩니다.
+- Synced task lines end with `[gcalId:: …]`. That links the task to its event, so don't delete it.
+- Sync only deletes **events Dayloom created.** Your meetings, invitations and other events are never removed by sync.
+- Dragging or editing a Google event block on the timeline saves the change to Google Calendar immediately.
 
 ---
 
-## 3. 설정(Settings) 탭 완전 정복
+## 3. Settings, tab by tab
 
-설정은 위쪽 탭 5개로 나뉘어 있습니다.
+Settings are split into five tabs:
 
-`⚙️ General` · `⏱️ Timeline` · `☁️ Google Calendar` · `🔔 Reminders` · `📱 Display`
+`⚙️ General` · `⏱️ Timeline` · `☁️ Google Calendar` · `🔔 Notifications` · `📱 View/Display`
 
-### ⚙️ General (일반)
+> Setting names are shown in your chosen language; this guide uses the English names.
 
-| 설정 | 의미 | 추천값 |
+### ⚙️ General
+
+| Setting | What it does | Suggested value |
 | --- | --- | --- |
-| **Default Task File Path** | 새 할 일이 저장될 기본 노트. 빠른 캡처와 타임라인 더블클릭으로 만든 할 일이 여기에 들어갑니다. 파일·폴더가 없으면 자동으로 만듭니다 | `Day Planner.md` (기본값) 또는 `Inbox/할 일.md` |
-| **Excluded Files & Folders** | 할 일을 찾지 않을 폴더/노트 (아래 설명) | 템플릿 폴더, 보관함 폴더 |
-| **Daily Notes Folder Path** | 데일리 노트가 있는 폴더 | 예: `Daily` |
-| **Daily Notes File Format** | 데일리 노트 파일 이름 형식 | `YYYY-MM-DD` |
-| **Daily Note Template** | 새 데일리 노트를 만들 때 쓸 템플릿 | 예: `Templates/Daily.md` |
-| **Weekly Notes Folder Path** | 위클리 노트 폴더 | 예: `Weekly` |
-| **Weekly Notes File Format** | 위클리 노트 파일 이름 형식 | `gggg-[W]ww` (예: `2026-W41`) |
-| **Weekly Note Template** | 새 위클리 노트 템플릿 | 예: `Templates/Weekly.md` |
+| **Language / 언어** | Dayloom's display language: `Auto (Obsidian Default)`, `English`, `한국어`, `日本語`, `简体中文`. Applies immediately | `Auto` |
+| **Default Task File Path** | The note new tasks are saved to (quick capture, double-click on the timeline, the `+` button). Created if missing | `Day Planner.md` (default) or `Inbox/Tasks.md` |
+| **Excluded Files & Folders** | Folders / notes not scanned for tasks (see below) | Templates, Archive |
+| **Daily Notes Folder Path** | Where your daily notes live | e.g. `Daily` |
+| **Daily Notes File Format** | Daily note file-name format | `YYYY-MM-DD` |
+| **Daily Note Template** | Template for new daily notes | e.g. `Templates/Daily.md` |
+| **Weekly Notes Folder Path** | Where your weekly notes live | e.g. `Weekly` |
+| **Weekly Notes File Format** | Weekly note file-name format | `gggg-[W]ww` (e.g. `2026-W41`) |
+| **Weekly Note Template** | Template for new weekly notes | e.g. `Templates/Weekly.md` |
 
-#### 🔎 파일·폴더 자동완성
+#### 🔎 Path suggestions
 
-경로를 입력하는 칸에 글자를 치면 볼트 안의 파일/폴더가 **유사 검색(fuzzy)** 으로 바로 아래에 뜹니다.
-`dly` 만 쳐도 `Daily` 폴더가 나오니, 목록에서 고르기만 하면 됩니다.
-(파일 칸에는 마크다운 노트만, 폴더 칸에는 폴더만 나옵니다)
+Path fields suggest files and folders from your vault as you type (fuzzy search): typing `dly` already finds the `Daily` folder.
+File fields list Markdown notes only; folder fields list folders only.
 
-#### 🚫 Excluded Files & Folders (제외 필터) 사용법
+#### 🚫 Excluded Files & Folders
 
-Obsidian 검색 필터처럼 **칩(알약 모양 버튼)** 으로 규칙을 관리합니다.
+Rules are managed as **chips**, like Obsidian's search filters.
 
-1. 입력칸 왼쪽의 **Exclude / Keep** 중 하나를 고릅니다.
-2. 입력칸에 폴더나 노트 이름을 치고, 제안 목록에서 고르거나 `Enter` 를 누릅니다.
-3. 규칙이 칩으로 추가됩니다.
-   - 칩을 **클릭**하면 Exclude ↔ Keep 이 바뀝니다.
-   - 칩의 **×** 로 삭제합니다.
-   - 볼트에 없는 경로는 회색 취소선으로 표시됩니다.
-4. 아래에 "Leaving out N of M notes." 로 몇 개의 노트가 제외되는지 바로 보여 줍니다.
+1. Choose **Exclude** or **Keep** to the left of the input.
+2. Type a folder or note name and pick a suggestion, or press `Enter`.
+3. The rule is added as a chip:
+   - **Click** a chip to switch it between Exclude and Keep.
+   - Remove it with its **×**.
+   - Paths that don't exist in the vault are shown greyed out and struck through.
+4. "Leaving out N of M notes." below shows how many notes the rules exclude.
 
-| 입력 예시 | 의미 |
+| Example | Meaning |
 | --- | --- |
-| `Archive` | Archive 폴더와 그 안의 모든 노트 제외 |
-| `Templates/Daily.md` (또는 `Templates/Daily`) | 그 노트 하나만 제외 |
-| `**/Templates` | 어느 깊이에 있든 `Templates` 라는 폴더는 모두 제외 |
-| `Daily/*.md` | Daily 폴더 바로 아래 노트만 제외 (하위 폴더는 제외 안 함) |
-| `Archive` + **Keep** `Archive/2026` | 보관함은 빼되 2026 폴더만 다시 포함 |
+| `Archive` | The Archive folder and every note in it |
+| `Templates/Daily.md` (or `Templates/Daily`) | That one note |
+| `**/Templates` | Every folder named `Templates`, at any depth |
+| `Daily/*.md` | Notes directly in `Daily` (not its subfolders) |
+| `Archive` + **Keep** `Archive/2026` | Exclude the archive except its 2026 folder |
 
-> `*` 는 한 폴더 단계 안에서만, `**` 는 여러 폴더 단계를 넘어서 일치합니다. 대소문자는 구분하지 않습니다.
+> `*` matches within one folder level, `**` across levels. Matching ignores case.
 
-### ⏱️ Timeline (타임라인)
+### ⏱️ Timeline
 
-| 설정 | 의미 | 추천값 |
+| Setting | What it does | Suggested value |
 | --- | --- | --- |
-| **N-day view length** | N일 보기에 표시할 날 수 (2~14) | `4` |
-| **Separate Dayloom and Dayloom Compact Heights** | 켜면 메인 창과 Compact 창의 확대 비율을 따로 조절 | 끔 |
-| **Timeline Hour Height (…)** | 1시간이 차지하는 세로 높이(px, 30~180) | `60` (기본) — 일정이 빽빽하면 `90` 이상 |
-| **Timeline Start Hour / End Hour** | 타임라인에 보일 시간 범위. **Fit It In(빈 시간 자동 배치)의 근무 시간**으로도 쓰입니다 | 예: `7` ~ `23` |
-| **Default Task Duration (minutes)** | 시간이 없는 할 일을 타임라인에 끌어다 놓을 때 붙는 기본 길이(분, 1~1440) | `60` (기본), 뽀모도로라면 `25` |
+| **N-day view length** | Days shown in the N-day view (2–14) | `4` |
+| **Separate Dayloom and Dayloom Compact Heights** | Zoom the main and Compact views independently | Off |
+| **Timeline Hour Height (…)** | Height of one hour in pixels (30–180) | `60` (default); `90`+ for busy days |
+| **Timeline Start Hour / End Hour** | The hours shown on the timeline. Also the **working hours used by Fit It In** | e.g. `7` – `23` |
+| **Default Task Duration (minutes)** | Length an untimed task gets when dropped on the timeline (1–1440). Also used when several tasks are dropped back to back | `60` (default); `25` for Pomodoro |
 
-> 💡 시간 높이는 헤더의 **🔍 (Timeline Zoom)** 슬라이더로도 바로 조절할 수 있습니다.
+> 💡 You can also change the hour height with the **zoom** control (🔍+) in the header toolbar.
 
-### ☁️ Google Calendar (구글 캘린더)
+### ☁️ Google Calendar
 
-| 설정 | 의미 |
+| Setting | What it does |
 | --- | --- |
-| **Enable Google Calendar Integration** | 구글 캘린더 연동 켜기/끄기 |
-| **Task Sync Google Calendar** | 시간이 있는 할 일을 일정으로 보낼 캘린더 ([2장 8단계](#8단계-할-일-동기화용-캘린더-고르기-선택)) |
-| **Google Client ID / Client Secret / Refresh Token** | OAuth 인증 정보 ([2장](#2-구글-캘린더-oauth-20-연동-튜토리얼)) |
-| **Google Calendars 📅** | 표시할 캘린더 목록: 사용 체크, 이름, ID, 색상, Delete |
-| **Local Task Color** | Obsidian 할 일 블록의 강조 색. 캘린더 색들과 나란히 보면서 맞출 수 있습니다 |
+| **Enable Google Calendar Integration** | Turns the integration on or off |
+| **Task Sync Google Calendar** | The calendar timed tasks are synced to ([Step 8](#step-8-choose-a-calendar-for-task-sync-optional)) |
+| **Google Client ID / Client Secret / Refresh Token** | OAuth credentials ([section 2](#2-google-calendar-oauth-20-setup)) |
+| **Google Calendars 📅** | The calendars to show: enabled, name, ID, color, Delete |
+| **Local Task Color** | Accent color of your vault tasks, set right next to the calendar colors |
 
-### 🔔 Reminders (알림)
+### 🔔 Notifications
 
-| 설정 | 선택지 | 설명 |
+| Setting | Options | Notes |
 | --- | --- | --- |
-| **Reminder Type** | `Off` / `Auto` / `In-app notice` / `System notification` | **Auto(추천)**: Obsidian을 보고 있으면 앱 안 알림 + 알림음, 다른 창을 보고 있으면 운영체제 알림 |
-| **Reminder Timing** | `At event start time`(기본) / `5`·`10`·`15`·`30 minutes before` | 언제 알릴지 |
-| **Reminder Sound** | 켜기/끄기, 🔊 버튼으로 미리 듣기 | 앱 안 알림과 함께 짧은 3음 마림바 소리가 납니다 (운영체제 알림일 때는 OS 알림음 사용) |
-| **Remind for Tasks** | 켜기/끄기 | 오늘 날짜이고 시작 시간(`⏰HH:mm`)이 있는 할 일 알림 |
-| **Remind for Google Calendar Events** | 켜기/끄기 | 오늘의 시간 있는 구글 일정 알림 (종일 일정 제외) |
+| **Reminder Type** | `Off` / `Auto` / `In-app notice` / `System notification` | **Auto (recommended)**: an in-app notice with a chime while Obsidian is in front, a system notification otherwise |
+| **Reminder Timing** | `At event start time` (default) / `5`, `10`, `15`, `30 minutes before` | When to remind you |
+| **Reminder Sound** | On / off; 🔊 plays a test chime | A short chime with in-app notices (system notifications use your OS sound) |
+| **Remind for Tasks** | On / off | Tasks dated today that have a start time (`⏰HH:mm`) |
+| **Remind for Google Calendar Events** | On / off | Today's timed Google events (all-day events are skipped) |
 
-> 시스템 알림을 처음 고르면 운영체제가 알림 권한을 물어봅니다. **허용**해야 알림이 옵니다.
-> 완료(`[x]`)·취소(`[-]`)된 할 일은 알리지 않습니다.
+> The first time you choose system notifications, your OS asks for permission. **Allow** it, or no notifications arrive.
+> Done (`[x]`) and cancelled (`[-]`) tasks are never reminded.
 
-### 📱 Display (표시)
+### 📱 View/Display
 
-| 설정 | 의미 | 추천값 |
+| Setting | What it does | Suggested value |
 | --- | --- | --- |
-| **Hide Inline Metadata Fields** | 제목의 `[gcalId:: …]` 같은 대괄호 필드를 플래너·읽기 모드·라이브 프리뷰에서 숨김 (파일 내용은 그대로) | 켬 |
-| **Show shortcut button in header** | 헤더의 단축키(?) 버튼 표시. 꺼도 `?`·`h` 키는 동작 | 취향 |
-| **Haptic Feedback** | 모바일에서 완료·탭 전환·드래그 시 짧은 진동 | 켬 |
+| **Hide Inline Metadata Fields** | Hides bracketed fields such as `[gcalId:: …]` in the planner, Reading view and Live Preview (your files keep them) | On |
+| **Show shortcut button in header** | Shows the shortcuts (?) button in the header toolbar. `?` and `h` work either way | Your choice |
+| **Haptic Feedback** | Short vibrations on mobile when completing, switching tabs or dragging | On |
 
 ---
 
-## 4. 사이드 드로어 & 타임박싱 워크플로우
+## 4. The side drawer & timeboxing workflow
 
-**타임박싱(Timeboxing)** 은 할 일마다 "언제 할지" 시간 블록을 정해 두는 계획법입니다.
-Dayloom의 사이드 드로어는 "아직 언제 할지 정하지 않은 할 일"을 모아 두고, 끌어서 시간표에 넣게 해 줍니다.
+**Timeboxing** means giving each task a block of time: deciding *when* you will do it.
+Dayloom's side drawer collects the tasks you haven't scheduled yet, shows today's focus and progress, and lets you drag tasks onto your schedule.
 
-### 드로어 열고 닫기
+### Opening and closing the drawer
 
-- **데스크톱의 Dayloom 창**에서, **Daily · N-day · Weekly · Monthly** 탭일 때 오른쪽에 나타납니다.
-- 여는 방법: 키보드 `s` / 헤더 맨 오른쪽 **패널 아이콘 버튼** / 명령 팔레트 `Toggle Side Drawer`
-- 닫기: 같은 방법, 또는 드로어 머리글의 닫기 버튼
+- Available in the **Dayloom** view on **desktop**, in every tab (Daily, N-day, Weekly, Monthly, Board, List).
+  It is not shown in Dayloom Compact or on phones and tablets.
+- Open / close: press `s`, click the **panel icon** at the end of the header toolbar, or run `Toggle Side Drawer`.
+- The drawer's own close button sits at the top right.
 
-### 드로어 구성 (Tasks 패널)
+### Layout
 
 ```
-┌ Tasks ───────────────────── ⨯ ┐
-│ [+ Add an undated task (🔺 ⏫ for priority)] │  ← 빠른 캡처
-│ ▾ 🚨 Overdue Tasks   (3)  [Roll to today] │  ← 지난 할 일
-│   ☐ 보고서 제출        Oct 3  ⏫           │
-│ ▾ 📂 Undated Tasks   (5)                   │  ← 날짜 없는 할 일
-│   ☐ 책 정리하기                             │
-└──────────────────────────────┘
+┌ October 2026 ▾        ‹ Today ›    ⨯ ┐  ← mini calendar (hidden in Board view)
+│ Su  Mo  Tu  We  Th  Fr  Sa            │
+│ ...  6 weeks, dots under busy days ...│
+│ [ ☑ Tasks 8 │ ◔ Stats 62% ]           │  ← mode switcher
+├───────────────────────────────────────┤
+│ [+ Add an undated task (🔺 ⏫ …)]      │  ← quick capture
+│ ▾ 🎯 Today's Focus      (1)            │
+│ ▾ 🚨 Overdue Tasks      (3) [Roll to today] │
+│ ▾ 📂 Undated Tasks      (5)            │
+└───────────────────────────────────────┘
 ```
 
-- **🚨 Overdue Tasks**: 오늘보다 이전 날짜인데 아직 끝나지 않은 할 일. 중요도 → 오래된 날짜 → 제목 순 정렬, 놓친 날짜가 빨간색으로 표시됩니다.
-- **📂 Undated Tasks**: 날짜가 없는 할 일(보드의 *Undated* 칸과 같은 목록). 중요도 → 제목(가나다/ABC) 순 정렬.
-- 섹션이 **비어 있으면 자동으로 접히고**, 할 일이 생기면 자동으로 펼쳐집니다. 머리글을 클릭하면 직접 접고 펼 수 있습니다.
+### Mini calendar
 
-### ① 빠른 할 일 캡처 (1-line capture)
+- **Click a day** to show it in the planner. The days currently on screen are highlighted as a band; today is a filled circle.
+- **Ctrl/Cmd+click** a day to open its daily note.
+- **Dots** under a day: orange = open tasks, glowing red = a 🔺 Highest task, green = everything done, blue = calendar events.
+- **‹ ›** or the **mouse wheel** page through months; **Today** jumps back.
+- **Click the month name** to fold the calendar to a single week (‹ › then step by week). Dayloom remembers this.
+- **Drop a task on a day** to move it to that date (its time is kept).
+- In **Board** view the mini calendar is hidden, so the task lists get the full height.
 
-1. 드로어 맨 위 입력칸에 할 일을 적고 `Enter` 를 누릅니다.
-2. **Default Task File Path** 노트에 날짜 없는 할 일로 추가되고, "Task created in …" 알림이 뜹니다.
-3. 중요도 이모지를 함께 쓰면 중요도가 설정됩니다. 예: `⏫ 기획서 초안`
-4. 한글 입력 중 `Enter` 한 번으로도 정상 저장됩니다.
+### Tasks mode
 
-### ② 끌어다 놓아 일정 배치하기
+- **🎯 Today's Focus**: today's open **🔺 Highest** tasks, in the order of the day. **Drop any task here** to make it a focus task: it moves to today and becomes 🔺 Highest (an undated task gets `📅` today as its due date).
+- **🚨 Overdue Tasks**: unfinished tasks dated before today, sorted by priority → oldest date → title, with the missed date in red.
+- **📂 Undated Tasks**: tasks without a date (the same list as the Board's *Undated* column), sorted by priority → title.
+- Empty sections **fold automatically** and unfold when tasks arrive; click a header to fold it yourself.
+- **🔺 Highest** cards have a red edge and glow; **⏫ High** cards an amber one.
 
-| 끌어 놓는 곳 | 결과 |
+### Stats mode
+
+A summary of **the day the planner is showing** (pick another day in the mini calendar):
+
+- A **progress ring**: time completed vs. time planned (timed tasks, cancelled ones excluded). With no timed tasks, it shows tasks done vs. total.
+- **Planned / Completed / Remaining** time.
+- **Tasks done**, **focus tasks done**, **calendar event time**, and a **per-priority** breakdown.
+- A short encouraging note.
+
+Search doesn't change Stats: they always cover the whole day.
+
+### ① Quick capture
+
+1. Type a task in the box at the top of the drawer and press `Enter`.
+2. It is added to the **Default Task File Path** note as an undated task, with a "Task created in …" notice.
+3. Add a priority emoji to set its priority, e.g. `⏫ Draft the proposal`.
+4. Works with IME input (Korean, Japanese, Chinese): one `Enter` saves it.
+
+### ② Set a priority
+
+Click a card's priority badge (a faint flag appears on hover when it has none), or focus a card and press `p`.
+Pick from 🔺 Highest, ⏫ High, 🔼 Medium, ○ Normal, 🔽 Low and ⏬ Lowest (arrow keys and `Esc` work too). The emoji is written to your note.
+
+### ③ Drag tasks onto your schedule
+
+| Drop on | Result |
 | --- | --- |
-| **타임라인의 시간대** (일간/N일/주간) | 그 날짜 + 그 시각(15분 단위)으로 배치. 길이는 **Default Task Duration** |
-| **월간 달력의 날짜 칸** | 날짜만 지정 (종일 할 일) |
-| **주간/N일 보기의 요일 머리글** | **Fit It In**: 그날의 첫 빈 시간에 자동 배치 |
+| **A time slot** (Daily / N-day / Weekly) | That date and time (15-minute steps). Length: **Default Task Duration** |
+| **A day in the Monthly view or the mini calendar** | Date only (time kept; untimed tasks stay all-day) |
+| **A day header in Weekly / N-day** | **Fit It In**: the first free slot of that day |
+| **A Board column** | Kanban: that column's date (or done); Priority: that priority |
+| **🎯 Today's Focus** | Today + 🔺 Highest |
+| **The rest of the drawer** | Unscheduled (see ⑤) |
 
-- 끄는 동안 놓일 위치가 점선 미리보기와 시각(예: `14:30`)으로 표시됩니다.
-- 끄는 도중 `j` / `k` 를 누르면 다음/이전 날짜(주)로 넘어가면서 계속 끌 수 있습니다.
-- 끄는 도중 `Esc` 를 누르면 취소됩니다.
-- 모든 변경에는 알림창에 **Undo(되돌리기)** 버튼이 함께 뜹니다.
+- While dragging, a dashed preview with the time (e.g. `14:30`) shows where it will land.
+- Press `j` / `k` while dragging to move to the next / previous day (or week) without dropping.
+- Press `Esc` while dragging to cancel.
+- Every change shows a notice with an **Undo** button.
 
-### ③ 반대로: 일정에서 빼기 (Unschedule)
+### ④ Schedule several tasks back to back
 
-타임라인의 할 일 블록, 종일 줄의 할 일, 월간 달력의 할 일을 **드로어로 끌어다 놓으면** 날짜·시간이 지워지고 Undated로 돌아갑니다.
+1. **Ctrl/Cmd+click** drawer cards, or **drag a box** over empty space in the task list, to select several.
+2. Drag any selected card onto a timeline.
+3. They are placed **back to back** from the drop time, in drawer order. Each keeps its own length, or gets the Default Task Duration.
+4. Tasks that would start after midnight stay where they were. One Undo reverts the whole drop.
 
-- 시간, `⏳` 예정일, `📅` 마감일이 모두 지워집니다.
-- **데일리 노트 안의 할 일**은 날짜가 파일 이름에서 오기 때문에 날짜가 남습니다. (알림으로 안내됩니다)
-- 구글 일정은 드로어로 옮겨도 캘린더에 그대로 남습니다.
-- Overdue 카드는 실수 방지를 위해 **Undated 섹션 위에 놓을 때만** 날짜가 지워집니다.
+`Esc` clears the drawer selection.
 
-### ④ 지난 할 일 정리 (Overdue 분류)
+### ⑤ Unschedule
 
-- Overdue 카드에 마우스를 올리면 버튼이 나타납니다.
-  `Today`(오늘로) · `Tmrw`(내일로) · `+1 wk`(7일 뒤로) · `Undate`(날짜 지우기)
-  (날짜만 바뀌고 시간은 그대로 유지됩니다)
-- 섹션 머리글의 **Roll to today** 를 누르면 지난 할 일을 한꺼번에 오늘로 옮깁니다. 되돌리기도 한 번에 됩니다.
+Drag a timeline block, an all-day task, a Monthly task or a Board card **into the drawer** and its date and time are removed: it goes back to Undated.
 
-### ⑤ 키보드로 드로어 카드 다루기
+- The time, `⏳` scheduled date and `📅` due date are all removed.
+- **Tasks inside a daily note** keep their date, because it comes from the file name (a notice explains this).
+- Google events dragged into the drawer stay in the calendar.
+- To prevent accidents, Overdue and Focus cards are only unscheduled when dropped **on the Undated section.**
 
-- `Tab` 으로 카드에 초점을 옮긴 뒤:
-  - `Enter`: 편집 창 열기
-  - `f`: **Fit It In** — 오늘부터 14일 안에서 첫 빈 시간을 찾아 자동 배치
-- Fit It In은 **Timeline Start/End Hour** 를 근무 시간으로 보고, 오늘이면 지금 이후 시간만, 기존 할 일·구글 일정과 겹치지 않는 자리를 찾습니다. (자리가 없으면 "No free … slot" 알림)
+### ⑥ Triage overdue tasks
 
-### 추천 하루 루틴 ☀️
+- Hover an Overdue card for its buttons:
+  `Today` · `Tmrw` (tomorrow) · `+1 wk` · `Undate` (remove the date). Only the date changes; the time is kept.
+- **Roll to today** in the section header moves every overdue task to today, with a single Undo.
 
-1. 아침에 Dayloom을 열고 `s` 로 드로어를 엽니다.
-2. **Overdue** 를 `Roll to today` 또는 `Tmrw` / `Undate` 로 정리합니다.
-3. 떠오르는 일은 모두 **빠른 캡처**에 던져 넣습니다.
-4. 오늘 할 일을 **Undated** 에서 타임라인으로 끌어 시간 블록을 만듭니다.
-5. 블록 아래 손잡이를 끌어 예상 시간에 맞게 늘이거나 줄입니다.
+### ⑦ Keyboard on drawer cards
+
+Press `Tab` to focus a card, then:
+
+| Key | Action |
+| --- | --- |
+| `Enter` | Edit the task |
+| `f` | **Fit It In**: the first free slot within the next 14 days |
+| `p` | Set the priority |
+
+Fit It In treats **Timeline Start / End Hour** as working hours, only looks after the current time for today, and avoids existing tasks and Google events. If nothing fits, you get a "No free … slot" notice.
+
+### A suggested daily routine ☀️
+
+1. Open Dayloom in the morning and press `s` for the drawer.
+2. Clear **Overdue** with `Roll to today`, `Tmrw` or `Undate`.
+3. Pick today's most important task or two and drop them on **🎯 Today's Focus**.
+4. Throw anything that comes to mind into **quick capture**.
+5. Select today's tasks in **Undated** and drop them on the timeline: they line up back to back.
+6. Drag a block's bottom handle to fit the time you expect it to take, and check **Stats** at the end of the day.
 
 ---
 
-## 5. 타임라인 뷰 가이드 & 단축키 총정리
+## 5. Views, search, selection & shortcuts
 
-### 보기(뷰) 종류
+### Views
 
-| 보기 (탭 이름) | 단축키 | 특징 |
+| View (tab) | Key | Highlights |
 | --- | --- | --- |
-| **Daily Timeline** | `d` | 하루 시간표. 현재 시각 선, 진행 중인 할 일 진행률 바, 위쪽 고정 "All Day" 줄 |
-| **N-day View** | `x` | 여러 날을 나란히 (설정한 2~14일, 탭 안 숫자로 즉시 변경). 휴대폰은 2일 |
-| **Weekly View** | `w` | 일주일 시간표. 요일 머리글 클릭 시 데일리 노트 열기 |
-| **Monthly Calendar** | `m` | 한 달 달력. 날짜 숫자 클릭 시 데일리 노트, `Wk` 칸 클릭 시 위클리 노트, 빈 칸 더블클릭 시 새 할 일 |
-| **Board** | `b` | 칸반 보드. *Kanban* 모드(Undated · Overdue · Today · Tomorrow · Future · Completed)와 *Priority* 모드(Highest 🔺 ~ Lowest ⏬) |
-| **List View** | `l` | 월 단위 목록 + 검색창 |
+| **Daily Timeline** | `d` | One day. Current-time line, progress bar for the task in progress, pinned "All Day" row |
+| **N-day View** | `x` | Several days side by side (2–14, change it right in the tab). 2 days on phones |
+| **Weekly View** | `w` | One week. **Click a day header** to open that day in Daily |
+| **Monthly Calendar** | `m` | A month grid. **Click a date** (or a cell's empty space) to open that day in Daily; **click a week number** to open that week in Weekly |
+| **Board** | `b` | Kanban. *Kanban* mode (Undated · Overdue · Today · Tomorrow · Future · Completed) and *Priority* mode (Highest 🔺 … Lowest ⏬) |
+| **List View** | `l` | The month as an agenda. While searching, every match from every date |
 
-- 헤더 왼쪽의 **날짜 알약 버튼**(📅 2026-10-07 (Wk 41))을 누르면 해당 데일리/위클리 노트가 열립니다.
-- **보드**에서 카드를 다른 칸으로 끌면 날짜가 바뀝니다 (Today 칸 → 오늘, Tomorrow → 내일, Future → 3일 뒤, Overdue → 어제, Undated → 날짜 삭제, Completed → 완료 처리). *Priority* 모드에서는 중요도가 바뀝니다.
+- The **date pill** at the left of the header (📅 2026-10-07 (Wk 41)) opens the matching daily or weekly note.
+- On the **Board**, dragging cards to another column changes their date (Today → today, Tomorrow → tomorrow, Future → 3 days ahead, Overdue → yesterday, Undated → no date, Completed → done). In *Priority* mode it changes their priority. Select several cards to move them together.
 
-### 헤더 버튼 (데스크톱)
+### Header (desktop)
 
-| 버튼 | 기능 |
+```
+[📅 date]                [‹ Today ›]  [🔍 ↻ 🔍+ ? ▣]  [+]
+```
+
+| Control | What it does |
 | --- | --- |
-| 📅 날짜 알약 | 데일리/위클리 노트 열기 |
-| 🔍 | 타임라인 확대/축소 (Timeline Zoom) |
-| `<` `📅 Today` `>` | 이전 / 오늘 / 다음 |
-| 🔄 Sync | 구글 캘린더 동기화 (오른쪽 클릭: 할 일 동기화 창) |
-| ➕ | 새 할 일 또는 새 구글 일정 (Add Local Task / Add Appointment) |
-| ? | 단축키 목록 (설정에서 숨김 가능) |
-| 패널 아이콘 | 사이드 드로어 열기/닫기 |
+| 📅 Date pill | Open the daily / weekly note |
+| ‹ Today › | Previous / today / next |
+| 🔍 Search | Search tasks and events (`/`) |
+| ↻ Sync | Sync with Google Calendar (right-click: task sync dialog). Shown when Google Calendar is enabled |
+| 🔍+ Zoom | Timeline zoom (hour height). Daily / N-day / Weekly |
+| ? | Keyboard shortcuts (can be hidden in Settings) |
+| ▣ Panel | Open / close the side drawer |
+| **+** | New task, or a new Google event (*Add Local Task* / *Add Appointment*) |
 
-### ⌨️ 단축키 총정리
+In Board view, a **Kanban / Priority** switch joins the header.
 
-> Dayloom 화면을 한 번 클릭해 활성화한 상태에서 동작합니다. 입력칸에 글자를 치는 중에는 동작하지 않으며, `Ctrl`/`Cmd`/`Alt` 조합은 Obsidian에 양보합니다 (단, `Ctrl/Cmd+R` 은 예외).
+### 🔍 Search
 
-| 키 | 기능 |
+1. Press `/` or click the search icon. The header row steps aside and a search field spans its full width.
+2. Type: the current view filters as you type. Search looks at task text (including `#tags`), note paths, and event titles, locations and calendar names. Every word must match. A counter shows the matches.
+3. Press **Enter** to switch to **List View**, which then shows **every match on every date.**
+4. Press **Esc** or click **×** to close search and show everything again.
+
+Undated tasks have no place in List View; while searching, matching undated tasks appear in the drawer's Undated section.
+
+### ✅ Selection and deleting
+
+| To | Do this |
 | --- | --- |
-| `j` | 다음 날 / 다음 기간 (휴대폰·Compact 보드: 다음 칸) |
-| `k` | 이전 날 / 이전 기간 (휴대폰·Compact 보드: 이전 칸) |
-| `t` | 오늘로 이동 |
-| `d` / `x` / `w` / `m` / `b` / `l` | 일간 / N일 / 주간 / 월간 / 보드 / 리스트 |
-| `s` | 사이드 드로어 열기/닫기 (데스크톱) |
-| `?` 또는 `h` | 단축키 목록 열기/닫기 |
-| `F5` 또는 `Ctrl+R` (`Cmd+R`) | 동기화 (할 일 다시 읽기 + 구글 캘린더 새로고침) |
-| `Esc` | 끌기 취소 / 선택 영역 취소 / 선택 해제 |
-| `f` (드로어 카드에 초점) | Fit It In: 첫 빈 시간에 자동 배치 |
-| `Enter` (드로어 카드에 초점) | 할 일 편집 |
-| `j` / `k` (끄는 도중) | 놓지 않은 채 날짜(주) 넘기기 |
+| Select one item more (or less) | **Ctrl/Cmd+click** it, in any view (the editor doesn't open) |
+| Select several at once | **Drag a box** over empty space: on the timeline, the all-day row, the Board, or the drawer's task list |
+| Add a box to the selection | Hold `Ctrl`/`Cmd`/`Shift` while dragging the box |
+| Clear the selection | Click empty space, press `Esc`, or click × on the selection bar |
+| Move several together | Drag any selected item: the others follow (timeline blocks keep their spacing; drawer cards line up back to back) |
+| Delete | Press `Delete` or `Backspace`, or click **Delete** on the "N selected" bar |
 
-### 🖱️ 마우스 조작법
+- A selection belongs to **one area**: the timeline / Board / Monthly grid, the all-day row, or the drawer. Selecting in another area starts a new selection.
+- **Deleting** asks for confirmation first (`Enter` deletes, `Esc` cancels). Task lines are removed from their notes, with **one Undo** for the whole batch. Selected Google Calendar events are deleted from the calendar, as are the calendar copies of deleted synced tasks.
+- ⚠️ **Deleted Google Calendar events cannot be restored** with Undo.
+- The task edit dialog also has a **Delete** button.
 
-| 하고 싶은 일 | 방법 |
+### ⌨️ Keyboard shortcuts
+
+> Shortcuts work once the Dayloom view is active (click it once). They never fire while you type in a text field, quick capture, search or the editor. `Ctrl`/`Cmd`/`Alt` combinations are left to Obsidian, except `Ctrl/Cmd+R`.
+
+| Key | Action |
 | --- | --- |
-| 할 일 편집 | 블록 클릭 → 편집 창 |
-| 완료 체크 | 블록 왼쪽 체크박스 클릭 (`[ ]` → `[/]` → `[x]` → `[-]` 순서로 바뀜) |
-| 노트에서 원문 보기 | 블록의 `↗` 클릭 |
-| 시간 옮기기 | 블록을 끌어서 다른 시각/요일에 놓기 (15분 단위) |
-| 길이 조절 (리사이징) | 블록 **위/아래 가장자리 손잡이**를 위아래로 끌기 |
-| 새 할 일 만들기 | 빈 시간대를 **더블클릭** → 제목 입력 → `Enter` (`Esc` 취소). Default Task File에 저장 |
-| 메뉴로 만들기 | 빈 시간대 **오른쪽 클릭** → `Add Task at HH:MM` / `Add Appointment at HH:MM`(구글) |
-| 여러 개 한 번에 선택 (마키 선택) | 빈 공간에서 **끌어서 사각형**을 그리기 → 닿은 블록이 모두 선택 |
-| 선택에 추가 | `Ctrl`/`Cmd`/`Shift` 누른 채 사각형 그리기 |
-| 선택 해제 | 빈 공간 한 번 클릭, 또는 `Esc` |
-| 여러 개 함께 옮기기 | 선택한 블록 중 하나를 끌면 모두 같은 간격으로 함께 이동 |
+| `j` | Next day / period (phones and compact Board: next column) |
+| `k` | Previous day / period (phones and compact Board: previous column) |
+| `t` | Go to today |
+| `d` / `x` / `w` / `m` / `b` / `l` | Daily / N-day / Weekly / Monthly / Board / List |
+| `s` | Open / close the side drawer (desktop) |
+| `/` | Search tasks and events |
+| `?` or `h` | Show / hide the shortcut list |
+| `F5` or `Ctrl+R` (`Cmd+R`) | Sync (re-read tasks + refresh Google Calendar) |
+| `Delete` / `Backspace` | Delete the selected items |
+| `Esc` | Cancel a drag or box selection → clear the selection → close the search |
+| `Ctrl/Cmd + Click` | Add / remove an item from the selection |
+| `Ctrl/Cmd + Drag` | Box-select, adding to the selection |
+| `Enter` / `f` / `p` (drawer card focused) | Edit / Fit It In / set priority |
+| `j` / `k` (while dragging) | Page dates without dropping |
 
-> 🔒 **완료(`[x]`)·취소(`[-]`)된 할 일은 잠겨 있어** 끌거나 길이를 바꿀 수 없습니다. (클릭해서 편집은 가능)
-> 블록 폭이 좁으면 장소·설명 같은 부가 정보는 숨기고 제목을 최대 3줄까지 보여 줍니다.
+### 🖱️ Mouse
 
-### 📱 휴대폰에서
+| To | Do this |
+| --- | --- |
+| Edit a task | Click its block → edit dialog |
+| Change its status | Click the checkbox (`[ ]` → `[/]` → `[x]` → `[-]`) |
+| See it in its note | Click the block's `↗` |
+| Move it | Drag the block to another time or day (15-minute steps) |
+| Resize it | Drag the **top / bottom edge handle** |
+| Create a task | **Double-click** an empty time slot → type a title → `Enter` (`Esc` cancels). Saved to the Default Task File |
+| Create from a menu | **Right-click** an empty slot → `Add Task at HH:MM` / `Add Appointment at HH:MM` (Google) |
 
-- 아래쪽 탭바: **Daily · 2-Day View · Monthly · Board · List**
-- 좌우로 **스와이프**하면 날짜(보드는 칸)가 바뀝니다.
-- 블록을 **길게 누르면(약 0.35초)** 들어 올려 옮길 수 있습니다.
-- 헤더의 `📅` 는 오늘로 이동입니다.
+> 🔒 **Done (`[x]`) and cancelled (`[-]`) tasks are locked**: they can't be dragged or resized (you can still click to edit them).
+> When a block is narrow, location and description are hidden and the title gets up to 3 lines.
 
-### 상태 표시줄
+### 📱 On phones
 
-Obsidian 아래쪽 상태 표시줄에 지금 하는 일(`📅 [Progress: …] … remaining`과 진행률)이나 다음 일(`📅 [Upcoming: …] … until start`)이 표시됩니다.
+- Bottom tabs: **Daily · 2-Day View · Monthly · Board · List**
+- A week strip of date pills under the header in Daily and 2-Day View: tap a day to show it.
+- **Swipe** left / right to change the date (on the Board, the column).
+- **Long-press** a block (about 0.35 s) to pick it up and move it.
+- The calendar icon in the header jumps to today.
+
+### Status bar
+
+Obsidian's status bar shows the task in progress (`📅 [Progress: …] … remaining` with a progress bar) or the next one (`📅 [Upcoming: …] … until start`).
 
 ---
 
-## 6. 마크다운 태스크 문법 & 인라인 코드블록
+## 6. Task syntax & inline code blocks
 
-### 기본 형식
+### Basic format
 
 ```markdown
-- [ ] 할 일 제목 ⏰09:00-10:30 ⏫ 🔁 every week ⏳ 2026-10-07 📅 2026-10-10
+- [ ] Task title ⏰09:00-10:30 ⏫ 🔁 every week ⏳ 2026-10-07 📅 2026-10-10
 ```
 
-| 요소 | 문법 | 설명 |
+| Part | Syntax | Meaning |
 | --- | --- | --- |
-| 상태 | `[ ]` `[/]` `[x]` `[-]` | 할 일 / 진행 중 / 완료 / 취소 |
-| 시간 | `⏰09:00-10:30` | 시작-끝. 끝을 생략하면(`⏰09:00`) 30분짜리로 표시 |
-| 중요도 | 🔺 ⏫ 🔼 🔽 ⏬ | 가장 높음 / 높음 / 보통 이상 / 낮음 / 가장 낮음 (없으면 보통) |
-| 예정일 | `⏳ YYYY-MM-DD` | 날짜를 정할 때 Dayloom이 쓰는 기본 표시 |
-| 마감일 | `📅 YYYY-MM-DD` | 예정일이 없으면 이 날짜로 표시 |
-| 시작일 | `🛫 YYYY-MM-DD` | Tasks 플러그인 호환 |
-| 완료일 / 취소일 | `✅ YYYY-MM-DD` / `❌ YYYY-MM-DD` | 체크하면 자동으로 붙음 |
-| 반복 | `🔁 every day` 등 | 완료 체크 시 다음 반복 할 일이 새 줄로 자동 생성 |
-| 구글 연결 | `[gcalId:: …]` | 동기화 시 자동으로 붙음 (직접 쓰지 마세요) |
+| Status | `[ ]` `[/]` `[x]` `[-]` | To do / in progress / done / cancelled |
+| Time | `⏰09:00-10:30` | Start–end. Without an end (`⏰09:00`) it shows as 30 minutes |
+| Priority | 🔺 ⏫ 🔼 🔽 ⏬ | Highest / high / medium / low / lowest (none = normal) |
+| Scheduled | `⏳ YYYY-MM-DD` | The date Dayloom writes when it schedules a task |
+| Due | `📅 YYYY-MM-DD` | Used when there is no scheduled date |
+| Start | `🛫 YYYY-MM-DD` | Obsidian Tasks compatibility |
+| Done / cancelled | `✅ YYYY-MM-DD` / `❌ YYYY-MM-DD` | Added automatically when you check a task |
+| Recurrence | `🔁 every day`, … | Checking it off creates the next occurrence on a new line |
+| Google link | `[gcalId:: …]` | Added by sync (don't write it yourself) |
 
-#### 시간을 적는 다른 방법들
+#### Other ways to write a time
 
-아래 형식도 모두 시간으로 인식됩니다.
+These are recognised as times too:
 
 ```markdown
-- [ ] 09:00 - 10:00 회의          ← 맨 앞에 시간
-- [ ] 회의 [09:00-10:00]          ← 대괄호
-- [ ] 회의 [startTime:: 09:00 - 10:00]
+- [ ] 09:00 - 10:00 Meeting          ← time first
+- [ ] Meeting [09:00-10:00]          ← in brackets
+- [ ] Meeting [startTime:: 09:00 - 10:00]
 ```
 
-#### 날짜 결정 순서
+#### Which date counts
 
-`⏳ 예정일` → `📅 마감일` → **노트 파일 이름의 날짜**(데일리 노트) 순입니다.
-예를 들어 `Daily/2026-10-07.md` 에 쓴 `- [ ] 운동 ⏰07:00-08:00` 은 10월 7일 07시 블록이 됩니다.
+`⏳ scheduled` → `📅 due` → **the date in the note's file name** (daily notes).
+For example, `- [ ] Workout ⏰07:00-08:00` written in `Daily/2026-10-07.md` becomes a 07:00 block on October 7.
 
-#### 반복 규칙
+#### Recurrence rules
 
-`every day`(`daily`), `every week`(`weekly`), `every month`(`monthly`), `every year`(`yearly`), `every weekday`(평일), `every 3 days` 처럼 `every N day/week/month/year`.
+`every day` (`daily`), `every week` (`weekly`), `every month` (`monthly`), `every year` (`yearly`), `every weekday`, and `every N day/week/month/year` (e.g. `every 3 days`).
 
-### 인라인 코드블록 ```` ```dayloom ````
+### Inline code blocks: ```` ```dayloom ````
 
-노트 안 어디에든 Dayloom 화면을 넣을 수 있습니다. 명령 팔레트의 **Insert Inline View (dayloom block)** 로 바로 삽입할 수 있습니다.
+Put a Dayloom view anywhere in a note. The command **Insert Inline View (dayloom block)** inserts one for you.
 
 ````markdown
 ```dayloom
@@ -494,47 +584,48 @@ height: 500px
 ```
 ````
 
-> 예전 이름 ```` ```dayplanner ```` 와 ```` ```dayplanner-pro ```` 도 그대로 동작합니다.
+> The older names ```` ```dayplanner ```` and ```` ```dayplanner-pro ```` still work.
 
-| 옵션 | 값 | 설명 |
+| Option | Values | Meaning |
 | --- | --- | --- |
-| `type` | `daily` · `multiDay` · `weekly` · `monthly` · `board` · `list` | 보기 종류. 블록 안의 탭을 누르면 자동으로 바뀌어 저장 |
-| `date` | `YYYY-MM-DD` 또는 `today` | 보여 줄 날짜 |
-| `height` | `500px`, `80vh` 등 (숫자만 쓰면 px) | 블록 높이. 블록 아래 모서리를 끌어 조절하면 자동 저장 |
-| `hourHeight` | 숫자 | 이 블록만의 1시간 높이 |
-| `showFilters` | `true` | 필터 패널을 펼친 채로 시작 |
-| `collapsedColumns` | `[undated, completed]` | 보드에서 접어 둘 칸 |
-| `filters` | (필터 패널이 자동 작성) | 아래 필터 참고 |
+| `type` | `daily` · `multiDay` · `weekly` · `monthly` · `board` · `list` | The view. Clicking a tab inside the block updates it for you |
+| `date` | `YYYY-MM-DD` or `today` | The date to show |
+| `height` | `500px`, `80vh`, … (a bare number means px) | Block height. Dragging the block's bottom edge saves the new height |
+| `hourHeight` | number | Hour height for this block only |
+| `showFilters` | `true` | Start with the filter panel open |
+| `collapsedColumns` | `[undated, completed]` | Board columns to keep folded |
+| `filters` | (written by the filter panel) | See filters below |
 
-- **데일리 노트 안**에 넣으면 `type`·`date` 를 비워 둬도 그날의 일간 보기가 됩니다.
-- **위클리 노트 안**에 넣으면 그 주의 주간 보기가 됩니다.
+- Inside a **daily note**, a block with no `type` / `date` shows that day.
+- Inside a **weekly note**, it shows that week.
+- In a block, day headers, dates and week numbers open the daily / weekly **notes** (a block has no tabs to switch to), and List View keeps its own agenda search box.
 
-### 🔍 인라인 블록 필터
+### 🔍 Inline block filters
 
-블록 헤더의 **🔍 Filter** 를 누르면 한 줄짜리 필터 바가 열립니다. 적용된 필터 수는 버튼에 `🔍 Filter · 2` 처럼 표시됩니다.
+Click **🔍 Filter** in the block's header to open a one-line filter bar. The button shows how many filters apply, e.g. `🔍 Filter · 2`.
 
 ```
 [Match all ▾] [📁 Folder in Work ×] [# Tag contains #urgent ×] [+ Filter]
 ```
 
-1. **+ Filter** → 필터 종류 선택: `Folder` · `File` · `Tag` · `Status` · `Priority` · `Date` · `Text` · `Item type`
-2. 아래에 편집 줄이 열리면 조건과 값을 고르고 **Done** (또는 `Enter`)
-3. 칩을 클릭하면 다시 편집, `×` 로 삭제
-4. 맨 앞 **Match all / any / none** 으로 "모두 만족 / 하나라도 / 하나도 아님"을 고릅니다.
-5. 더 복잡한 조건은 **+ Filter → Group (match any of…)** 로 괄호 묶음을 만듭니다.
+1. **+ Filter** → choose a filter: `Folder` · `File` · `Tag` · `Status` · `Priority` · `Date` · `Text` · `Item type`
+2. In the editor row that opens, pick a condition and value, then **Done** (or `Enter`).
+3. Click a chip to edit it again, `×` to remove it.
+4. **Match all / any / none** at the front sets how the filters combine.
+5. For more complex conditions, **+ Filter → Group (match any of…)** adds a bracketed group.
 
-| 필터 | 조건 예시 |
+| Filter | Conditions |
 | --- | --- |
-| Folder | `in` / `not in` + 폴더 (자동완성) |
-| File | `matches` / `does not match` + 노트 이름 |
-| Tag | `contains` / `is` … + `urgent` (`#` 생략 가능, 하위 태그 포함) |
+| Folder | `in` / `not in` + folder (with suggestions) |
+| File | `matches` / `does not match` + note name |
+| Tag | `contains` / `is` … + `urgent` (the `#` is optional; subtags included) |
 | Status | `is` / `is not` + To do · In progress · Completed · Cancelled |
-| Priority | `is` / `above` / `below` + 중요도 |
-| Date | `is` / `before` / `after` + Today · Tomorrow · This week · This month · 특정 날짜, 또는 `is empty` / `is set` |
-| Text | `contains` / `starts with` … + 글자 |
+| Priority | `is` / `above` / `below` + priority |
+| Date | `is` / `before` / `after` + Today · Tomorrow · This week · This month · a specific date, or `is empty` / `is set` |
+| Text | `contains` / `starts with` … + text |
 | Item type | Task / Google Calendar appointment |
 
-필터는 패널을 닫을 때 코드블록 안에 아래와 같은 YAML로 저장됩니다. (직접 고쳐도 됩니다)
+When the panel closes, the filters are saved in the code block as YAML (you can edit it by hand):
 
 ```yaml
 filters:
@@ -551,83 +642,90 @@ filters:
       value: "completed"
 ```
 
-> 💡 팁: 프로젝트 노트에 `Folder in Projects/알파` 필터를 건 보드 블록을 넣으면 그 프로젝트 전용 칸반이 됩니다.
+> 💡 Tip: put a Board block filtered on `Folder in Projects/Alpha` in a project note and you have a Kanban board for that project.
 
 ---
 
-## 7. 자주 묻는 질문(FAQ) & 문제 해결
+## 7. FAQ & troubleshooting
 
-### Q1. 할 일이 플래너에 안 보여요.
+### Q1. My tasks don't show up in the planner.
 
-- 줄이 `- [ ] ` 로 시작하는지 확인하세요. (`*` 목록이나 번호 목록은 인식하지 않습니다)
-- 타임라인에는 **날짜가 있는** 할 일만 나옵니다. 날짜가 없으면 사이드 드로어의 **Undated** 나 보드의 **Undated** 칸을 보세요.
-- 설정 → General → **Excluded Files & Folders** 에서 그 노트가 제외되지 않았는지 확인하세요.
-- 동기화 도구가 만든 충돌 파일(`.sync-conflict-` 가 이름에 들어간 파일)은 일부러 읽지 않습니다.
-- `F5` 로 볼트를 다시 읽어 보세요.
+- Check that the line starts with `- [ ] ` (`*` bullets and numbered lists are not recognised).
+- The timeline only shows tasks **with a date.** Undated tasks are in the drawer's **Undated** section and the Board's **Undated** column.
+- Check that the note isn't excluded under Settings → General → **Excluded Files & Folders**.
+- Conflict copies made by sync tools (file names containing `.sync-conflict-`) are deliberately ignored.
+- Is a search active? Press `Esc` to clear it.
+- Press `F5` to re-read the vault.
 
-### Q2. "❌ Google OAuth Token 갱신 실패: invalid_grant" 알림이 떠요.
+### Q2. I get "invalid_grant" when Dayloom refreshes the Google token.
 
-Refresh Token이 만료되었거나 취소된 상태입니다.
+The refresh token has expired or been revoked.
 
-- 구글 클라우드의 동의 화면이 **테스트(Testing)** 상태이면 토큰이 **7일 후 만료**됩니다. → 앱을 **프로덕션으로 게시**한 뒤 [2장 5단계](#5단계-refresh-token-발급받기-oauth-20-playground)로 새 토큰을 받아 넣으세요.
-- 구글 계정 비밀번호를 바꿨거나, 구글 계정 보안 설정에서 앱 권한을 해제해도 만료됩니다.
+- While the consent screen is in **Testing**, tokens **expire after 7 days.** Publish the app **to production**, then get a new token as in [Step 5](#step-5-get-a-refresh-token-oauth-20-playground).
+- Changing your Google password, or removing the app's access in your Google account's security settings, also revokes it.
 
-### Q3. "unauthorized_client" / "invalid_client" 오류가 나요.
+### Q3. I get "unauthorized_client" or "invalid_client".
 
-- Client ID·Secret 앞뒤에 공백이나 줄바꿈이 섞이지 않았는지 확인하세요.
-- Refresh Token은 **같은 Client ID/Secret으로 발급한 것**이어야 합니다. Playground에서 *Use your own OAuth credentials* 를 켜지 않고 발급하면 동작하지 않습니다.
+- Make sure the client ID and secret have no spaces or line breaks around them.
+- The refresh token must come from **the same client ID and secret.** A token issued in the Playground without *Use your own OAuth credentials* won't work.
 
-### Q4. 구글 일정이 안 보이거나 일부만 보여요.
+### Q4. Google events are missing, or only some appear.
 
-- 설정 → ☁️ Google Calendar → **Google Calendars 📅** 목록에 해당 캘린더가 있고 **체크되어 있는지** 확인하세요.
-- **Task Sync Google Calendar** 로 고른 캘린더의 일정은 중복 방지를 위해 타임라인에 일정으로 표시되지 않습니다. 회의가 있는 캘린더를 동기화 대상으로 고르지 마세요.
-- 헤더 🔄 Sync 또는 `F5` 로 새로고침해 보세요.
+- Check that the calendar is listed and **ticked** under Settings → ☁️ Google Calendar → **Google Calendars 📅**.
+- Events in the **Task Sync Google Calendar** are not shown as events (to avoid duplicates). Don't pick a calendar with meetings as the sync calendar.
+- Click the sync button or press `F5` to refresh.
 
-### Q5. 노트에서 시간을 고쳤는데 구글 캘린더에 반영되지 않아요.
+### Q5. I changed a time in my note, but Google Calendar didn't update.
 
-노트 글자를 직접 고친 경우는 자동으로 보내지 않습니다. **🔄 Sync**(또는 `F5`)를 한 번 눌러 주세요.
-Dayloom 화면 안에서 끌기·편집한 할 일은 바로 반영됩니다.
+Edits typed directly into notes aren't sent automatically. Press **sync** (or `F5`) once.
+Tasks dragged or edited inside Dayloom are sent right away.
 
-### Q6. 할 일 끝에 `[gcalId:: …]` 가 붙어서 지저분해요.
+### Q6. `[gcalId:: …]` at the end of my tasks looks messy.
 
-동기화 연결 정보라 지우면 안 됩니다. 설정 → 📱 Display → **Hide Inline Metadata Fields** 를 켜면 화면에서만 숨겨집니다.
+It links the task to its event, so don't delete it. Turn on Settings → 📱 View/Display → **Hide Inline Metadata Fields** to hide it on screen only.
 
-### Q7. 알림이 안 와요.
+### Q7. I don't get reminders.
 
-- 설정 → 🔔 Reminders → **Reminder Type** 이 `Off` 가 아닌지 확인하세요.
-- 할 일에 **오늘 날짜**와 **시작 시간(`⏰HH:mm`)** 이 있어야 합니다.
-- 시스템 알림은 운영체제의 알림 권한이 필요합니다. 거부했다면 OS 설정에서 Obsidian 알림을 허용하세요. (권한이 없으면 앱 안 알림으로 대신 표시됩니다)
-- 알림음이 안 들리면 🔊 버튼으로 미리 들어 보세요. 휴대폰에서는 화면을 한 번 눌러야 소리가 허용되기도 합니다.
+- Check that Settings → 🔔 Notifications → **Reminder Type** isn't `Off`.
+- The task needs **today's date** and a **start time (`⏰HH:mm`)**.
+- System notifications need your OS's permission. If you denied it, allow Obsidian's notifications in your OS settings (without permission, Dayloom shows in-app notices instead).
+- If you hear no chime, try the 🔊 test button. On phones, you may need to tap the screen once before sound is allowed.
 
-### Q8. 단축키가 안 먹어요.
+### Q8. Shortcuts don't work.
 
-- Dayloom 화면을 한 번 클릭해서 **활성 창**으로 만드세요.
-- 입력칸(빠른 캡처, 검색창 등)에 커서가 있으면 단축키 대신 글자가 입력됩니다.
-- `?` 를 다시 누르면 열려 있던 단축키 창이 닫힙니다.
+- Click the Dayloom view once to make it the **active view.**
+- While the cursor is in a text field (quick capture, search, the editor…), keys type text instead. That's intentional.
+- Pressing `?` again closes the open shortcut list.
 
-### Q9. 블록이 끌리지 않아요.
+### Q9. A block won't move.
 
-- 완료·취소된 할 일은 잠겨 있습니다. 체크를 풀면 다시 옮길 수 있습니다.
-- 휴대폰에서는 블록을 **길게 눌러야** 들어 올려집니다.
+- Done and cancelled tasks are locked. Uncheck one to move it again.
+- On phones, **long-press** a block to pick it up.
 
-### Q10. 사이드 드로어가 안 보여요.
+### Q10. I can't see the side drawer.
 
-드로어는 **데스크톱의 Dayloom 창**에서 **Daily · N-day · Weekly · Monthly** 탭일 때만 사용할 수 있습니다. `s` 를 눌러 보세요. (Board/List 탭, Dayloom Compact, 휴대폰·태블릿에서는 표시되지 않습니다)
+The drawer is available in the **Dayloom view on desktop**, in every tab. Press `s`, or click the panel icon in the header toolbar.
+It is not shown in Dayloom Compact or on phones and tablets.
 
-### Q11. 빠른 캡처로 만든 할 일이 Undated에 안 나타나요.
+### Q11. A task from quick capture doesn't appear under Undated.
 
-**Default Task File Path** 노트 이름에 날짜가 들어 있으면(예: `2026-10-07.md`) 그 날짜가 할 일에 붙습니다. 날짜 없는 이름(예: `Inbox.md`)으로 바꾸세요.
+If the **Default Task File Path** note has a date in its name (e.g. `2026-10-07.md`), its tasks get that date. Use a name without a date (e.g. `Inbox.md`).
 
-### Q12. 실수로 옮겼어요. 되돌릴 수 있나요?
+### Q12. I moved or deleted something by mistake. Can I undo it?
 
-네. 변경할 때마다 화면 오른쪽 위 알림에 **Undo** 버튼이 몇 초간 표시됩니다. 여러 개를 한꺼번에 옮긴 경우도 한 번의 Undo로 모두 되돌아갑니다.
+Yes. Every change shows an **Undo** button in a notice at the top right for a few seconds. Moving or deleting several tasks at once is undone in one step.
+The exception: **deleted Google Calendar events** can't be restored from Dayloom.
 
-### Q13. 내 구글 인증 정보는 어디에 저장되나요? 안전한가요?
+### Q13. Where are my Google credentials stored? Is it safe?
 
-Client Secret과 Refresh Token은 볼트 안 `.obsidian/plugins/obsidian-day-planner-pro/data.json` 에 저장됩니다.
-볼트를 공개 저장소(예: 공개 GitHub)에 올린다면 이 파일을 반드시 제외하세요.
-권한을 끊고 싶다면 구글 계정 → 보안 → **타사 앱 및 서비스 연결**에서 해당 앱의 액세스를 삭제하면 됩니다.
+The client secret and refresh token are stored in your vault at `.obsidian/plugins/obsidian-day-planner-pro/data.json`.
+If you publish your vault (e.g. a public GitHub repository), make sure to exclude that file.
+To cut off access, remove the app under your Google account → Security → **Third-party apps & services**.
+
+### Q14. Dayloom shows the wrong language.
+
+Settings → General → **Language / 언어**. `Auto` follows Obsidian's own language setting; pick a language to override it.
 
 ---
 
-즐거운 타임박싱 되세요! ⏳🧵
+Happy timeboxing! ⏳🧵
