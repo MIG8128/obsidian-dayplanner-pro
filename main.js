@@ -4391,6 +4391,66 @@ body.dp-pointer-dragging * {
     box-shadow: 0 0 10px rgba(255, 159, 28, 0.55);
 }
 
+
+/* -------------------------------------------------------------
+   Side drawer 4.4.2: box selection over the task list, keyboard focus, Board header, High next to Highest
+   ------------------------------------------------------------- */
+.dp-drawer-body {
+    position: relative; /* the selection box is laid out in the list's scrolled content */
+}
+.dp-side-drawer:focus {
+    outline: none; /* focused only so Esc reaches it, never shown */
+}
+.dp-drawer-plain-title {
+    flex: 1;
+    min-width: 0;
+    padding: 0 6px;
+    overflow: hidden;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-semibold, 600);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+/* \u23EB High: the amber sibling of the \u{1F53A} Highest (MIT) card, one step quieter */
+.dp-drawer-card.is-high {
+    overflow: hidden;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--color-orange) 9%, var(--background-primary)), var(--background-primary) 65%);
+    border-color: color-mix(in srgb, var(--color-orange) 38%, var(--background-modifier-border));
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--color-orange) 12%, transparent);
+}
+.dp-drawer-card.is-high::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--color-orange), var(--color-yellow));
+}
+.dp-drawer-card.is-high:hover {
+    border-color: var(--color-orange);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--color-orange) 22%, transparent);
+}
+.dp-drawer-card.is-high .dp-drawer-card-title {
+    font-weight: var(--font-medium, 500);
+}
+.dp-drawer-card.is-high .dp-drawer-card-actions {
+    background: linear-gradient(to right, transparent, var(--background-primary) 12px);
+}
+/* Their priority badge becomes a tinted pill */
+.dp-side-drawer .dp-drawer-card.is-mit button.dp-priority-trigger,
+.dp-side-drawer .dp-drawer-card.is-high button.dp-priority-trigger {
+    border-radius: 999px;
+}
+.dp-side-drawer .dp-drawer-card.is-mit button.dp-priority-trigger {
+    background-color: color-mix(in srgb, var(--color-red) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-red) 30%, transparent);
+}
+.dp-side-drawer .dp-drawer-card.is-high button.dp-priority-trigger {
+    background-color: color-mix(in srgb, var(--color-orange) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-orange) 30%, transparent);
+}
+
 `;
 
 // utils.ts
@@ -5998,6 +6058,7 @@ var en = {
   "drawer.card.moveNextWeek": "Move to next week ({date})",
   "drawer.card.undate": "Undate",
   "drawer.card.undateTooltip": "Clear the date (move to Undated)",
+  "drawer.focusPromoted": "{n} task(s) set to \u{1F53A} Highest for Today's Focus.",
   "shortcuts.drawerMulti": "Select several cards, then drop them on a timeline: scheduled back to back",
   "header.add": "Add a task or event",
   "header.zoom": "Timeline zoom",
@@ -6294,6 +6355,7 @@ var ko = {
   "drawer.card.moveNextWeek": "\uB2E4\uC74C \uC8FC\uB85C \uC62E\uAE30\uAE30 ({date})",
   "drawer.card.undate": "\uB0A0\uC9DC \uD574\uC81C",
   "drawer.card.undateTooltip": "\uB0A0\uC9DC \uC9C0\uC6B0\uAE30 (\uB0A0\uC9DC \uC5C6\uC74C\uC73C\uB85C \uC774\uB3D9)",
+  "drawer.focusPromoted": "\uD560 \uC77C {n}\uAC1C\uB97C \uC624\uB298\uC758 \uD575\uC2EC(\u{1F53A} \uCD5C\uC0C1)\uC73C\uB85C \uC9C0\uC815\uD588\uC2B5\uB2C8\uB2E4.",
   "shortcuts.drawerMulti": "\uCE74\uB4DC \uC5EC\uB7EC \uAC1C\uB97C \uC120\uD0DD\uD574 \uD0C0\uC784\uB77C\uC778\uC5D0 \uB193\uC73C\uBA74 \uC5F0\uB2EC\uC544 \uBC30\uCE58",
   "header.add": "\uD560 \uC77C \uB610\uB294 \uC77C\uC815 \uCD94\uAC00",
   "header.zoom": "\uD0C0\uC784\uB77C\uC778 \uD655\uB300/\uCD95\uC18C",
@@ -6590,6 +6652,7 @@ var ja = {
   "drawer.card.moveNextWeek": "\u6765\u9031\u3078\u79FB\u52D5 ({date})",
   "drawer.card.undate": "\u65E5\u4ED8\u89E3\u9664",
   "drawer.card.undateTooltip": "\u65E5\u4ED8\u3092\u30AF\u30EA\u30A2\uFF08\u65E5\u4ED8\u306A\u3057\u3078\u79FB\u52D5\uFF09",
+  "drawer.focusPromoted": "{n} \u4EF6\u306E\u30BF\u30B9\u30AF\u3092\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9\uFF08\u{1F53A} \u6700\u9AD8\uFF09\u306B\u3057\u307E\u3057\u305F\u3002",
   "shortcuts.drawerMulti": "\u8907\u6570\u306E\u30AB\u30FC\u30C9\u3092\u9078\u3093\u3067\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306B\u30C9\u30ED\u30C3\u30D7\u3059\u308B\u3068\u9023\u7D9A\u3057\u3066\u914D\u7F6E",
   "header.add": "\u30BF\u30B9\u30AF\u307E\u305F\u306F\u4E88\u5B9A\u3092\u8FFD\u52A0",
   "header.zoom": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E\u30BA\u30FC\u30E0",
@@ -6886,6 +6949,7 @@ var zh = {
   "drawer.card.moveNextWeek": "\u79FB\u5230\u4E0B\u5468 ({date})",
   "drawer.card.undate": "\u53D6\u6D88\u65E5\u671F",
   "drawer.card.undateTooltip": "\u6E05\u9664\u65E5\u671F\uFF08\u79FB\u5230\u65E0\u65E5\u671F\uFF09",
+  "drawer.focusPromoted": "\u5DF2\u5C06 {n} \u4E2A\u4EFB\u52A1\u8BBE\u4E3A\u4ECA\u65E5\u7126\u70B9\uFF08\u{1F53A} \u6700\u9AD8\uFF09\u3002",
   "shortcuts.drawerMulti": "\u9009\u62E9\u591A\u5F20\u5361\u7247\u540E\u62D6\u5230\u65F6\u95F4\u7EBF\u4E0A\uFF1A\u4F9D\u6B21\u8FDE\u7EED\u5B89\u6392",
   "header.add": "\u6DFB\u52A0\u4EFB\u52A1\u6216\u65E5\u7A0B",
   "header.zoom": "\u65F6\u95F4\u7EBF\u7F29\u653E",
@@ -8294,6 +8358,16 @@ function shownRange(view) {
       return null;
   }
 }
+function addCloseButton(header, view) {
+  const closeBtn = header.createEl("button", { cls: "clickable-icon dp-drawer-close", attr: { "aria-label": t("drawer.close") } });
+  setFirstIcon(closeBtn, ["panel-right-close", "sidebar-close", "x"]);
+  closeBtn.addEventListener("click", () => void view.toggleSideDrawer(false));
+}
+function mountPlainHeader(drawer, view) {
+  const header = drawer.createDiv({ cls: "dp-drawer-header dp-mc-header" });
+  header.createDiv({ cls: "dp-drawer-plain-title", text: localMoment(window.moment()).format("dddd, LL") });
+  addCloseButton(header, view);
+}
 function mountMiniCalendar(drawer, view) {
   const moment = window.moment;
   const settings = view.plugin.settings;
@@ -8310,9 +8384,7 @@ function mountMiniCalendar(drawer, view) {
   const todayBtn = nav.createEl("button", { cls: "dp-mc-today", text: t("common.today") });
   const next = nav.createEl("button", { cls: "dp-mc-nav-btn", attr: { "aria-label": t("calendar.next") } });
   (0, import_obsidian5.setIcon)(next, "chevron-right");
-  const closeBtn = header.createEl("button", { cls: "clickable-icon dp-drawer-close", attr: { "aria-label": t("drawer.close") } });
-  setFirstIcon(closeBtn, ["panel-right-close", "sidebar-close", "x"]);
-  closeBtn.addEventListener("click", () => void view.toggleSideDrawer(false));
+  addCloseButton(header, view);
   const cal = drawer.createDiv({ cls: `dp-mini-cal${settings.miniCalendarCollapsed ? " is-collapsed" : ""}` });
   const weekdays = cal.createDiv({ cls: "dp-mc-weekdays" });
   const weekStart = localMoment(moment()).startOf("week");
@@ -8429,7 +8501,7 @@ function acceptBoardCardDrops(drawer, view) {
     el?.addClass("dp-drop-target");
     current = el;
   };
-  const targetOf = (e) => e.target.closest(".dp-mc-day[data-date]") ?? drawer.querySelector('.dp-drawer-section[data-section="undated"]') ?? drawer;
+  const targetOf = (e) => e.target.closest('.dp-mc-day[data-date], .dp-drawer-section[data-section="focus"]') ?? drawer.querySelector('.dp-drawer-section[data-section="undated"]') ?? drawer;
   drawer.addEventListener("dragover", (e) => {
     if (view.activeTab !== "board" || !e.dataTransfer?.types.includes("text/plain"))
       return;
@@ -8453,6 +8525,8 @@ function acceptBoardCardDrops(drawer, view) {
     e.preventDefault();
     if (target.matches(".dp-mc-day"))
       void view.scheduleTask(task, target.dataset.date, null);
+    else if (target.matches(".dp-drawer-section"))
+      void view.promoteToFocus([task]);
     else if (task.date !== null)
       void view.unscheduleTasks([task]);
   });
@@ -8466,8 +8540,26 @@ function renderSideDrawer(rootEl, view) {
   drawer.toggleClass("is-open", view.isSideDrawerOpen());
   drawer.setAttr("aria-label", panel.title());
   drawer.style.setProperty("--dp-task-color", settings.taskColor || "#ff9f1c");
-  mountMiniCalendar(drawer, view);
+  if (view.activeTab === "board")
+    mountPlainHeader(drawer, view);
+  else
+    mountMiniCalendar(drawer, view);
   acceptBoardCardDrops(drawer, view);
+  drawer.tabIndex = -1;
+  drawer.addEventListener("pointerdown", (e) => {
+    if (!e.target.closest('input, textarea, button, [tabindex="0"]'))
+      drawer.focus({ preventScroll: true });
+  });
+  drawer.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || e.isComposing || view.selectedTaskIds.size === 0)
+      return;
+    if (e.target.closest("input, textarea"))
+      return;
+    e.preventDefault();
+    e.stopPropagation();
+    view.selectedTaskIds.clear();
+    view.applySelectionState();
+  });
   const modes = drawer.createDiv({ cls: "dp-drawer-modes", attr: { role: "tablist", "aria-label": t("drawer.modes") } });
   modes.style.setProperty("--dp-mode-count", String(SIDE_DRAWER_PANELS.length));
   modes.createDiv({ cls: "dp-drawer-modes-thumb" });
@@ -8488,6 +8580,7 @@ function renderSideDrawer(rootEl, view) {
   let body = drawer.createDiv({ cls: "dp-drawer-body", attr: { role: "tabpanel", "data-panel": panel.id } });
   const fillBody = (target) => {
     panel.render(target, view);
+    view.registerMarqueeSelection(target, () => Array.from(target.querySelectorAll(".dp-drawer-card")));
     target.scrollTop = view.drawerScrollTop;
     target.addEventListener("scroll", () => {
       view.drawerScrollTop = target.scrollTop;
@@ -9817,6 +9910,9 @@ ${e.calendarName ?? ""}`.toLowerCase();
         return { kind: "day", el: miniDay, dateStr: miniDay.dataset.date };
       const drawer = hit.closest(".dp-side-drawer.is-open");
       if (drawer) {
+        const focusSection = hit.closest('.dp-drawer-section[data-section="focus"]');
+        if (focusSection)
+          return { kind: "focus", el: focusSection, dateStr: "" };
         if (!canUnschedule)
           return null;
         const undatedSection = drawer.querySelector('.dp-drawer-section[data-section="undated"]');
@@ -9943,6 +10039,12 @@ ${e.calendarName ?? ""}`.toLowerCase();
         group.forEach((task) => this.selectedTaskIds.delete(task.id));
       if (!landing)
         return;
+      if (landing.kind === "focus") {
+        if (source.kind === "timeline")
+          this.selectedTaskIds.clear();
+        await this.promoteToFocus(draggedTasks);
+        return;
+      }
       if (landing.kind === "drawer") {
         if (source.kind === "timeline") {
           if (this.selectedTaskIds.size > draggedTasks.length) {
@@ -9990,6 +10092,15 @@ ${e.calendarName ?? ""}`.toLowerCase();
     };
     update();
     scrollFrame = win.requestAnimationFrame(autoScroll);
+  }
+  async promoteToFocus(tasks) {
+    const todayStr = window.moment().format("YYYY-MM-DD");
+    const changing = tasks.filter((task) => task.priority !== "highest" || task.date === null);
+    if (changing.length === 0)
+      return;
+    const changed = await updateTasksInFile(this.app, changing, (task) => task.date === null ? { date: todayStr, dueDate: todayStr, priority: "highest" } : { priority: "highest" }, (n) => t("drawer.focusPromoted", { n }));
+    if (changed > 0)
+      await this.refreshTasks();
   }
   taskBlockLength(task) {
     const fallback = this.plugin.settings.defaultTaskDuration || 60;
@@ -11038,15 +11149,15 @@ ${e.calendarName ?? ""}`.toLowerCase();
       if (e.button !== 0 || e.pointerType === "touch")
         return;
       const target = e.target;
-      if (target.closest(".dp-timeline-event, button, input, .dp-custom-cb, .dp-task-link-btn, .dp-resize-handle"))
+      if (target.closest(".dp-timeline-event, .dp-drawer-card, button, input, .dp-custom-cb, .dp-task-link-btn, .dp-resize-handle"))
         return;
       e.preventDefault();
       moved = false;
       hadSelection = this.selectedTaskIds.size > 0;
       additive = e.ctrlKey || e.metaKey || e.shiftKey;
       const rect = eventsCol.getBoundingClientRect();
-      startX = e.clientX - rect.left;
-      startY = e.clientY - rect.top;
+      startX = e.clientX - rect.left + eventsCol.scrollLeft;
+      startY = e.clientY - rect.top + eventsCol.scrollTop;
       marquee = eventsCol.createDiv({ cls: "dp-selection-marquee" });
       marquee.style.left = `${startX}px`;
       marquee.style.top = `${startY}px`;
@@ -11063,8 +11174,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
       if (!marquee)
         return;
       const rect = eventsCol.getBoundingClientRect();
-      const currentX = e.clientX - rect.left;
-      const currentY = e.clientY - rect.top;
+      const currentX = e.clientX - rect.left + eventsCol.scrollLeft;
+      const currentY = e.clientY - rect.top + eventsCol.scrollTop;
       const width = Math.abs(startX - currentX);
       const height = Math.abs(startY - currentY);
       if (width > 2 || height > 2)
@@ -11075,7 +11186,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       marquee.style.height = `${height}px`;
       const box = marquee.getBoundingClientRect();
       getTimedEvents().forEach((el) => {
-        const taskId = el.getAttribute("data-task-id");
+        const taskId = el.dataset.taskId ?? el.dataset.drawerTaskId;
         if (!taskId)
           return;
         const r = el.getBoundingClientRect();
@@ -13412,7 +13523,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.headerResizeObserver.observe(header);
   }
   renderDrawerTaskCard(list, task, section) {
-    const card = list.createDiv({ cls: `dp-drawer-card${task.priority === "highest" ? " is-mit" : ""}` });
+    const card = list.createDiv({ cls: `dp-drawer-card${task.priority === "highest" ? " is-mit" : task.priority === "high" ? " is-high" : ""}` });
     card.dataset.drawerTaskId = task.id;
     card.title = task.filePath;
     createCustomCheckbox(card, task, async (newStatus) => {
