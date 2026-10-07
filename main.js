@@ -1435,6 +1435,10 @@ var STYLES = `
     border-top: 1px solid var(--background-modifier-border);
     padding-top: 10px;
 }
+/* Task Edit modal: Delete keeps its distance from Save, at the row's leading edge */
+.dp-modal-buttons > .dp-modal-delete {
+    margin-right: auto;
+}
 
 /* Consolidated Add Modal choice screen styles */
 .dp-modal-choice-grid {
@@ -7012,6 +7016,18 @@ var TaskEditModal = class extends import_obsidian4.Modal {
       formState.cancelledDate = cancelDInput.value || null;
     });
     const buttonRow = form.createDiv({ cls: "dp-modal-buttons" });
+    const task = this.task;
+    const plugin = getPlannerPlugin(this.app);
+    if (task && plugin) {
+      const deleteBtn = buttonRow.createEl("button", { text: `${t("common.delete")} \u{1F5D1}`, cls: "mod-warning dp-modal-delete" });
+      deleteBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        new DeleteConfirmModal(this.app, [{ kind: "task", title: cleanTaskTextForDisplay(task.text) }], () => {
+          this.close();
+          void deletePlannerItems(plugin, [task]);
+        }).open();
+      });
+    }
     const cancelBtn = buttonRow.createEl("button", { text: t("common.cancel") });
     cancelBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -8290,6 +8306,76 @@ function applyViewReveal(targetPaneEl) {
     playOnce(targetPaneEl, REVEAL_CLASS);
 }
 var getPlannerPlugin = (app) => app.plugins?.getPlugin("obsidian-day-planner-pro");
+async function reparseAndRefresh(plugin, paths) {
+  for (const path of new Set(paths)) {
+    const file = plugin.app.vault.getAbstractFileByPath(path);
+    if (file instanceof import_obsidian6.TFile)
+      await plugin.updateCacheForFile(file);
+  }
+  plugin.refreshActiveViews();
+  plugin.codeBlockRenderers.forEach((r) => void r.refreshContentOnly());
+}
+async function deletePlannerItems(plugin, tasks, events = []) {
+  const app = plugin.app;
+  const markSelfWrite = (path) => plugin.markSelfWrite(path);
+  let removed = [];
+  let failed = 0;
+  if (tasks.length > 0) {
+    try {
+      const result = await deleteTaskLines(app, tasks, markSelfWrite);
+      removed = result.removed;
+      failed += result.failed;
+    } catch (err) {
+      console.error("Dayloom: deleting tasks failed", err);
+      failed += tasks.length;
+    }
+  }
+  const gone = /* @__PURE__ */ new Set();
+  const syncCalendarId = plugin.settings.enableGoogleCalendar ? plugin.settings.taskSyncCalendarId : "";
+  if (syncCalendarId) {
+    const removedLines = new Set(removed.map((r) => `${r.filePath}\0${r.line}`));
+    for (const task of tasks) {
+      if (!task.gcalEventId || !removedLines.has(`${task.filePath}\0${task.originalLine}`))
+        continue;
+      if (await deleteGoogleCalendarEvent(plugin, syncCalendarId, task.gcalEventId))
+        gone.add(`${syncCalendarId}::${task.gcalEventId}`);
+    }
+  }
+  let eventsDeleted = 0;
+  for (const e of events) {
+    if (await deleteGoogleCalendarEvent(plugin, e.calendarId, e.id)) {
+      gone.add(`${e.calendarId}::${e.id}`);
+      eventsDeleted++;
+    } else {
+      failed++;
+    }
+  }
+  if (gone.size > 0)
+    plugin.removeCachedEvents(gone);
+  await reparseAndRefresh(plugin, removed.map((r) => r.filePath));
+  const parts = [];
+  if (removed.length + eventsDeleted > 0)
+    parts.push(t("delete.done", { n: removed.length + eventsDeleted }));
+  if (failed > 0)
+    parts.push(t("delete.failed", { n: failed }));
+  const notice = new import_obsidian6.Notice("", 8e3);
+  const messageEl = notice.noticeEl || notice.messageEl;
+  if (!messageEl)
+    return;
+  messageEl.empty();
+  messageEl.createSpan({ text: `${parts.join(" ")} ` });
+  if (removed.length === 0)
+    return;
+  const undoBtn = messageEl.createEl("button", { text: t("common.undo") });
+  undoBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    notice.hide();
+    const restored = await restoreTaskLines(app, removed, markSelfWrite);
+    await reparseAndRefresh(plugin, removed.map((r) => r.filePath));
+    new import_obsidian6.Notice(t("delete.restored", { n: restored }));
+  });
+}
 var isTimedTask = (task) => !!(task.date && task.startTime && task.endTime);
 function showTaskUndoNotice(app, task, previous) {
   const notice = new import_obsidian6.Notice("", 8e3);
@@ -9104,78 +9190,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
     new DeleteConfirmModal(this.app, items, () => void this.performDelete(tasks, Array.from(events.values()))).open();
   }
   async performDelete(tasks, events) {
-    const plugin = this.plugin;
-    const markSelfWrite = (path) => plugin.markSelfWrite(path);
-    let removed = [];
-    let failed = 0;
-    if (tasks.length > 0) {
-      try {
-        const result = await deleteTaskLines(this.app, tasks, markSelfWrite);
-        removed = result.removed;
-        failed += result.failed;
-      } catch (err) {
-        console.error("Dayloom: deleting tasks failed", err);
-        failed += tasks.length;
-      }
-    }
-    const gone = /* @__PURE__ */ new Set();
-    const syncCalendarId = plugin.settings.enableGoogleCalendar ? plugin.settings.taskSyncCalendarId : "";
-    if (syncCalendarId) {
-      const removedLines = new Set(removed.map((r) => `${r.filePath}\0${r.line}`));
-      for (const task of tasks) {
-        if (!task.gcalEventId || !removedLines.has(`${task.filePath}\0${task.originalLine}`))
-          continue;
-        if (await deleteGoogleCalendarEvent(plugin, syncCalendarId, task.gcalEventId))
-          gone.add(`${syncCalendarId}::${task.gcalEventId}`);
-      }
-    }
-    let eventsDeleted = 0;
-    for (const e of events) {
-      if (await deleteGoogleCalendarEvent(plugin, e.calendarId, e.id)) {
-        gone.add(`${e.calendarId}::${e.id}`);
-        eventsDeleted++;
-      } else {
-        failed++;
-      }
-    }
-    if (gone.size > 0)
-      plugin.removeCachedEvents(gone);
-    await this.reparseNotes(removed.map((r) => r.filePath));
     this.selectedTaskIds.clear();
-    await this.refreshTasks();
-    this.showDeleteNotice(removed.length + eventsDeleted, failed, removed);
-  }
-  async reparseNotes(paths) {
-    for (const path of new Set(paths)) {
-      const file = this.app.vault.getAbstractFileByPath(path);
-      if (file instanceof import_obsidian6.TFile)
-        await this.plugin.updateCacheForFile(file);
-    }
-  }
-  showDeleteNotice(deleted, failed, removed) {
-    const parts = [];
-    if (deleted > 0)
-      parts.push(t("delete.done", { n: deleted }));
-    if (failed > 0)
-      parts.push(t("delete.failed", { n: failed }));
-    const notice = new import_obsidian6.Notice("", 8e3);
-    const messageEl = notice.noticeEl || notice.messageEl;
-    if (!messageEl)
-      return;
-    messageEl.empty();
-    messageEl.createSpan({ text: `${parts.join(" ")} ` });
-    if (removed.length === 0)
-      return;
-    const undoBtn = messageEl.createEl("button", { text: t("common.undo") });
-    undoBtn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      notice.hide();
-      const restored = await restoreTaskLines(this.app, removed, (path) => this.plugin.markSelfWrite(path));
-      await this.reparseNotes(removed.map((r) => r.filePath));
-      await this.refreshTasks();
-      new import_obsidian6.Notice(t("delete.restored", { n: restored }));
-    });
+    await deletePlannerItems(this.plugin, tasks, events);
   }
   useCompactLayout() {
     return false;
