@@ -3843,6 +3843,262 @@ body.dp-pointer-dragging * {
 .dp-timeline-event.cancelled {
     cursor: pointer !important;
 }
+
+/* -------------------------------------------------------------
+   Selection everywhere (Ctrl / Cmd + click, marquee): the timeline's dashed amber look, as an outline so cards with
+   inline borders (monthly items, all-day chips, list rows, board cards) keep their layout
+   ------------------------------------------------------------- */
+.dp-container [data-select-id].selected,
+.dp-container .dp-kanban-card.selected {
+    outline: 2px dashed #ff9f1c;
+    outline-offset: 1px;
+    box-shadow: 0 0 10px rgba(255, 159, 28, 0.55);
+}
+/* Floating selection bar: count, Delete, clear */
+.dp-selection-bar {
+    position: absolute;
+    left: 50%;
+    bottom: 16px;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 4px 4px 14px;
+    font-size: var(--font-ui-small, 0.9em);
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 999px;
+    box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
+    transform: translateX(-50%);
+    animation: dp-selection-bar-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dp-container.dp-drawer-open > .dp-selection-bar {
+    left: calc(50% - var(--dp-drawer-w) / 2);
+}
+@keyframes dp-selection-bar-in {
+    from { opacity: 0; transform: translate(-50%, 8px); }
+}
+.dp-selection-count {
+    font-weight: var(--font-semibold, 600);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.dp-selection-bar button.dp-selection-delete,
+.dp-selection-bar button.dp-selection-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 28px;
+    margin: 0;
+    padding: 0 12px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-medium, 500);
+    border: none;
+    border-radius: 999px;
+    box-shadow: none;
+    cursor: pointer;
+}
+.dp-selection-bar button.dp-selection-delete {
+    color: var(--text-on-accent);
+    background-color: var(--color-red);
+}
+.dp-selection-bar button.dp-selection-delete:hover {
+    filter: brightness(1.08);
+}
+.dp-selection-bar button.dp-selection-clear {
+    width: 28px;
+    padding: 0;
+    justify-content: center;
+    color: var(--text-muted);
+    background: none;
+}
+.dp-selection-bar button.dp-selection-clear:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+.dp-selection-icon,
+.dp-selection-bar svg {
+    display: inline-flex;
+    width: 14px;
+    height: 14px;
+}
+
+/* Board columns as drop targets for drawer cards (pointer drag), like the native drag-over look */
+.dp-kanban-column.dp-drop-target {
+    background-color: var(--background-modifier-hover);
+    border: 2px dashed var(--interactive-accent);
+}
+
+/* -------------------------------------------------------------
+   Planner search: a frosted pill under the header (right-aligned, left of the drawer), kept across renders
+   ------------------------------------------------------------- */
+.dp-search-float {
+    position: absolute;
+    top: calc(var(--dp-header-h, 56px) + 8px);
+    right: 16px;
+    z-index: 29; /* over the panes and the drawer, under the header (30) */
+    display: none;
+    align-items: center;
+    gap: 6px;
+    width: min(340px, calc(100% - 32px));
+    height: 36px;
+    padding: 0 4px 0 12px;
+    box-sizing: border-box;
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 999px;
+    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-container.dp-drawer-open > .dp-search-float {
+    right: calc(var(--dp-drawer-w) + 16px);
+    width: min(340px, calc(100% - var(--dp-drawer-w) - 32px));
+}
+.dp-search-float.is-open {
+    display: flex;
+    animation: dp-search-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes dp-search-in {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+}
+.dp-search-float:focus-within {
+    border-color: var(--interactive-accent);
+    box-shadow: var(--dp-glass-shadow), 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
+}
+.dp-search-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+.dp-search-icon svg {
+    width: 15px;
+    height: 15px;
+}
+.dp-search-float input.dp-search-input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-normal);
+    background: none;
+    border: none;
+    box-shadow: none;
+    outline: none;
+}
+.dp-search-float input.dp-search-input::-webkit-search-cancel-button {
+    display: none; /* our own \xD7 clears */
+}
+.dp-search-count {
+    flex-shrink: 0;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    color: var(--text-muted);
+}
+.dp-search-float.is-empty .dp-search-count {
+    color: var(--text-error);
+}
+.dp-search-float button.dp-search-clear {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    margin: 0;
+    padding: 0;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-radius: 999px;
+    box-shadow: none;
+    cursor: pointer;
+}
+.dp-search-float button.dp-search-clear:hover {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+}
+.dp-search-clear svg {
+    width: 14px;
+    height: 14px;
+}
+/* A search narrows every tab: the header button stays lit while it does */
+.dp-header-actions > button.dp-search-btn {
+    color: var(--text-muted);
+}
+.dp-header-actions > button.dp-search-btn:hover {
+    color: var(--text-normal);
+}
+.dp-header-actions > button.dp-search-btn.is-active {
+    color: var(--text-accent);
+    background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+.dp-search-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Delete confirmation */
+.modal.dp-delete-modal {
+    width: min(420px, calc(100vw - 32px));
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 12px;
+    box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-delete-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 200px;
+    margin: var(--size-4-2, 8px) 0;
+    padding: 6px;
+    overflow-y: auto;
+    background-color: var(--dp-card-bg);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 10px;
+}
+.dp-delete-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    font-size: var(--font-ui-small, 0.9em);
+}
+.dp-delete-item-title {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.dp-delete-more {
+    padding: 2px 6px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-muted);
+}
+.dp-delete-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+.dp-delete-notes .mod-warning {
+    color: var(--text-error);
+}
+@media (prefers-reduced-motion: reduce) {
+    .dp-selection-bar, .dp-search-float.is-open {
+        animation: none;
+    }
+}
+
 `;
 
 // utils.ts
@@ -4364,6 +4620,65 @@ function withFileWriteLock(path, fn) {
   };
   run.then(clear, clear);
   return run;
+}
+async function deleteTaskLines(app, tasks, beforeWrite) {
+  const byFile = /* @__PURE__ */ new Map();
+  tasks.forEach((t2) => byFile.set(t2.filePath, [...byFile.get(t2.filePath) ?? [], t2]));
+  const removed = [];
+  let failed = 0;
+  await Promise.all(Array.from(byFile.entries()).map(([path, fileTasks]) => withFileWriteLock(path, async () => {
+    const file = app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof import_obsidian.TFile) || isSyncConflictPath(path)) {
+      failed += fileTasks.length;
+      return;
+    }
+    const lines = (await app.vault.read(file)).split("\n");
+    const indices = /* @__PURE__ */ new Set();
+    fileTasks.forEach((task) => {
+      let index = lines[task.lineNumber] === task.originalLine && !indices.has(task.lineNumber) ? task.lineNumber : -1;
+      if (index === -1)
+        index = lines.findIndex((l, i) => l === task.originalLine && !indices.has(i));
+      if (index === -1)
+        failed++;
+      else
+        indices.add(index);
+    });
+    if (indices.size === 0)
+      return;
+    Array.from(indices).sort((a, b) => b - a).forEach((i) => {
+      removed.push({ filePath: path, lineNumber: i, line: lines[i] });
+      lines.splice(i, 1);
+    });
+    beforeWrite?.(path);
+    await app.vault.modify(file, lines.join("\n"));
+  })));
+  return { removed, failed };
+}
+async function restoreTaskLines(app, removed, beforeWrite) {
+  const byFile = /* @__PURE__ */ new Map();
+  removed.forEach((r) => byFile.set(r.filePath, [...byFile.get(r.filePath) ?? [], r]));
+  let restored = 0;
+  await Promise.all(Array.from(byFile.entries()).map(([path, entries]) => withFileWriteLock(path, async () => {
+    const file = app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof import_obsidian.TFile))
+      return;
+    const lines = (await app.vault.read(file)).split("\n");
+    entries.sort((a, b) => a.lineNumber - b.lineNumber).forEach((r) => {
+      lines.splice(Math.min(r.lineNumber, lines.length), 0, r.line);
+      restored++;
+    });
+    beforeWrite?.(path);
+    await app.vault.modify(file, lines.join("\n"));
+  })));
+  return restored;
+}
+function taskMatchesSearch(task, terms) {
+  const haystack = `${task.text}
+${task.filePath}`.toLowerCase();
+  return terms.every((term) => haystack.includes(term));
+}
+function searchTerms(query) {
+  return query.toLowerCase().split(/\s+/).filter(Boolean);
 }
 function updateTaskInFile(app, task, updates) {
   return withFileWriteLock(task.filePath, () => updateTaskInFileUnlocked(app, task, updates));
@@ -5391,6 +5706,28 @@ var en = {
   "drawer.card.moveNextWeek": "Move to next week ({date})",
   "drawer.card.undate": "Undate",
   "drawer.card.undateTooltip": "Clear the date (move to Undated)",
+  "search.open": "Search tasks and events (/)",
+  "search.placeholder": "Search tasks & events\u2026",
+  "search.clear": "Clear search",
+  "search.matches": "{n} matches",
+  "search.noMatches": "No matches",
+  "delete.titleOne": "Delete this item?",
+  "delete.titleMany": "Delete {n} items?",
+  "delete.more": "+{n} more",
+  "delete.tasksNote": "Task lines are removed from their notes. You can undo this from the notice that follows.",
+  "delete.eventsNote": "Google Calendar events are deleted from the calendar and cannot be restored here.",
+  "delete.done": "Deleted {n} items.",
+  "delete.failed": "{n} items could not be deleted (changed or no longer there).",
+  "delete.restored": "Restored {n} tasks.",
+  "selection.count": "{n} selected",
+  "selection.delete": "Delete the selected items (Delete)",
+  "selection.clear": "Clear the selection (Esc)",
+  "shortcuts.group.selection": "Selection",
+  "shortcuts.multiSelect": "Add or remove an item from the selection",
+  "shortcuts.marqueeAdd": "Box-select on empty timeline space, adding to the selection",
+  "shortcuts.delete": "Delete the selected tasks and events",
+  "shortcuts.clearSelection": "Clear the selection (then the search)",
+  "shortcuts.search": "Search tasks and events",
   "drawer.stats": "Stats",
   "drawer.modes": "Drawer mode",
   "drawer.focus": "Today's Focus",
@@ -5661,6 +5998,28 @@ var ko = {
   "drawer.card.moveNextWeek": "\uB2E4\uC74C \uC8FC\uB85C \uC62E\uAE30\uAE30 ({date})",
   "drawer.card.undate": "\uB0A0\uC9DC \uD574\uC81C",
   "drawer.card.undateTooltip": "\uB0A0\uC9DC \uC9C0\uC6B0\uAE30 (\uB0A0\uC9DC \uC5C6\uC74C\uC73C\uB85C \uC774\uB3D9)",
+  "search.open": "\uD560 \uC77C\uACFC \uC77C\uC815 \uAC80\uC0C9 (/)",
+  "search.placeholder": "\uD560 \uC77C\xB7\uC77C\uC815 \uAC80\uC0C9\u2026",
+  "search.clear": "\uAC80\uC0C9 \uC9C0\uC6B0\uAE30",
+  "search.matches": "{n}\uAC1C \uC77C\uCE58",
+  "search.noMatches": "\uC77C\uCE58 \uD56D\uBAA9 \uC5C6\uC74C",
+  "delete.titleOne": "\uC774 \uD56D\uBAA9\uC744 \uC0AD\uC81C\uD560\uAE4C\uC694?",
+  "delete.titleMany": "{n}\uAC1C \uD56D\uBAA9\uC744 \uC0AD\uC81C\uD560\uAE4C\uC694?",
+  "delete.more": "\uC678 {n}\uAC1C",
+  "delete.tasksNote": "\uD560 \uC77C \uC904\uC774 \uB178\uD2B8\uC5D0\uC11C \uC0AD\uC81C\uB429\uB2C8\uB2E4. \uC774\uC5B4\uC11C \uD45C\uC2DC\uB418\uB294 \uC54C\uB9BC\uC5D0\uC11C \uB418\uB3CC\uB9B4 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "delete.eventsNote": "\uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815\uC740 \uCE98\uB9B0\uB354\uC5D0\uC11C \uC0AD\uC81C\uB418\uBA70 \uC5EC\uAE30\uC11C \uBCF5\uC6D0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "delete.done": "{n}\uAC1C \uD56D\uBAA9\uC744 \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4.",
+  "delete.failed": "{n}\uAC1C \uD56D\uBAA9\uC740 \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4 (\uBCC0\uACBD\uB418\uC5C8\uAC70\uB098 \uC774\uBBF8 \uC5C6\uC74C).",
+  "delete.restored": "\uD560 \uC77C {n}\uAC1C\uB97C \uBCF5\uC6D0\uD588\uC2B5\uB2C8\uB2E4.",
+  "selection.count": "{n}\uAC1C \uC120\uD0DD\uB428",
+  "selection.delete": "\uC120\uD0DD\uD55C \uD56D\uBAA9 \uC0AD\uC81C (Delete)",
+  "selection.clear": "\uC120\uD0DD \uD574\uC81C (Esc)",
+  "shortcuts.group.selection": "\uC120\uD0DD",
+  "shortcuts.multiSelect": "\uD56D\uBAA9\uC744 \uC120\uD0DD\uC5D0 \uCD94\uAC00\uD558\uAC70\uB098 \uBE7C\uAE30",
+  "shortcuts.marqueeAdd": "\uD0C0\uC784\uB77C\uC778 \uBE48 \uACF3\uC744 \uB4DC\uB798\uADF8\uD574 \uAE30\uC874 \uC120\uD0DD\uC5D0 \uCD94\uAC00",
+  "shortcuts.delete": "\uC120\uD0DD\uD55C \uD560 \uC77C\uACFC \uC77C\uC815 \uC0AD\uC81C",
+  "shortcuts.clearSelection": "\uC120\uD0DD \uD574\uC81C (\uADF8\uB2E4\uC74C \uAC80\uC0C9 \uD574\uC81C)",
+  "shortcuts.search": "\uD560 \uC77C\uACFC \uC77C\uC815 \uAC80\uC0C9",
   "drawer.stats": "\uD1B5\uACC4",
   "drawer.modes": "\uC11C\uB78D \uBAA8\uB4DC",
   "drawer.focus": "\uC624\uB298\uC758 \uD575\uC2EC",
@@ -5931,6 +6290,28 @@ var ja = {
   "drawer.card.moveNextWeek": "\u6765\u9031\u3078\u79FB\u52D5 ({date})",
   "drawer.card.undate": "\u65E5\u4ED8\u89E3\u9664",
   "drawer.card.undateTooltip": "\u65E5\u4ED8\u3092\u30AF\u30EA\u30A2\uFF08\u65E5\u4ED8\u306A\u3057\u3078\u79FB\u52D5\uFF09",
+  "search.open": "\u30BF\u30B9\u30AF\u3068\u4E88\u5B9A\u3092\u691C\u7D22 (/)",
+  "search.placeholder": "\u30BF\u30B9\u30AF\u30FB\u4E88\u5B9A\u3092\u691C\u7D22\u2026",
+  "search.clear": "\u691C\u7D22\u3092\u30AF\u30EA\u30A2",
+  "search.matches": "{n} \u4EF6\u4E00\u81F4",
+  "search.noMatches": "\u4E00\u81F4\u306A\u3057",
+  "delete.titleOne": "\u3053\u306E\u9805\u76EE\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F",
+  "delete.titleMany": "{n} \u4EF6\u306E\u9805\u76EE\u3092\u524A\u9664\u3057\u307E\u3059\u304B\uFF1F",
+  "delete.more": "\u307B\u304B {n} \u4EF6",
+  "delete.tasksNote": "\u30BF\u30B9\u30AF\u306E\u884C\u304C\u30CE\u30FC\u30C8\u304B\u3089\u524A\u9664\u3055\u308C\u307E\u3059\u3002\u7D9A\u3051\u3066\u8868\u793A\u3055\u308C\u308B\u901A\u77E5\u304B\u3089\u5143\u306B\u623B\u305B\u307E\u3059\u3002",
+  "delete.eventsNote": "Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A\u306F\u30AB\u30EC\u30F3\u30C0\u30FC\u304B\u3089\u524A\u9664\u3055\u308C\u3001\u3053\u3053\u3067\u306F\u5FA9\u5143\u3067\u304D\u307E\u305B\u3093\u3002",
+  "delete.done": "{n} \u4EF6\u306E\u9805\u76EE\u3092\u524A\u9664\u3057\u307E\u3057\u305F\u3002",
+  "delete.failed": "{n} \u4EF6\u306E\u9805\u76EE\u306F\u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u5909\u66F4\u6E08\u307F\u3001\u307E\u305F\u306F\u5B58\u5728\u3057\u307E\u305B\u3093\uFF09\u3002",
+  "delete.restored": "{n} \u4EF6\u306E\u30BF\u30B9\u30AF\u3092\u5FA9\u5143\u3057\u307E\u3057\u305F\u3002",
+  "selection.count": "{n} \u4EF6\u9078\u629E\u4E2D",
+  "selection.delete": "\u9078\u629E\u3057\u305F\u9805\u76EE\u3092\u524A\u9664 (Delete)",
+  "selection.clear": "\u9078\u629E\u3092\u89E3\u9664 (Esc)",
+  "shortcuts.group.selection": "\u9078\u629E",
+  "shortcuts.multiSelect": "\u9805\u76EE\u3092\u9078\u629E\u306B\u8FFD\u52A0 / \u9078\u629E\u304B\u3089\u5916\u3059",
+  "shortcuts.marqueeAdd": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E\u7A7A\u304D\u90E8\u5206\u3092\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u9078\u629E\u306B\u8FFD\u52A0",
+  "shortcuts.delete": "\u9078\u629E\u3057\u305F\u30BF\u30B9\u30AF\u3068\u4E88\u5B9A\u3092\u524A\u9664",
+  "shortcuts.clearSelection": "\u9078\u629E\u3092\u89E3\u9664\uFF08\u6B21\u306B\u691C\u7D22\u3092\u89E3\u9664\uFF09",
+  "shortcuts.search": "\u30BF\u30B9\u30AF\u3068\u4E88\u5B9A\u3092\u691C\u7D22",
   "drawer.stats": "\u7D71\u8A08",
   "drawer.modes": "\u30C9\u30ED\u30EF\u30FC\u306E\u30E2\u30FC\u30C9",
   "drawer.focus": "\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9",
@@ -6201,6 +6582,28 @@ var zh = {
   "drawer.card.moveNextWeek": "\u79FB\u5230\u4E0B\u5468 ({date})",
   "drawer.card.undate": "\u53D6\u6D88\u65E5\u671F",
   "drawer.card.undateTooltip": "\u6E05\u9664\u65E5\u671F\uFF08\u79FB\u5230\u65E0\u65E5\u671F\uFF09",
+  "search.open": "\u641C\u7D22\u4EFB\u52A1\u548C\u65E5\u7A0B (/)",
+  "search.placeholder": "\u641C\u7D22\u4EFB\u52A1\u548C\u65E5\u7A0B\u2026",
+  "search.clear": "\u6E05\u9664\u641C\u7D22",
+  "search.matches": "{n} \u4E2A\u5339\u914D",
+  "search.noMatches": "\u65E0\u5339\u914D",
+  "delete.titleOne": "\u5220\u9664\u6B64\u9879\u76EE\uFF1F",
+  "delete.titleMany": "\u5220\u9664 {n} \u4E2A\u9879\u76EE\uFF1F",
+  "delete.more": "\u53E6\u6709 {n} \u4E2A",
+  "delete.tasksNote": "\u4EFB\u52A1\u884C\u5C06\u4ECE\u7B14\u8BB0\u4E2D\u5220\u9664\u3002\u53EF\u5728\u968F\u540E\u51FA\u73B0\u7684\u901A\u77E5\u4E2D\u64A4\u9500\u3002",
+  "delete.eventsNote": "Google \u65E5\u5386\u65E5\u7A0B\u5C06\u4ECE\u65E5\u5386\u4E2D\u5220\u9664\uFF0C\u65E0\u6CD5\u5728\u6B64\u6062\u590D\u3002",
+  "delete.done": "\u5DF2\u5220\u9664 {n} \u4E2A\u9879\u76EE\u3002",
+  "delete.failed": "{n} \u4E2A\u9879\u76EE\u65E0\u6CD5\u5220\u9664\uFF08\u5DF2\u66F4\u6539\u6216\u5DF2\u4E0D\u5B58\u5728\uFF09\u3002",
+  "delete.restored": "\u5DF2\u6062\u590D {n} \u4E2A\u4EFB\u52A1\u3002",
+  "selection.count": "\u5DF2\u9009\u62E9 {n} \u4E2A",
+  "selection.delete": "\u5220\u9664\u6240\u9009\u9879\u76EE (Delete)",
+  "selection.clear": "\u53D6\u6D88\u9009\u62E9 (Esc)",
+  "shortcuts.group.selection": "\u9009\u62E9",
+  "shortcuts.multiSelect": "\u5C06\u9879\u76EE\u52A0\u5165\u6216\u79FB\u51FA\u9009\u62E9",
+  "shortcuts.marqueeAdd": "\u5728\u65F6\u95F4\u7EBF\u7A7A\u767D\u5904\u6846\u9009\uFF0C\u52A0\u5165\u73B0\u6709\u9009\u62E9",
+  "shortcuts.delete": "\u5220\u9664\u6240\u9009\u4EFB\u52A1\u548C\u65E5\u7A0B",
+  "shortcuts.clearSelection": "\u53D6\u6D88\u9009\u62E9\uFF08\u7136\u540E\u6E05\u9664\u641C\u7D22\uFF09",
+  "shortcuts.search": "\u641C\u7D22\u4EFB\u52A1\u548C\u65E5\u7A0B",
   "drawer.stats": "\u7EDF\u8BA1",
   "drawer.modes": "\u62BD\u5C49\u6A21\u5F0F",
   "drawer.focus": "\u4ECA\u65E5\u7126\u70B9",
@@ -6893,6 +7296,59 @@ var AddChoiceModal = class extends import_obsidian4.Modal {
     this.contentEl.empty();
   }
 };
+var DeleteConfirmModal = class extends import_obsidian4.Modal {
+  constructor(app, items, onConfirm) {
+    super(app);
+    this.items = items;
+    this.onConfirm = onConfirm;
+    this.confirmed = false;
+  }
+  onOpen() {
+    const { contentEl, modalEl } = this;
+    modalEl.addClass("dp-delete-modal");
+    contentEl.empty();
+    const count = this.items.length;
+    contentEl.createEl("h2", { text: count === 1 ? t("delete.titleOne") : t("delete.titleMany", { n: count }) });
+    const list = contentEl.createDiv({ cls: "dp-delete-list" });
+    const SHOWN = 5;
+    this.items.slice(0, SHOWN).forEach((item) => {
+      const row = list.createDiv({ cls: `dp-delete-item is-${item.kind}` });
+      row.createSpan({ cls: "dp-delete-item-icon", text: item.kind === "task" ? "\u{1F4DD}" : "\u{1F4C5}" });
+      row.createSpan({ cls: "dp-delete-item-title", text: item.title });
+    });
+    if (count > SHOWN)
+      list.createDiv({ cls: "dp-delete-more", text: t("delete.more", { n: count - SHOWN }) });
+    const notes = contentEl.createDiv({ cls: "dp-delete-notes" });
+    if (this.items.some((i) => i.kind === "task"))
+      notes.createDiv({ text: t("delete.tasksNote") });
+    if (this.items.some((i) => i.kind === "event"))
+      notes.createDiv({ cls: "mod-warning", text: t("delete.eventsNote") });
+    const buttons = contentEl.createDiv({ cls: "dp-modal-buttons" });
+    const cancelBtn = buttons.createEl("button", { text: t("common.cancel") });
+    cancelBtn.addEventListener("click", () => this.close());
+    const deleteBtn = buttons.createEl("button", { text: t("common.delete"), cls: "mod-warning" });
+    deleteBtn.addEventListener("click", () => this.confirm());
+    this.scope.register([], "Enter", (e) => {
+      e.preventDefault();
+      if (document.activeElement === cancelBtn)
+        this.close();
+      else
+        this.confirm();
+      return false;
+    });
+    window.setTimeout(() => deleteBtn.focus(), 0);
+  }
+  confirm() {
+    if (this.confirmed)
+      return;
+    this.confirmed = true;
+    this.close();
+    this.onConfirm();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
 var _ShortcutHelpModal = class extends import_obsidian4.Modal {
   constructor(app, plugin) {
     super(app);
@@ -6927,8 +7383,15 @@ var _ShortcutHelpModal = class extends import_obsidian4.Modal {
       ]],
       [t("shortcuts.group.panels"), [
         [["s"], t("shortcuts.drawer")],
+        [["/", "Ctrl/Cmd+F"], t("shortcuts.search")],
         [["?", "h"], t("shortcuts.help")],
         [["F5", "Ctrl/Cmd+R"], t("shortcuts.sync")]
+      ]],
+      [t("shortcuts.group.selection"), [
+        [["Ctrl/Cmd+Click"], t("shortcuts.multiSelect")],
+        [["Ctrl/Cmd+Drag"], t("shortcuts.marqueeAdd")],
+        [["Delete", "Backspace"], t("shortcuts.delete")],
+        [["Esc"], t("shortcuts.clearSelection")]
       ]],
       [t("shortcuts.group.drawerCard"), [
         [["f"], t("shortcuts.fit")],
@@ -7255,9 +7718,10 @@ function togglePriorityPicker(anchor, task, view, viaKeyboard = false) {
 }
 var statsMemo = null;
 function computeDayStats(view, dateStr) {
-  if (statsMemo && statsMemo.tasks === view.tasks && statsMemo.dateStr === dateStr)
+  const source = view.searchQuery ? view.unsearchedTasks : view.tasks;
+  if (statsMemo && statsMemo.tasks === source && statsMemo.dateStr === dateStr)
     return statsMemo.stats;
-  const dayTasks = view.tasks.filter((t2) => t2.date === dateStr && t2.statusChar !== "-");
+  const dayTasks = source.filter((t2) => t2.date === dateStr && t2.statusChar !== "-");
   let plannedMin = 0, completedMin = 0, done = 0, focusTotal = 0, focusDone = 0;
   const byPriority = /* @__PURE__ */ new Map();
   dayTasks.forEach((task) => {
@@ -7308,7 +7772,7 @@ function computeDayStats(view, dateStr) {
     pct: Math.round(ratio * 100),
     basis
   };
-  statsMemo = { tasks: view.tasks, dateStr, stats };
+  statsMemo = { tasks: source, dateStr, stats };
   return stats;
 }
 function statsMessage(s, isPast) {
@@ -7451,7 +7915,7 @@ var statsPanel = {
   render: renderDailyStats
 };
 var SIDE_DRAWER_PANELS = [tasksPanel, statsPanel];
-var SIDE_DRAWER_TABS = ["daily", "multiDay", "weekly", "monthly"];
+var SIDE_DRAWER_TABS = ["daily", "multiDay", "weekly", "monthly", "board", "list"];
 function setFirstIcon(el, names) {
   for (const name of names) {
     (0, import_obsidian5.setIcon)(el, name);
@@ -7634,6 +8098,43 @@ function mountMiniCalendar(drawer, view) {
   }, { passive: false });
   build(null);
 }
+function acceptBoardCardDrops(drawer, view) {
+  let current = null;
+  const highlight = (el) => {
+    if (current === el)
+      return;
+    current?.removeClass("dp-drop-target");
+    el?.addClass("dp-drop-target");
+    current = el;
+  };
+  const targetOf = (e) => e.target.closest(".dp-mc-day[data-date]") ?? drawer.querySelector('.dp-drawer-section[data-section="undated"]') ?? drawer;
+  drawer.addEventListener("dragover", (e) => {
+    if (view.activeTab !== "board" || !e.dataTransfer?.types.includes("text/plain"))
+      return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    highlight(targetOf(e));
+  });
+  drawer.addEventListener("dragleave", (e) => {
+    if (!drawer.contains(e.relatedTarget))
+      highlight(null);
+  });
+  drawer.addEventListener("drop", (e) => {
+    const target = current;
+    highlight(null);
+    if (view.activeTab !== "board" || !target)
+      return;
+    const id = e.dataTransfer?.getData("text/plain");
+    const task = id ? view.tasks.find((t2) => t2.id === id) : void 0;
+    if (!task)
+      return;
+    e.preventDefault();
+    if (target.matches(".dp-mc-day"))
+      void view.scheduleTask(task, target.dataset.date, null);
+    else if (task.date !== null)
+      void view.unscheduleTasks([task]);
+  });
+}
 function renderSideDrawer(rootEl, view) {
   const settings = view.plugin.settings;
   let panel = SIDE_DRAWER_PANELS.find((p) => p.id === settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0];
@@ -7644,6 +8145,7 @@ function renderSideDrawer(rootEl, view) {
   drawer.setAttr("aria-label", panel.title());
   drawer.style.setProperty("--dp-task-color", settings.taskColor || "#ff9f1c");
   mountMiniCalendar(drawer, view);
+  acceptBoardCardDrops(drawer, view);
   const modes = drawer.createDiv({ cls: "dp-drawer-modes", attr: { role: "tablist", "aria-label": t("drawer.modes") } });
   modes.style.setProperty("--dp-mode-count", String(SIDE_DRAWER_PANELS.length));
   modes.createDiv({ cls: "dp-drawer-modes-thumb" });
@@ -8395,6 +8897,9 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     this.autoScrolledViews = /* @__PURE__ */ new Set();
     this.scrollToTodayRequested = false;
     this.selectedTaskIds = /* @__PURE__ */ new Set();
+    this.unsearchedTasks = [];
+    this.searchQuery = "";
+    this.staleWhileHidden = false;
     this.keydownHandler = null;
     this.kanbanViewMode = "kanban";
     this.activeDragClickOffsetMin = 0;
@@ -8460,6 +8965,16 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           const d = moment(dateStr, "YYYY-MM-DD");
           return d.isSameOrAfter(startOfWeek, "day") && d.isSameOrBefore(endOfWeek, "day");
         });
+      });
+    }
+    const terms = searchTerms(this.searchQuery ?? "");
+    if (terms.length > 0) {
+      cache = cache.filter((e) => {
+        const haystack = `${e.summary}
+${e.location ?? ""}
+${e.description ?? ""}
+${e.calendarName ?? ""}`.toLowerCase();
+        return terms.every((term) => haystack.includes(term));
       });
     }
     const filters = this.filters;
@@ -8540,6 +9055,127 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     this.autoScrolledViews.add(viewKind);
     const top = scrollToTarget(scroller, target, smooth ? "smooth" : "auto", fallbackTop);
     this.savedScrollPositions[scrollKey] = { scrollTop: top, scrollLeft: saved?.scrollLeft ?? 0 };
+  }
+  relevantTasksForSignature(tasks) {
+    return tasks;
+  }
+  applySelectionState() {
+    const root = this.containerEl.querySelector(".dp-container");
+    if (!root)
+      return;
+    root.querySelectorAll("[data-task-id], [data-select-id]").forEach((el) => {
+      const id = el.dataset.selectId ?? el.dataset.taskId;
+      el.toggleClass("selected", !!id && this.selectedTaskIds.has(id));
+    });
+    root.querySelector(":scope > .dp-selection-bar")?.remove();
+    const count = this.selectedTaskIds.size;
+    if (count === 0 || !(this instanceof DayPlannerBaseView))
+      return;
+    const bar = root.createDiv({ cls: "dp-selection-bar" });
+    bar.createSpan({ cls: "dp-selection-count", text: t("selection.count", { n: count }) });
+    const del = bar.createEl("button", { cls: "dp-selection-delete", attr: { "aria-label": t("selection.delete") } });
+    (0, import_obsidian6.setIcon)(del.createSpan({ cls: "dp-selection-icon" }), "trash-2");
+    del.createSpan({ text: t("common.delete") });
+    del.addEventListener("click", () => this.deleteSelectedItems());
+    const clear = bar.createEl("button", { cls: "dp-selection-clear", attr: { "aria-label": t("selection.clear") } });
+    (0, import_obsidian6.setIcon)(clear, "x");
+    clear.addEventListener("click", () => {
+      this.selectedTaskIds.clear();
+      this.render();
+    });
+  }
+  deleteSelectedItems() {
+    const ids = this.selectedTaskIds;
+    const tasks = (this.plugin.tasksCache ?? this.tasks).filter((task) => ids.has(task.id));
+    const events = /* @__PURE__ */ new Map();
+    this.plugin.gcalCache.forEach((e) => {
+      if (ids.has(e.id))
+        events.set(`${e.calendarId}::${e.id}`, e);
+    });
+    if (tasks.length === 0 && events.size === 0) {
+      this.selectedTaskIds.clear();
+      this.render();
+      return;
+    }
+    const items = [
+      ...tasks.map((task) => ({ kind: "task", title: cleanTaskTextForDisplay(task.text) })),
+      ...Array.from(events.values()).map((e) => ({ kind: "event", title: e.summary || "\u2014" }))
+    ];
+    new DeleteConfirmModal(this.app, items, () => void this.performDelete(tasks, Array.from(events.values()))).open();
+  }
+  async performDelete(tasks, events) {
+    const plugin = this.plugin;
+    const markSelfWrite = (path) => plugin.markSelfWrite(path);
+    let removed = [];
+    let failed = 0;
+    if (tasks.length > 0) {
+      try {
+        const result = await deleteTaskLines(this.app, tasks, markSelfWrite);
+        removed = result.removed;
+        failed += result.failed;
+      } catch (err) {
+        console.error("Dayloom: deleting tasks failed", err);
+        failed += tasks.length;
+      }
+    }
+    const gone = /* @__PURE__ */ new Set();
+    const syncCalendarId = plugin.settings.enableGoogleCalendar ? plugin.settings.taskSyncCalendarId : "";
+    if (syncCalendarId) {
+      const removedLines = new Set(removed.map((r) => `${r.filePath}\0${r.line}`));
+      for (const task of tasks) {
+        if (!task.gcalEventId || !removedLines.has(`${task.filePath}\0${task.originalLine}`))
+          continue;
+        if (await deleteGoogleCalendarEvent(plugin, syncCalendarId, task.gcalEventId))
+          gone.add(`${syncCalendarId}::${task.gcalEventId}`);
+      }
+    }
+    let eventsDeleted = 0;
+    for (const e of events) {
+      if (await deleteGoogleCalendarEvent(plugin, e.calendarId, e.id)) {
+        gone.add(`${e.calendarId}::${e.id}`);
+        eventsDeleted++;
+      } else {
+        failed++;
+      }
+    }
+    if (gone.size > 0)
+      plugin.removeCachedEvents(gone);
+    await this.reparseNotes(removed.map((r) => r.filePath));
+    this.selectedTaskIds.clear();
+    await this.refreshTasks();
+    this.showDeleteNotice(removed.length + eventsDeleted, failed, removed);
+  }
+  async reparseNotes(paths) {
+    for (const path of new Set(paths)) {
+      const file = this.app.vault.getAbstractFileByPath(path);
+      if (file instanceof import_obsidian6.TFile)
+        await this.plugin.updateCacheForFile(file);
+    }
+  }
+  showDeleteNotice(deleted, failed, removed) {
+    const parts = [];
+    if (deleted > 0)
+      parts.push(t("delete.done", { n: deleted }));
+    if (failed > 0)
+      parts.push(t("delete.failed", { n: failed }));
+    const notice = new import_obsidian6.Notice("", 8e3);
+    const messageEl = notice.noticeEl || notice.messageEl;
+    if (!messageEl)
+      return;
+    messageEl.empty();
+    messageEl.createSpan({ text: `${parts.join(" ")} ` });
+    if (removed.length === 0)
+      return;
+    const undoBtn = messageEl.createEl("button", { text: t("common.undo") });
+    undoBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      notice.hide();
+      const restored = await restoreTaskLines(this.app, removed, (path) => this.plugin.markSelfWrite(path));
+      await this.reparseNotes(removed.map((r) => r.filePath));
+      await this.refreshTasks();
+      new import_obsidian6.Notice(t("delete.restored", { n: restored }));
+    });
   }
   useCompactLayout() {
     return false;
@@ -8848,6 +9484,9 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           return null;
         return { kind: "drawer", el: undatedSection ?? drawer, dateStr: "" };
       }
+      const boardCol = source.kind === "task" ? hit.closest(".dp-kanban-column[data-col-id]") : null;
+      if (boardCol)
+        return { kind: "board", el: boardCol, dateStr: boardCol.dataset.colId };
       const dayHeader = source.kind === "task" ? hit.closest(".dp-grid-header[data-date]") : null;
       if (dayHeader)
         return { kind: "fit", el: dayHeader, dateStr: dayHeader.dataset.date };
@@ -8977,6 +9616,11 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       if (landing.kind === "fit") {
         if (source.kind === "task")
           await this.fitTaskIn(source.task, [landing.dateStr]);
+        return;
+      }
+      if (landing.kind === "board") {
+        if (source.kind === "task")
+          await this.dropTaskOnBoardColumn(source.task, landing.dateStr);
         return;
       }
       const minutes = landing.kind === "timeline" ? this.snapTimelineMinutes(y - landing.el.getBoundingClientRect().top - grabOffset, source.kind === "timeline") : null;
@@ -9265,6 +9909,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     else if (task.statusChar === "-")
       cls += " cancelled";
     const chip = containerEl.createDiv({ cls });
+    chip.dataset.selectId = task.id;
     createCustomCheckbox(chip, task, async (newStatus) => {
       await updateTaskInFile3(this.app, task, { statusChar: newStatus });
       await this.refreshTasks();
@@ -9310,6 +9955,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     if (event.color) {
       chip.style.cssText = `background-color: ${event.color}1c !important; border-left: 3px solid ${event.color} !important;`;
     }
+    chip.dataset.selectId = event.id;
     chip.addEventListener("click", () => {
       new GCalEventEditModal(this.app, this.plugin, event, dateStr, async () => {
         await this.refreshTasks(null, true);
@@ -9323,6 +9969,24 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     const rootEl = container.createDiv({ cls: "dp-container" });
     this.renderRoot(rootEl);
     this.registerScrollIdleClass(rootEl);
+    rootEl.addEventListener("click", (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.button !== 0)
+        return;
+      const card = e.target.closest("[data-task-id], [data-select-id]");
+      if (!card || card.closest(".dp-side-drawer"))
+        return;
+      const id = card.dataset.selectId ?? card.dataset.taskId;
+      if (!id)
+        return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (this.selectedTaskIds.has(id))
+        this.selectedTaskIds.delete(id);
+      else
+        this.selectedTaskIds.add(id);
+      triggerHaptic("selection");
+      this.applySelectionState();
+    }, true);
     void this.refreshTasks(null, true);
     this.keydownHandler = async (e) => {
       const activeEl = document.activeElement;
@@ -9341,13 +10005,28 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           void this.runSync();
         return;
       }
+      const searchKey = e.key === "/" && !e.ctrlKey && !e.metaKey && !e.altKey || (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "f";
+      if (searchKey && this instanceof DayPlannerCombinedView) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.openSearch();
+        return;
+      }
       if (e.ctrlKey || e.metaKey || e.altKey)
         return;
+      if ((e.key === "Delete" || e.key === "Backspace") && this.selectedTaskIds.size > 0) {
+        e.preventDefault();
+        this.deleteSelectedItems();
+        return;
+      }
       if (e.key === "Escape") {
         if (this.selectedTaskIds.size > 0) {
           e.preventDefault();
           this.selectedTaskIds.clear();
           this.render();
+        } else if (this instanceof DayPlannerCombinedView && this.searchQuery) {
+          e.preventDefault();
+          this.closeSearch();
         }
         return;
       }
@@ -9461,7 +10140,11 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           this.tasks = this.tasks.filter((task) => matchFilterGroup(task, parseFilterGroup(filters)));
         }
       }
-      const signature = taskListSignature(this.tasks);
+      this.unsearchedTasks = this.tasks;
+      const terms = searchTerms(self.searchQuery ?? "");
+      if (terms.length > 0)
+        this.tasks = this.tasks.filter((task) => taskMatchesSearch(task, terms));
+      const signature = taskListSignature(this.relevantTasksForSignature(this.tasks));
       if (skipIfUnchanged && signature === self.renderedTaskSignature)
         return;
       self.renderedTaskSignature = signature;
@@ -9667,6 +10350,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         }
       }
       this.activePointerDrag?.refresh();
+      this.applySelectionState();
       if (this.inlineCreate)
         this.mountInlineCreate();
     } catch (error) {
@@ -9808,6 +10492,15 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         openTaskModal();
       }
     });
+    if (this instanceof DayPlannerCombinedView) {
+      const view = this;
+      const searchBtn = headerActions.createEl("button", {
+        cls: `dp-search-btn${view.searchQuery ? " is-active" : ""}`,
+        attr: { "aria-label": t("search.open") }
+      });
+      (0, import_obsidian6.setIcon)(searchBtn, "search");
+      searchBtn.addEventListener("click", () => view.toggleSearch());
+    }
     if (this instanceof DayPlannerBaseView && !this.useCompactLayout() && this.plugin.settings.showShortcutButton !== false) {
       const helpBtn = headerActions.createEl("button", {
         cls: "dp-help-btn",
@@ -9949,6 +10642,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     let startY = 0;
     let moved = false;
     let hadSelection = false;
+    let additive = false;
     const doc = eventsCol.ownerDocument;
     const onDown = (e) => {
       if (e.button !== 0 || e.pointerType === "touch")
@@ -9959,6 +10653,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       e.preventDefault();
       moved = false;
       hadSelection = this.selectedTaskIds.size > 0;
+      additive = e.ctrlKey || e.metaKey || e.shiftKey;
       const rect = eventsCol.getBoundingClientRect();
       startX = e.clientX - rect.left;
       startY = e.clientY - rect.top;
@@ -9967,7 +10662,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       marquee.style.top = `${startY}px`;
       marquee.style.width = "0px";
       marquee.style.height = "0px";
-      if (!e.ctrlKey && !e.metaKey && !e.shiftKey)
+      if (!additive)
         this.selectedTaskIds.clear();
       doc.addEventListener("pointermove", onMove);
       doc.addEventListener("pointerup", onUp);
@@ -9989,7 +10684,6 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       marquee.style.width = `${width}px`;
       marquee.style.height = `${height}px`;
       const box = marquee.getBoundingClientRect();
-      const additive = e.ctrlKey || e.metaKey || e.shiftKey;
       getTimedEvents().forEach((el) => {
         const taskId = el.getAttribute("data-task-id");
         if (!taskId)
@@ -11246,6 +11940,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           });
           if (customStyle)
             gcalItem.style.cssText = customStyle;
+          gcalItem.dataset.selectId = e.id;
           gcalItem.addEventListener("click", () => {
             new GCalEventEditModal(this.app, this.plugin, e, loopDayStr, async () => {
               await this.refreshTasks(null, true);
@@ -11259,6 +11954,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           else if (task.statusChar === "-")
             itemClass += " cancelled";
           const item = listWrapper.createDiv({ cls: itemClass });
+          item.dataset.selectId = task.id;
           const displayTitle = cleanTaskTextForDisplay(task.text);
           const priorityPrefix = task.priority !== "normal" ? { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" }[task.priority] + " " : "";
           const textSpan = item.createSpan({
@@ -11661,53 +12357,50 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         const targetTask = this.tasks.find((t2) => t2.id === taskId);
         if (!targetTask)
           return;
-        let dateUpdate = targetTask.date;
-        let statusCharUpdate = targetTask.statusChar;
-        switch (col.id) {
-          case "undated":
-            dateUpdate = null;
-            if (statusCharUpdate === "x" || statusCharUpdate === "-") {
-              statusCharUpdate = " ";
-            }
-            break;
-          case "overdue":
-            dateUpdate = referenceDate.clone().subtract(1, "day").format("YYYY-MM-DD");
-            if (statusCharUpdate === "x" || statusCharUpdate === "-") {
-              statusCharUpdate = " ";
-            }
-            break;
-          case "today":
-            dateUpdate = todayStr;
-            if (statusCharUpdate === "x" || statusCharUpdate === "-") {
-              statusCharUpdate = " ";
-            }
-            break;
-          case "tomorrow":
-            dateUpdate = tomorrowStr;
-            if (statusCharUpdate === "x" || statusCharUpdate === "-") {
-              statusCharUpdate = " ";
-            }
-            break;
-          case "future":
-            dateUpdate = referenceDate.clone().add(3, "days").format("YYYY-MM-DD");
-            if (statusCharUpdate === "x" || statusCharUpdate === "-") {
-              statusCharUpdate = " ";
-            }
-            break;
-          case "completed":
-            statusCharUpdate = "x";
-            break;
-        }
-        const updated = await updateTaskInFile3(this.app, targetTask, {
-          date: dateUpdate,
-          statusChar: statusCharUpdate
-        });
-        if (updated) {
-          new import_obsidian6.Notice(`Moved task to '${col.title}' column.`);
-          await this.refreshTasks();
-        }
+        await this.dropTaskOnBoardColumn(targetTask, col.id, col.title);
       });
     });
+  }
+  async dropTaskOnBoardColumn(task, colId, colTitle = colId) {
+    if (this.kanbanViewMode === "priority") {
+      const priority = colId;
+      if (task.priority === priority)
+        return;
+      if (await updateTaskInFile3(this.app, task, { priority })) {
+        new import_obsidian6.Notice(`Priority re-assigned to '${colTitle}'`);
+        await this.refreshTasks();
+      }
+      return;
+    }
+    const referenceDate = window.moment().startOf("day");
+    const reopened = task.statusChar === "x" || task.statusChar === "-" ? " " : task.statusChar;
+    const updates = { statusChar: reopened };
+    switch (colId) {
+      case "undated":
+        updates.date = null;
+        break;
+      case "overdue":
+        updates.date = referenceDate.clone().subtract(1, "day").format("YYYY-MM-DD");
+        break;
+      case "today":
+        updates.date = referenceDate.format("YYYY-MM-DD");
+        break;
+      case "tomorrow":
+        updates.date = referenceDate.clone().add(1, "day").format("YYYY-MM-DD");
+        break;
+      case "future":
+        updates.date = referenceDate.clone().add(3, "days").format("YYYY-MM-DD");
+        break;
+      case "completed":
+        updates.statusChar = "x";
+        break;
+      default:
+        return;
+    }
+    if (await updateTaskInFile3(this.app, task, updates)) {
+      new import_obsidian6.Notice(`Moved task to '${colTitle}' column.`);
+      await this.refreshTasks();
+    }
   }
   renderPriorityFocusBoard(board) {
     const columns = [
@@ -11873,13 +12566,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         const targetTask = this.tasks.find((t2) => t2.id === taskId);
         if (!targetTask)
           return;
-        const updated = await updateTaskInFile3(this.app, targetTask, {
-          priority: col.priority
-        });
-        if (updated) {
-          new import_obsidian6.Notice(`Priority re-assigned to '${col.title}'`);
-          await this.refreshTasks();
-        }
+        await this.dropTaskOnBoardColumn(targetTask, col.priority, col.title);
       });
     });
   }
@@ -12077,6 +12764,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
             cardClass += " cancelled";
         }
         const card = contentDiv.createDiv({ cls: cardClass });
+        card.dataset.selectId = isTask ? item.task.id : item.event.id;
         if (isTask) {
           createCustomCheckbox(card, item.task, async (newStatus) => {
             await updateTaskInFile3(this.app, item.task, { statusChar: newStatus });
@@ -12180,6 +12868,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.drawerCalendarAnchor = null;
     this.drawerStatsPct = 0;
     this.headerResizeObserver = null;
+    this.searchTimer = null;
     this.drawerCaptureDraft = "";
     this.drawerCaptureFocused = false;
     this.swipeBound = false;
@@ -12295,12 +12984,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       this.registerSwipeNavigation(rootEl);
     }
     rootEl.toggleClass("dp-drawer-open", this.isSideDrawerOpen());
-    if (this.hasSideDrawer()) {
+    if (this.hasSideDrawer())
       renderSideDrawer(rootEl, this);
-      this.trackHeaderHeight(rootEl, header);
-    } else {
-      this.headerResizeObserver?.disconnect();
-    }
+    this.trackHeaderHeight(rootEl, header);
+    this.syncSearchBar(rootEl);
   }
   hasSideDrawer() {
     return !this.useCompactLayout() && !import_obsidian6.Platform.isMobile && SIDE_DRAWER_TABS.includes(this.activeTab);
@@ -12310,7 +12997,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   }
   async toggleSideDrawer(open = !this.isSideDrawerOpen()) {
     if (!this.hasSideDrawer()) {
-      new import_obsidian6.Notice("The side drawer is available in the Daily, N-day, Weekly and Monthly views of Dayloom on desktop.");
+      new import_obsidian6.Notice("The side drawer is available in Dayloom on desktop.");
       return;
     }
     this.plugin.settings.sideDrawerOpen = open;
@@ -12384,6 +13071,124 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   async setTaskPriority(task, priority) {
     if (await updateTaskInFile3(this.app, task, { priority }))
       await this.refreshTasks();
+  }
+  relevantTasksForSignature(tasks) {
+    const tab = this.activeTab;
+    if (tab === "board" || tab === "list")
+      return tasks;
+    const d = this.currentDate;
+    const from = tab === "monthly" ? d.clone().startOf("month").subtract(7, "days") : tab === "weekly" ? d.clone().startOf("week") : d.clone();
+    const to = tab === "monthly" ? d.clone().endOf("month").add(7, "days") : tab === "weekly" ? d.clone().endOf("week") : d.clone().add(tab === "multiDay" ? this.getNDayCount() - 1 : 0, "days");
+    const fromStr = from.format("YYYY-MM-DD");
+    const toStr = to.format("YYYY-MM-DD");
+    const todayStr = window.moment().format("YYYY-MM-DD");
+    const drawer = this.isSideDrawerOpen();
+    return tasks.filter((task) => task.date === null ? drawer : task.date >= fromStr && task.date <= toStr || task.date === todayStr || drawer && task.date < todayStr);
+  }
+  async goToDate(dateStr) {
+    if (this.activeTab === "board") {
+      this.currentDate = window.moment(dateStr, "YYYY-MM-DD");
+      this.dataVersion++;
+      await this.switchTab("daily");
+      return;
+    }
+    return super.goToDate(dateStr);
+  }
+  getSearchBar() {
+    return this.containerEl.querySelector(".dp-container > .dp-search-float");
+  }
+  toggleSearch() {
+    const bar = this.getSearchBar();
+    if (bar?.hasClass("is-open") && !this.searchQuery)
+      this.closeSearch();
+    else
+      this.openSearch();
+  }
+  openSearch() {
+    const rootEl = this.containerEl.querySelector(".dp-container");
+    if (!rootEl)
+      return;
+    const bar = this.getSearchBar() ?? this.createSearchBar(rootEl);
+    bar.addClass("is-open");
+    const input = bar.querySelector("input");
+    input.focus();
+    input.select();
+  }
+  closeSearch() {
+    const bar = this.getSearchBar();
+    if (bar) {
+      bar.removeClass("is-open");
+      bar.querySelector("input").value = "";
+    }
+    if (this.searchTimer !== null)
+      window.clearTimeout(this.searchTimer);
+    this.searchTimer = null;
+    if (this.searchQuery)
+      void this.setSearchQuery("");
+  }
+  async setSearchQuery(query) {
+    if (query === this.searchQuery)
+      return;
+    this.searchQuery = query;
+    this.dataVersion++;
+    await this.refreshTasks();
+  }
+  createSearchBar(rootEl) {
+    const bar = rootEl.createDiv({ cls: "dp-search-float", attr: { role: "search" } });
+    (0, import_obsidian6.setIcon)(bar.createSpan({ cls: "dp-search-icon" }), "search");
+    const input = bar.createEl("input", {
+      cls: "dp-search-input",
+      attr: { type: "search", placeholder: t("search.placeholder"), "aria-label": t("search.placeholder"), spellcheck: "false" }
+    });
+    bar.createSpan({ cls: "dp-search-count" });
+    const clear = bar.createEl("button", { cls: "dp-search-clear", attr: { "aria-label": t("search.clear") } });
+    (0, import_obsidian6.setIcon)(clear, "x");
+    const apply = (delay) => {
+      if (this.searchTimer !== null)
+        window.clearTimeout(this.searchTimer);
+      this.searchTimer = window.setTimeout(() => {
+        this.searchTimer = null;
+        void this.setSearchQuery(input.value.trim());
+      }, delay);
+    };
+    input.addEventListener("input", (e) => {
+      if (!e.isComposing)
+        apply(140);
+    });
+    input.addEventListener("compositionend", () => apply(140));
+    input.addEventListener("keydown", (e) => {
+      if (e.isComposing)
+        return;
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        this.closeSearch();
+        this.containerEl.querySelector(".dp-container")?.focus();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        apply(0);
+      }
+    });
+    clear.addEventListener("click", () => {
+      if (input.value) {
+        input.value = "";
+        apply(0);
+        input.focus();
+      } else {
+        this.closeSearch();
+      }
+    });
+    return bar;
+  }
+  syncSearchBar(rootEl) {
+    const bar = rootEl.querySelector(":scope > .dp-search-float");
+    rootEl.toggleClass("dp-searching", !!this.searchQuery);
+    if (!bar)
+      return;
+    const count = this.searchQuery ? this.tasks.length + (this.plugin.settings.enableGoogleCalendar ? this.getCalendarEvents().length : 0) : 0;
+    bar.toggleClass("has-query", !!this.searchQuery);
+    bar.toggleClass("is-empty", !!this.searchQuery && count === 0);
+    bar.querySelector(".dp-search-count").setText(!this.searchQuery ? "" : count === 0 ? t("search.noMatches") : t("search.matches", { n: count }));
   }
   upcomingDates(count) {
     const today = window.moment();
@@ -12548,7 +13353,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   }
   rebuildRoot(rootEl) {
     Array.from(rootEl.children).forEach((child) => {
-      if (!child.classList.contains("day-planner-view-pane"))
+      if (!child.classList.contains("day-planner-view-pane") && !child.classList.contains("dp-search-float"))
         child.remove();
     });
     this.renderRoot(rootEl);
@@ -12560,13 +13365,18 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     }
     const token = ++this.paneActivationToken;
     if (!this.isTabSwitch) {
-      this.activatePane(rootEl);
+      {
+        this.activatePane(rootEl);
+        this.applySelectionState();
+      }
       return;
     }
     this.paneActivation = new Promise((resolve) => {
       requestAnimationFrame(() => window.setTimeout(() => {
-        if (token === this.paneActivationToken && this.paneRoot === rootEl && rootEl.isConnected)
+        if (token === this.paneActivationToken && this.paneRoot === rootEl && rootEl.isConnected) {
           this.activatePane(rootEl);
+          this.applySelectionState();
+        }
         resolve();
       }, 0));
     });
@@ -13752,6 +14562,7 @@ function gcalIdHider(isEnabled) {
     }
   }, { decorations: (v) => v.decorations });
 }
+var isElementShown = (el) => typeof el.isShown === "function" ? el.isShown() : true;
 var whenIdle = () => new Promise((resolve) => {
   if (typeof window.requestIdleCallback === "function")
     window.requestIdleCallback(() => resolve(), { timeout: 2e3 });
@@ -13772,6 +14583,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.scanPromise = null;
     this.viewRefreshTimer = null;
     this.viewRefreshFirstAt = 0;
+    this.lastEditorInputAt = 0;
     this.codeBlockRenderers = /* @__PURE__ */ new Set();
     this.notifiedReminders = /* @__PURE__ */ new Set();
     this.notifiedRemindersDate = "";
@@ -13784,12 +14596,32 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     else
       window.clearTimeout(this.viewRefreshTimer);
     const delay = Math.max(0, Math.min(250, this.viewRefreshFirstAt + 1500 - now));
-    this.viewRefreshTimer = window.setTimeout(() => {
+    const TYPING_PAUSE_MS = 1200;
+    const run = () => {
+      const sinceTyping = Date.now() - this.lastEditorInputAt;
+      if (sinceTyping < TYPING_PAUSE_MS) {
+        this.viewRefreshTimer = window.setTimeout(run, TYPING_PAUSE_MS - sinceTyping);
+        return;
+      }
       this.viewRefreshTimer = null;
-      this.updateStatusBar();
-      this.refreshActiveViews(false, true);
-      this.codeBlockRenderers.forEach((r) => r.refreshContentOnly(true));
-    }, delay);
+      const refresh = () => {
+        this.updateStatusBar();
+        this.refreshActiveViews(false, true);
+        this.codeBlockRenderers.forEach((r) => r.refreshContentOnly(true));
+      };
+      if (typeof window.requestIdleCallback === "function")
+        window.requestIdleCallback(refresh, { timeout: 500 });
+      else
+        refresh();
+    };
+    this.viewRefreshTimer = window.setTimeout(run, delay);
+  }
+  removeCachedEvents(keys) {
+    this.gcalRanges.forEach((range) => {
+      range.events = range.events.filter((e) => !keys.has(`${e.calendarId}::${e.id}`));
+    });
+    this.rebuildGCalCache();
+    this.scheduleGCalCacheSave();
   }
   ensureTasksCache() {
     if (this.tasksCache)
@@ -13932,6 +14764,22 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.registerInterval(window.setInterval(() => this.checkReminders(), 15e3));
     this.checkReminders();
     this.ensureTasksCache().then(() => this.updateStatusBar());
+    this.registerEvent(this.app.workspace.on("editor-change", () => {
+      this.lastEditorInputAt = Date.now();
+    }));
+    const catchUpHiddenViews = () => {
+      [VIEW_TYPES.COMBINED, VIEW_TYPES.DAILY].forEach((viewType) => {
+        this.app.workspace.getLeavesOfType(viewType).forEach((leaf) => {
+          const view = leaf.view;
+          if (view?.staleWhileHidden && isElementShown(view.containerEl)) {
+            view.staleWhileHidden = false;
+            view.refreshTasks(null, false, true);
+          }
+        });
+      });
+    };
+    this.registerEvent(this.app.workspace.on("active-leaf-change", catchUpHiddenViews));
+    this.registerEvent(this.app.workspace.on("layout-change", catchUpHiddenViews));
     const modifyTimeouts = /* @__PURE__ */ new Map();
     const scheduleFileUpdate = (file, run) => {
       window.clearTimeout(modifyTimeouts.get(file.path));
@@ -14404,6 +15252,10 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
       workspace.getLeavesOfType(viewType).forEach((leaf) => {
         const view = leaf.view;
         if (view && typeof view.refreshTasks === "function") {
+          if (skipIfUnchanged && !isElementShown(view.containerEl)) {
+            view.staleWhileHidden = true;
+            return;
+          }
           view.refreshTasks(null, forceFetchGCal, skipIfUnchanged);
         }
       });
