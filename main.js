@@ -1427,17 +1427,98 @@ var STYLES = `
     cursor: not-allowed;
     font-size: 0.9em;
 }
+/* -------------------------------------------------------------
+   Modal footer, one standard for every planner modal (modals.ts createModalFooter / createModalButton):
+   item actions (Delete, Duplicate) at the start, Cancel + the primary action at the end. One button size; the
+   variant only changes the surface: primary = accent fill, secondary = neutral glass, danger = red-tinted glass.
+   ------------------------------------------------------------- */
 .dp-modal-buttons {
     display: flex;
+    flex-wrap: wrap; /* narrow (phone) modals: the end group drops under the start group, still right-aligned */
+    align-items: center;
     justify-content: flex-end;
     gap: 8px;
     margin-top: 4px;
+    padding-top: 12px;
     border-top: 1px solid var(--background-modifier-border);
-    padding-top: 10px;
 }
-/* Task Edit modal: Delete keeps its distance from Save, at the row's leading edge */
-.dp-modal-buttons > .dp-modal-delete {
+.dp-modal-actions-start,
+.dp-modal-actions-end {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.dp-modal-actions-start {
     margin-right: auto;
+}
+.dp-modal-actions-start:empty {
+    display: none;
+}
+.modal .dp-modal-buttons button.dp-modal-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    min-width: 80px;
+    margin: 0;
+    padding: 0 14px;
+    font-size: var(--font-ui-small, 13px);
+    font-weight: var(--font-semibold, 600);
+    line-height: 1;
+    white-space: nowrap;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.modal .dp-modal-buttons button.dp-modal-btn:active:not(:disabled) {
+    transform: scale(0.97);
+}
+.modal .dp-modal-buttons button.dp-modal-btn:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+}
+.modal .dp-modal-buttons button.dp-modal-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.dp-modal-btn-icon {
+    display: inline-flex;
+}
+.dp-modal-btn-icon svg {
+    width: 14px;
+    height: 14px;
+}
+.modal .dp-modal-buttons button.dp-modal-btn.is-secondary {
+    color: var(--text-normal);
+    background-color: var(--dp-card-bg);
+    border: 1px solid var(--dp-glass-border);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--dp-glass-highlight);
+}
+.modal .dp-modal-buttons button.dp-modal-btn.is-secondary:hover:not(:disabled) {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+}
+.modal .dp-modal-buttons button.dp-modal-btn.is-primary {
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+    border: 1px solid transparent;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 4px 12px color-mix(in srgb, var(--interactive-accent) 30%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.modal .dp-modal-buttons button.dp-modal-btn.is-primary:hover:not(:disabled) {
+    background-color: var(--interactive-accent-hover, var(--interactive-accent));
+}
+.modal .dp-modal-buttons button.dp-modal-btn.is-danger {
+    color: var(--text-error);
+    background-color: color-mix(in srgb, var(--color-red) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-red) 32%, transparent);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--dp-glass-highlight);
+}
+.modal .dp-modal-buttons button.dp-modal-btn.is-danger:hover:not(:disabled) {
+    color: var(--text-on-accent);
+    background-color: var(--color-red);
+    border-color: var(--color-red);
 }
 
 /* Consolidated Add Modal choice screen styles */
@@ -6843,6 +6924,20 @@ function t(key, vars) {
 }
 
 // modals.ts
+function createModalFooter(parent) {
+  const footer = parent.createDiv({ cls: "dp-modal-buttons" });
+  return {
+    start: footer.createDiv({ cls: "dp-modal-actions-start" }),
+    end: footer.createDiv({ cls: "dp-modal-actions-end" })
+  };
+}
+function createModalButton(parent, text, variant, icon) {
+  const btn = parent.createEl("button", { cls: `dp-modal-btn is-${variant}` });
+  if (icon)
+    (0, import_obsidian4.setIcon)(btn.createSpan({ cls: "dp-modal-btn-icon" }), icon);
+  btn.createSpan({ cls: "dp-modal-btn-label", text });
+  return btn;
+}
 var TaskEditModal = class extends import_obsidian4.Modal {
   constructor(app, task, defaultDate, onSave, defaultStartTime = null, defaultEndTime = null) {
     super(app);
@@ -7015,11 +7110,11 @@ var TaskEditModal = class extends import_obsidian4.Modal {
     cancelDInput.addEventListener("change", () => {
       formState.cancelledDate = cancelDInput.value || null;
     });
-    const buttonRow = form.createDiv({ cls: "dp-modal-buttons" });
+    const footer = createModalFooter(form);
     const task = this.task;
     const plugin = getPlannerPlugin(this.app);
     if (task && plugin) {
-      const deleteBtn = buttonRow.createEl("button", { text: `${t("common.delete")} \u{1F5D1}`, cls: "mod-warning dp-modal-delete" });
+      const deleteBtn = createModalButton(footer.start, t("common.delete"), "danger", "trash-2");
       deleteBtn.addEventListener("click", (e) => {
         e.preventDefault();
         new DeleteConfirmModal(this.app, [{ kind: "task", title: cleanTaskTextForDisplay(task.text) }], () => {
@@ -7028,12 +7123,12 @@ var TaskEditModal = class extends import_obsidian4.Modal {
         }).open();
       });
     }
-    const cancelBtn = buttonRow.createEl("button", { text: t("common.cancel") });
+    const cancelBtn = createModalButton(footer.end, t("common.cancel"), "secondary");
     cancelBtn.addEventListener("click", (e) => {
       e.preventDefault();
       this.close();
     });
-    const saveBtn = buttonRow.createEl("button", { text: t("common.save"), cls: "mod-cta" });
+    const saveBtn = createModalButton(footer.end, t("common.save"), "primary");
     saveBtn.addEventListener("click", (e) => {
       e.preventDefault();
       if (!formState.text.trim()) {
@@ -7175,10 +7270,9 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
     descTextarea.addEventListener("input", () => {
       formState.description = descTextarea.value;
     });
-    const buttonRow = form.createDiv({ cls: "dp-modal-buttons" });
-    const leftActions = buttonRow.createDiv();
+    const footer = createModalFooter(form);
     if (this.event) {
-      const deleteBtn = leftActions.createEl("button", { text: `${t("common.delete")} \u{1F5D1}`, cls: "mod-warning" });
+      const deleteBtn = createModalButton(footer.start, t("common.delete"), "danger", "trash-2");
       deleteBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         if (await deleteGoogleCalendarEvent(this.plugin, formState.calendarId, this.event.id)) {
@@ -7187,7 +7281,7 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
           this.close();
         }
       });
-      const duplicateBtn = leftActions.createEl("button", { text: `${t("eventModal.duplicate")} \u{1F4D1}` });
+      const duplicateBtn = createModalButton(footer.start, t("eventModal.duplicate"), "secondary", "copy");
       duplicateBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         if (await createGoogleCalendarEvent(this.plugin, formState.calendarId, {
@@ -7206,13 +7300,12 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
         }
       });
     }
-    const rightActions = buttonRow.createDiv();
-    const cancelBtn = rightActions.createEl("button", { text: t("common.cancel") });
+    const cancelBtn = createModalButton(footer.end, t("common.cancel"), "secondary");
     cancelBtn.addEventListener("click", (e) => {
       e.preventDefault();
       this.close();
     });
-    const saveBtn = rightActions.createEl("button", { text: this.event ? t("common.save") : t("common.create"), cls: "mod-cta" });
+    const saveBtn = createModalButton(footer.end, this.event ? t("common.save") : t("common.create"), "primary");
     saveBtn.addEventListener("click", async (e) => {
       e.preventDefault();
       if (!formState.summary.trim()) {
@@ -7300,10 +7393,7 @@ var AddChoiceModal = class extends import_obsidian4.Modal {
       this.onChoose("appointment");
       this.close();
     });
-    const buttonRow = contentEl.createDiv({
-      cls: "dp-modal-buttons"
-    });
-    const cancelBtn = buttonRow.createEl("button", { text: t("common.cancel") });
+    const cancelBtn = createModalButton(createModalFooter(contentEl).end, t("common.cancel"), "secondary");
     cancelBtn.addEventListener("click", () => {
       this.close();
     });
@@ -7339,10 +7429,10 @@ var DeleteConfirmModal = class extends import_obsidian4.Modal {
       notes.createDiv({ text: t("delete.tasksNote") });
     if (this.items.some((i) => i.kind === "event"))
       notes.createDiv({ cls: "mod-warning", text: t("delete.eventsNote") });
-    const buttons = contentEl.createDiv({ cls: "dp-modal-buttons" });
-    const cancelBtn = buttons.createEl("button", { text: t("common.cancel") });
+    const footer = createModalFooter(contentEl);
+    const cancelBtn = createModalButton(footer.end, t("common.cancel"), "secondary");
     cancelBtn.addEventListener("click", () => this.close());
-    const deleteBtn = buttons.createEl("button", { text: t("common.delete"), cls: "mod-warning" });
+    const deleteBtn = createModalButton(footer.end, t("common.delete"), "danger", "trash-2");
     deleteBtn.addEventListener("click", () => this.confirm());
     this.scope.register([], "Enter", (e) => {
       e.preventDefault();
@@ -7482,15 +7572,10 @@ var TaskSyncModal = class extends import_obsidian4.Modal {
         }
       });
     }
-    const buttonsRow = contentEl.createDiv({
-      cls: "dp-modal-buttons"
-    });
-    const cancelBtn = buttonsRow.createEl("button", { text: t("common.cancel") });
+    const footer = createModalFooter(contentEl);
+    const cancelBtn = createModalButton(footer.end, t("common.cancel"), "secondary");
     cancelBtn.addEventListener("click", () => this.close());
-    const syncBtn = buttonsRow.createEl("button", {
-      text: t("syncModal.syncNow"),
-      cls: "mod-cta"
-    });
+    const syncBtn = createModalButton(footer.end, t("syncModal.syncNow"), "primary");
     if (enabledCalendars.length === 0) {
       syncBtn.disabled = true;
     }
