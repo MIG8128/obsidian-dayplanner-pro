@@ -7709,7 +7709,7 @@ var _ShortcutHelpModal = class extends import_obsidian4.Modal {
       ]],
       [t("shortcuts.group.panels"), [
         [["s"], t("shortcuts.drawer")],
-        [["/", "Ctrl/Cmd+F"], t("shortcuts.search")],
+        [["/"], t("shortcuts.search")],
         [["?", "h"], t("shortcuts.help")],
         [["F5", "Ctrl/Cmd+R"], t("shortcuts.sync")]
       ]],
