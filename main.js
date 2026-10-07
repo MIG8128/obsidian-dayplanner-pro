@@ -1454,7 +1454,7 @@ var STYLES = `
 .dp-modal-actions-start:empty {
     display: none;
 }
-.modal .dp-modal-buttons button.dp-modal-btn {
+.modal button.dp-modal-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1464,21 +1464,27 @@ var STYLES = `
     margin: 0;
     padding: 0 14px;
     font-size: var(--font-ui-small, 13px);
-    font-weight: var(--font-semibold, 600);
+    font-weight: var(--font-normal, 400);
     line-height: 1;
     white-space: nowrap;
-    border-radius: 8px;
+    border-radius: 999px;
     cursor: pointer;
-    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.18s ease,
+        filter 0.15s ease, transform 0.15s ease;
 }
-.modal .dp-modal-buttons button.dp-modal-btn:active:not(:disabled) {
-    transform: scale(0.97);
+/* Every variant answers the pointer the same way: a 1px lift with a deeper shadow, a press settles it */
+.modal button.dp-modal-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
 }
-.modal .dp-modal-buttons button.dp-modal-btn:focus-visible {
+.modal button.dp-modal-btn:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    transition-duration: 0.05s;
+}
+.modal button.dp-modal-btn:focus-visible {
     outline: 2px solid var(--interactive-accent);
     outline-offset: 2px;
 }
-.modal .dp-modal-buttons button.dp-modal-btn:disabled {
+.modal button.dp-modal-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
 }
@@ -1489,36 +1495,41 @@ var STYLES = `
     width: 14px;
     height: 14px;
 }
-.modal .dp-modal-buttons button.dp-modal-btn.is-secondary {
+.modal button.dp-modal-btn.is-secondary {
     color: var(--text-normal);
     background-color: var(--dp-card-bg);
     border: 1px solid var(--dp-glass-border);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--dp-glass-highlight);
 }
-.modal .dp-modal-buttons button.dp-modal-btn.is-secondary:hover:not(:disabled) {
+.modal button.dp-modal-btn.is-secondary:hover:not(:disabled) {
     background-color: var(--background-modifier-hover);
     border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.10), inset 0 1px 0 var(--dp-glass-highlight);
 }
-.modal .dp-modal-buttons button.dp-modal-btn.is-primary {
+.modal button.dp-modal-btn.is-primary {
     color: var(--text-on-accent);
     background-color: var(--interactive-accent);
     border: 1px solid transparent;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 4px 12px color-mix(in srgb, var(--interactive-accent) 30%, transparent),
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 4px 12px color-mix(in srgb, var(--interactive-accent) 28%, transparent),
         inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
-.modal .dp-modal-buttons button.dp-modal-btn.is-primary:hover:not(:disabled) {
-    background-color: var(--interactive-accent-hover, var(--interactive-accent));
+/* Brightness, not --interactive-accent-hover: many themes set that equal to the accent, so hover showed nothing */
+.modal button.dp-modal-btn.is-primary:hover:not(:disabled) {
+    filter: brightness(1.08) saturate(1.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12), 0 8px 18px color-mix(in srgb, var(--interactive-accent) 38%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
-.modal .dp-modal-buttons button.dp-modal-btn.is-danger {
+.modal button.dp-modal-btn.is-danger {
     color: var(--text-error);
     background-color: color-mix(in srgb, var(--color-red) 10%, transparent);
     border: 1px solid color-mix(in srgb, var(--color-red) 32%, transparent);
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), inset 0 1px 0 var(--dp-glass-highlight);
 }
-.modal .dp-modal-buttons button.dp-modal-btn.is-danger:hover:not(:disabled) {
+.modal button.dp-modal-btn.is-danger:hover:not(:disabled) {
     color: var(--text-on-accent);
     background-color: var(--color-red);
     border-color: var(--color-red);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--color-red) 32%, transparent);
 }
 
 /* Consolidated Add Modal choice screen styles */
@@ -3766,16 +3777,6 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     border-color: color-mix(in srgb, var(--color-green) 35%, transparent);
 }
 /* Subtle until hovered: it is a reference, not an action */
-.dp-header-actions > button.dp-help-btn {
-    color: var(--text-muted);
-}
-.dp-header-actions > button.dp-help-btn:hover {
-    color: var(--text-normal);
-}
-.dp-header-actions > button.dp-drawer-toggle.is-active {
-    color: var(--text-accent);
-    background-color: var(--background-modifier-hover);
-}
 
 /* Desktop pointer drag (views.ts beginPointerDrag): floating title chip, drop-target day cell, grabbing cursor */
 .dp-drag-ghost {
@@ -4017,18 +4018,19 @@ body.dp-pointer-dragging * {
 }
 
 /* -------------------------------------------------------------
-   Planner search: a frosted pill under the header (right-aligned, left of the drawer), kept across renders
+   Planner search mode: the header's top row steps aside and the field expands over its full width (views.ts
+   placeSearchBar lays it over that row). Kept mounted across renders, so typing and IME composition survive.
    ------------------------------------------------------------- */
+.dp-search-mode > .dp-header .dp-header-top {
+    visibility: hidden;
+}
 .dp-search-float {
     position: absolute;
-    top: calc(var(--dp-header-h, 56px) + 8px);
-    right: 16px;
-    z-index: 29; /* over the panes and the drawer, under the header (30) */
+    z-index: 31; /* over the header (30) */
     display: none;
     align-items: center;
-    gap: 6px;
-    width: min(340px, calc(100% - 32px));
-    height: 36px;
+    gap: 8px;
+    height: 32px;
     padding: 0 4px 0 12px;
     box-sizing: border-box;
     background-color: var(--dp-glass-bg);
@@ -4038,16 +4040,14 @@ body.dp-pointer-dragging * {
     border-radius: 999px;
     box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
 }
-.dp-container.dp-drawer-open > .dp-search-float {
-    right: calc(var(--dp-drawer-w) + 16px);
-    width: min(340px, calc(100% - var(--dp-drawer-w) - 32px));
-}
 .dp-search-float.is-open {
     display: flex;
-    animation: dp-search-in 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation: dp-search-expand 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@keyframes dp-search-in {
-    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+/* Grows leftward out of the toolbar's search button, at the row's right end */
+@keyframes dp-search-expand {
+    from { opacity: 0.4; clip-path: inset(0 0 0 calc(100% - 40px) round 999px); }
+    to { opacity: 1; clip-path: inset(0 0 0 0 round 999px); }
 }
 .dp-search-float:focus-within {
     border-color: var(--interactive-accent);
@@ -4075,7 +4075,7 @@ body.dp-pointer-dragging * {
     outline: none;
 }
 .dp-search-float input.dp-search-input::-webkit-search-cancel-button {
-    display: none; /* our own \xD7 clears */
+    display: none; /* our own \xD7 closes */
 }
 .dp-search-count {
     flex-shrink: 0;
@@ -4102,6 +4102,7 @@ body.dp-pointer-dragging * {
     border-radius: 999px;
     box-shadow: none;
     cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 .dp-search-float button.dp-search-clear:hover {
     color: var(--text-normal);
@@ -4110,21 +4111,6 @@ body.dp-pointer-dragging * {
 .dp-search-clear svg {
     width: 14px;
     height: 14px;
-}
-/* A search narrows every tab: the header button stays lit while it does */
-.dp-header-actions > button.dp-search-btn {
-    color: var(--text-muted);
-}
-.dp-header-actions > button.dp-search-btn:hover {
-    color: var(--text-normal);
-}
-.dp-header-actions > button.dp-search-btn.is-active {
-    color: var(--text-accent);
-    background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
-}
-.dp-search-btn svg {
-    width: 16px;
-    height: 16px;
 }
 
 /* Delete confirmation */
@@ -4182,6 +4168,227 @@ body.dp-pointer-dragging * {
     .dp-selection-bar, .dp-search-float.is-open {
         animation: none;
     }
+}
+
+
+/* -------------------------------------------------------------
+   Header, decluttered: [date] \u2026 [\u2039 Today \u203A] [search \xB7 sync \xB7 zoom \xB7 help \xB7 drawer] [+]
+   Two glass capsules and one accent button; every control is a pill, as on phones
+   ------------------------------------------------------------- */
+.dp-header-actions {
+    gap: var(--size-4-2, 8px);
+}
+.dp-nav-buttons-group,
+.dp-header-tools {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 2px;
+    height: 32px;
+    margin: 0;
+    padding: 2px;
+    box-sizing: border-box;
+    background-color: var(--dp-segment-track);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 999px;
+}
+.dp-header-tools:empty {
+    display: none;
+}
+.dp-nav-buttons-group > button,
+.dp-header-tools > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 26px;
+    min-width: 26px;
+    margin: 0;
+    padding: 0 10px;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-medium, 500);
+    line-height: 1;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+/* Icon-only tools are round */
+.dp-nav-buttons-group > button.dp-nav-arrow,
+.dp-header-tools > button:is(.dp-search-btn, .dp-sync-btn, .dp-help-btn, .dp-drawer-toggle) {
+    width: 26px;
+    padding: 0;
+}
+.dp-nav-buttons-group > button:hover,
+.dp-header-tools > button:hover {
+    color: var(--text-normal);
+    background-color: var(--dp-segment-active);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px var(--dp-glass-border);
+}
+.dp-nav-buttons-group > button:active,
+.dp-header-tools > button:active {
+    transform: scale(0.94);
+}
+.dp-header-tools > button.is-active {
+    color: var(--text-accent);
+    background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+.dp-nav-buttons-group > button.dp-today-btn {
+    color: var(--text-normal);
+}
+.dp-nav-buttons-group svg,
+.dp-header-tools svg,
+.dp-zoom-toggle svg {
+    width: 15px;
+    height: 15px;
+}
+.dp-btn-icon {
+    display: inline-flex;
+}
+/* The zoom control sits in the toolbar borderless; it still widens on hover / tap (base .dp-zoom-slider-floating) */
+.dp-header-tools > .dp-zoom-slider-floating {
+    margin: 0;
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+}
+.dp-header-tools > .dp-zoom-slider-floating:hover,
+.dp-header-tools > .dp-zoom-slider-floating.is-open {
+    background-color: var(--dp-segment-active);
+}
+.dp-zoom-toggle {
+    color: var(--text-muted);
+}
+.dp-header-actions > button.dp-add-btn {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    margin: 0;
+    padding: 0;
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+    border: none;
+    border-radius: 999px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 4px 12px color-mix(in srgb, var(--interactive-accent) 32%, transparent);
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.18s ease, filter 0.15s ease;
+}
+.dp-header-actions > button.dp-add-btn:hover {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.14), 0 8px 18px color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+}
+.dp-header-actions > button.dp-add-btn:active {
+    transform: scale(0.94);
+}
+.dp-add-btn svg {
+    width: 17px;
+    height: 17px;
+}
+/* Compact shell (phones, sidebar): same capsules, 30px row */
+.dp-compact-shell .dp-header-tools {
+    height: 30px;
+}
+.dp-compact-shell .dp-header-tools > button {
+    width: 26px;
+    padding: 0;
+}
+.dp-compact-shell .dp-header-actions > button.dp-add-btn {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    border-radius: 999px;
+}
+.dp-compact-shell .dp-header-tools > .dp-zoom-slider-floating.is-open {
+    width: 176px;
+}
+
+/* Rounder controls everywhere, as on phones: view tabs and the Board mode toggle are pills */
+.dp-container:not(.dp-compact-shell) .dp-tabs,
+.dp-container:not(.dp-compact-shell) .dp-tabs > .dp-tab,
+.dp-board-toggle,
+.dp-board-toggle > .dp-board-toggle-btn {
+    border-radius: 999px;
+}
+
+/* Weekday labels and week numbers in the phone date-pill style */
+.dp-weekly-header-grid > .dp-grid-header.dp-day-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    height: 40px;
+    margin: 2px 3px;
+    padding: 0;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-medium, 500);
+    background-color: var(--dp-segment-track);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.dp-weekly-header-grid > .dp-grid-header.dp-day-pill:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--dp-glass-border);
+}
+.dp-weekly-header-grid > .dp-grid-header.dp-day-pill:active {
+    transform: scale(0.97);
+}
+.dp-weekly-header-grid > .dp-grid-header.dp-day-pill.today {
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+}
+.dp-weekly-header-grid > .dp-grid-header.dp-day-pill.today:hover {
+    filter: brightness(1.06);
+}
+.dp-monthly-header-grid > .dp-grid-header {
+    padding: 6px 0;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-semibold, 600);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    background-color: var(--dp-segment-track);
+    border-radius: 999px;
+}
+.dp-monthly-header-grid > .dp-grid-header:not(.is-sunday):not(.is-saturday) {
+    color: var(--text-muted);
+}
+.dp-grid-week-cell.dp-day-pill {
+    gap: 1px;
+    background-color: var(--dp-segment-track);
+    border: 1px solid transparent;
+    border-radius: 12px;
+}
+.dp-grid-week-cell.dp-day-pill:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+.dp-grid-week-cell .dp-date-pill-dow {
+    font-size: 0.68em;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.dp-grid-week-cell .dp-date-pill-date {
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-muted);
+}
+
+/* Drawer multi-selection (Ctrl / Cmd + click), same amber dashes as every other selection */
+.dp-container .dp-drawer-card.selected {
+    outline: 2px dashed #ff9f1c;
+    outline-offset: 1px;
+    box-shadow: 0 0 10px rgba(255, 159, 28, 0.55);
 }
 
 `;
@@ -5791,6 +5998,10 @@ var en = {
   "drawer.card.moveNextWeek": "Move to next week ({date})",
   "drawer.card.undate": "Undate",
   "drawer.card.undateTooltip": "Clear the date (move to Undated)",
+  "shortcuts.drawerMulti": "Select several cards, then drop them on a timeline: scheduled back to back",
+  "header.add": "Add a task or event",
+  "header.zoom": "Timeline zoom",
+  "search.close": "Close search (Esc)",
   "search.open": "Search tasks and events (/)",
   "search.placeholder": "Search tasks & events\u2026",
   "search.clear": "Clear search",
@@ -6083,6 +6294,10 @@ var ko = {
   "drawer.card.moveNextWeek": "\uB2E4\uC74C \uC8FC\uB85C \uC62E\uAE30\uAE30 ({date})",
   "drawer.card.undate": "\uB0A0\uC9DC \uD574\uC81C",
   "drawer.card.undateTooltip": "\uB0A0\uC9DC \uC9C0\uC6B0\uAE30 (\uB0A0\uC9DC \uC5C6\uC74C\uC73C\uB85C \uC774\uB3D9)",
+  "shortcuts.drawerMulti": "\uCE74\uB4DC \uC5EC\uB7EC \uAC1C\uB97C \uC120\uD0DD\uD574 \uD0C0\uC784\uB77C\uC778\uC5D0 \uB193\uC73C\uBA74 \uC5F0\uB2EC\uC544 \uBC30\uCE58",
+  "header.add": "\uD560 \uC77C \uB610\uB294 \uC77C\uC815 \uCD94\uAC00",
+  "header.zoom": "\uD0C0\uC784\uB77C\uC778 \uD655\uB300/\uCD95\uC18C",
+  "search.close": "\uAC80\uC0C9 \uB2EB\uAE30 (Esc)",
   "search.open": "\uD560 \uC77C\uACFC \uC77C\uC815 \uAC80\uC0C9 (/)",
   "search.placeholder": "\uD560 \uC77C\xB7\uC77C\uC815 \uAC80\uC0C9\u2026",
   "search.clear": "\uAC80\uC0C9 \uC9C0\uC6B0\uAE30",
@@ -6375,6 +6590,10 @@ var ja = {
   "drawer.card.moveNextWeek": "\u6765\u9031\u3078\u79FB\u52D5 ({date})",
   "drawer.card.undate": "\u65E5\u4ED8\u89E3\u9664",
   "drawer.card.undateTooltip": "\u65E5\u4ED8\u3092\u30AF\u30EA\u30A2\uFF08\u65E5\u4ED8\u306A\u3057\u3078\u79FB\u52D5\uFF09",
+  "shortcuts.drawerMulti": "\u8907\u6570\u306E\u30AB\u30FC\u30C9\u3092\u9078\u3093\u3067\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306B\u30C9\u30ED\u30C3\u30D7\u3059\u308B\u3068\u9023\u7D9A\u3057\u3066\u914D\u7F6E",
+  "header.add": "\u30BF\u30B9\u30AF\u307E\u305F\u306F\u4E88\u5B9A\u3092\u8FFD\u52A0",
+  "header.zoom": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E\u30BA\u30FC\u30E0",
+  "search.close": "\u691C\u7D22\u3092\u9589\u3058\u308B (Esc)",
   "search.open": "\u30BF\u30B9\u30AF\u3068\u4E88\u5B9A\u3092\u691C\u7D22 (/)",
   "search.placeholder": "\u30BF\u30B9\u30AF\u30FB\u4E88\u5B9A\u3092\u691C\u7D22\u2026",
   "search.clear": "\u691C\u7D22\u3092\u30AF\u30EA\u30A2",
@@ -6667,6 +6886,10 @@ var zh = {
   "drawer.card.moveNextWeek": "\u79FB\u5230\u4E0B\u5468 ({date})",
   "drawer.card.undate": "\u53D6\u6D88\u65E5\u671F",
   "drawer.card.undateTooltip": "\u6E05\u9664\u65E5\u671F\uFF08\u79FB\u5230\u65E0\u65E5\u671F\uFF09",
+  "shortcuts.drawerMulti": "\u9009\u62E9\u591A\u5F20\u5361\u7247\u540E\u62D6\u5230\u65F6\u95F4\u7EBF\u4E0A\uFF1A\u4F9D\u6B21\u8FDE\u7EED\u5B89\u6392",
+  "header.add": "\u6DFB\u52A0\u4EFB\u52A1\u6216\u65E5\u7A0B",
+  "header.zoom": "\u65F6\u95F4\u7EBF\u7F29\u653E",
+  "search.close": "\u5173\u95ED\u641C\u7D22 (Esc)",
   "search.open": "\u641C\u7D22\u4EFB\u52A1\u548C\u65E5\u7A0B (/)",
   "search.placeholder": "\u641C\u7D22\u4EFB\u52A1\u548C\u65E5\u7A0B\u2026",
   "search.clear": "\u6E05\u9664\u641C\u7D22",
@@ -6989,10 +7212,7 @@ var TaskEditModal = class extends import_obsidian4.Modal {
       value: formState.filePath
     });
     fileInput.disabled = true;
-    const openBtn = fileFlex.createEl("button", {
-      text: t("taskModal.openInFile"),
-      cls: "mod-cta"
-    });
+    const openBtn = createModalButton(fileFlex, t("taskModal.openInFile"), "secondary");
     openBtn.addEventListener("click", async (e) => {
       e.preventDefault();
       if (this.task) {
@@ -7501,6 +7721,7 @@ var _ShortcutHelpModal = class extends import_obsidian4.Modal {
       ]],
       [t("shortcuts.group.drawerCard"), [
         [["f"], t("shortcuts.fit")],
+        [["Ctrl/Cmd+Click", "Drag"], t("shortcuts.drawerMulti")],
         [["p"], t("shortcuts.priority")],
         [["Enter"], t("shortcuts.edit")]
       ]],
@@ -8540,14 +8761,15 @@ var snapshotTask = (task) => ({
   cancelledDate: task.cancelledDate
 });
 async function updateTasksInFile(app, tasks, updates, summary) {
+  const updatesFor = (task) => typeof updates === "function" ? updates(task) : updates;
   if (tasks.length === 1)
-    return await updateTaskInFile3(app, tasks[0], updates) ? 1 : 0;
+    return await updateTaskInFile3(app, tasks[0], updatesFor(tasks[0])) ? 1 : 0;
   const plugin = getPlannerPlugin(app);
   const done = [];
   for (const task of tasks) {
     const previous = snapshotTask(task);
     const wasTimed = isTimedTask(task);
-    if (await updateTaskInFile(app, task, updates)) {
+    if (await updateTaskInFile(app, task, updatesFor(task))) {
       if (plugin)
         syncEditedTaskToGCal(plugin, task, wasTimed);
       done.push({ task, previous });
@@ -9059,6 +9281,17 @@ function matchGCalEventGroup(event, group) {
   }
   return true;
 }
+function isTypingContext(e) {
+  if (e.isComposing)
+    return true;
+  const doc = e.target?.ownerDocument ?? document;
+  return [e.target, doc.activeElement].some((node) => {
+    const el = node;
+    if (!el || typeof el.closest !== "function")
+      return false;
+    return el.isContentEditable || !!el.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .cm-editor');
+  });
+}
 var DayPlannerBaseView = class extends import_obsidian6.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -9234,8 +9467,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const root = this.containerEl.querySelector(".dp-container");
     if (!root)
       return;
-    root.querySelectorAll("[data-task-id], [data-select-id]").forEach((el) => {
-      const id = el.dataset.selectId ?? el.dataset.taskId;
+    root.querySelectorAll("[data-task-id], [data-select-id], [data-drawer-task-id]").forEach((el) => {
+      const id = el.dataset.selectId ?? el.dataset.taskId ?? el.dataset.drawerTaskId;
       el.toggleClass("selected", !!id && this.selectedTaskIds.has(id));
     });
     root.querySelector(":scope > .dp-selection-bar")?.remove();
@@ -9537,6 +9770,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     let y = ev.clientY;
     let grabOffset;
     let previewRoot;
+    let group = [];
     if (source.kind === "timeline") {
       if (!this.selectedTaskIds.has(source.refId)) {
         this.selectedTaskIds.clear();
@@ -9552,11 +9786,16 @@ ${e.calendarName ?? ""}`.toLowerCase();
       previewRoot = source.previewRoot;
       this.initDragPreview(null, source.refId, grabOffset, previewRoot);
     } else {
+      const fromDrawer = source.origin === "focus" || source.origin === "overdue" || source.origin === "undated";
+      const selection = fromDrawer && this.selectedTaskIds.has(source.task.id) ? this.drawerSelection() : [];
+      group = selection.length > 1 ? selection : [source.task];
       this.selectedTaskIds.clear();
-      this.selectedTaskIds.add(source.task.id);
+      group.forEach((task) => this.selectedTaskIds.add(task.id));
       grabOffset = 10;
       previewRoot = this.containerEl;
-      this.initDragPreview(null, source.task.id, grabOffset, previewRoot);
+      this.initDragPreview(null, group[0].id, grabOffset, previewRoot);
+      if (group.length > 1)
+        this.stackDragPreview(group);
       card.addClass("is-dragging");
     }
     const ghostText = this.selectedTaskIds.size > 1 ? `${this.selectedTaskIds.size} items` : this.activeDragItems[0]?.title ?? "";
@@ -9699,9 +9938,9 @@ ${e.calendarName ?? ""}`.toLowerCase();
       };
       doc.addEventListener("click", swallow, { capture: true, once: true });
       win.setTimeout(() => doc.removeEventListener("click", swallow, { capture: true }), 0);
-      const draggedTasks = source.kind === "task" ? [source.task] : this.tasks.filter((t2) => this.selectedTaskIds.has(t2.id));
+      const draggedTasks = source.kind === "task" ? group : this.tasks.filter((t2) => this.selectedTaskIds.has(t2.id));
       if (source.kind === "task")
-        this.selectedTaskIds.delete(source.task.id);
+        group.forEach((task) => this.selectedTaskIds.delete(task.id));
       if (!landing)
         return;
       if (landing.kind === "drawer") {
@@ -9715,19 +9954,24 @@ ${e.calendarName ?? ""}`.toLowerCase();
         return;
       }
       if (landing.kind === "fit") {
-        if (source.kind === "task")
-          await this.fitTaskIn(source.task, [landing.dateStr]);
+        for (const task of group)
+          await this.fitTaskIn(task, [landing.dateStr]);
         return;
       }
       if (landing.kind === "board") {
-        if (source.kind === "task")
-          await this.dropTaskOnBoardColumn(source.task, landing.dateStr);
+        for (const task of group)
+          await this.dropTaskOnBoardColumn(task, landing.dateStr);
         return;
       }
       const minutes = landing.kind === "timeline" ? this.snapTimelineMinutes(y - landing.el.getBoundingClientRect().top - grabOffset, source.kind === "timeline") : null;
       if (source.kind === "timeline") {
         if (minutes !== null)
           await this.moveSelectedTimelineItems(source.refId, source.isGCal, minutes, landing.dateStr);
+      } else if (group.length > 1) {
+        if (minutes !== null)
+          await this.scheduleTasksSequentially(group, landing.dateStr, minutes);
+        else
+          await this.moveTasksToDate(group, landing.dateStr);
       } else {
         await this.scheduleTask(source.task, landing.dateStr, minutes);
       }
@@ -9746,6 +9990,54 @@ ${e.calendarName ?? ""}`.toLowerCase();
     };
     update();
     scrollFrame = win.requestAnimationFrame(autoScroll);
+  }
+  taskBlockLength(task) {
+    const fallback = this.plugin.settings.defaultTaskDuration || 60;
+    if (!task.startTime || !task.endTime)
+      return fallback;
+    const toMin = (time) => {
+      const [h, m] = time.split(":").map(Number);
+      return h * 60 + m;
+    };
+    const length = toMin(task.endTime) - toMin(task.startTime);
+    return length > 0 ? length : fallback;
+  }
+  drawerSelection() {
+    const seen = /* @__PURE__ */ new Set();
+    return Array.from(this.containerEl.querySelectorAll(".dp-side-drawer [data-drawer-task-id]")).map((el) => el.dataset.drawerTaskId).filter((id) => this.selectedTaskIds.has(id) && !seen.has(id) && !!seen.add(id)).map((id) => this.tasks.find((t2) => t2.id === id)).filter((task) => !!task);
+  }
+  stackDragPreview(group) {
+    const ratio = this.getHourHeight() / 60;
+    const order = new Map(group.map((task, i) => [task.id, i]));
+    this.activeDragItems.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    let offsetMin = 0;
+    this.activeDragItems.forEach((item) => {
+      const task = group.find((t2) => t2.id === item.id);
+      const length = task ? this.taskBlockLength(task) : this.plugin.settings.defaultTaskDuration || 60;
+      item.offsetY = offsetMin * ratio;
+      item.height = Math.max(15, Math.round(length * ratio));
+      item.itemDateStr = "";
+      offsetMin += length;
+    });
+    this.activePrimaryTaskId = group[0].id;
+  }
+  async scheduleTasksSequentially(tasks, dateStr, startMin) {
+    const toTime = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+    const slots = /* @__PURE__ */ new Map();
+    let cursor = startMin;
+    for (const task of tasks) {
+      if (cursor >= 24 * 60 - 5)
+        break;
+      const end = Math.min(cursor + this.taskBlockLength(task), 24 * 60 - 1);
+      slots.set(task, { startTime: toTime(cursor), endTime: toTime(end) });
+      cursor = end;
+    }
+    const placed = Array.from(slots.keys());
+    const changed = await updateTasksInFile(this.app, placed, (task) => ({ date: dateStr, ...slots.get(task) }), (n) => `Scheduled ${n} tasks back to back from ${toTime(startMin)}.`);
+    if (tasks.length > placed.length)
+      new import_obsidian6.Notice(`${tasks.length - placed.length} task(s) did not fit before midnight and were left as they were.`);
+    if (changed > 0)
+      await this.refreshTasks();
   }
   async scheduleTask(task, dateStr, startMin) {
     if (startMin === null && task.date === dateStr)
@@ -10090,10 +10382,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
     }, true);
     void this.refreshTasks(null, true);
     this.keydownHandler = async (e) => {
-      const activeEl = document.activeElement;
-      if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.getAttribute("contenteditable") === "true")) {
+      if (isTypingContext(e))
         return;
-      }
       const activeView = this.app.workspace.getActiveViewOfType(DayPlannerBaseView);
       if (activeView !== this) {
         return;
@@ -10342,14 +10632,12 @@ ${e.calendarName ?? ""}`.toLowerCase();
       let sliderContainer = this.containerEl.querySelector(".dp-zoom-slider-floating");
       if (showSlider) {
         if (!sliderContainer) {
-          const headerActions = this.containerEl.querySelector(".dp-header-actions");
+          const headerActions = this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
           const viewContent = this.contentEl || this.containerEl;
           sliderContainer = (headerActions ?? viewContent).createDiv({ cls: "dp-zoom-slider-floating" });
           headerActions?.prepend(sliderContainer);
-          const zoomToggle = sliderContainer.createSpan({
-            text: "\u{1F50D}",
-            title: "Timeline Zoom"
-          });
+          const zoomToggle = sliderContainer.createSpan({ cls: "dp-zoom-toggle", attr: { "aria-label": t("header.zoom") } });
+          (0, import_obsidian6.setIcon)(zoomToggle, "zoom-in");
           const container = sliderContainer;
           zoomToggle.addEventListener("click", (e) => {
             e.stopPropagation();
@@ -10495,34 +10783,46 @@ ${e.calendarName ?? ""}`.toLowerCase();
     }
     const dateLabel = info.subText ? `${info.mainText} ${info.subText}` : info.mainText;
     const headerActions = headerTop.createDiv({ cls: "dp-header-actions" });
+    const navGroup = compact ? null : headerActions.createDiv({ cls: "dp-nav-buttons-group" });
+    const tools = headerActions.createDiv({ cls: "dp-header-tools" });
     if (this.getViewTabType() !== "board") {
-      const navHost = compact ? headerActions : headerActions.createDiv({ cls: "dp-nav-buttons-group" });
+      const navHost = navGroup ?? tools;
       if (!compact) {
-        const prevBtn = navHost.createEl("button", { text: "<", cls: "dp-nav-arrow", attr: { "aria-label": t("nav.previous") } });
+        const prevBtn = navHost.createEl("button", { cls: "dp-nav-arrow", attr: { "aria-label": t("nav.previous") } });
+        (0, import_obsidian6.setIcon)(prevBtn, "chevron-left");
         prevBtn.addEventListener("click", async () => {
           triggerHaptic("selection");
           await this.navigateWithSlide(-1);
         });
       }
-      const todayBtn = navHost.createEl("button", { attr: { "aria-label": t("common.today") } });
-      todayBtn.createSpan({ cls: "dp-btn-icon", text: "\u{1F4C5}" });
-      todayBtn.createSpan({ cls: "dp-btn-label", text: ` ${t("common.today")}` });
+      const todayBtn = navHost.createEl("button", { cls: "dp-today-btn", attr: { "aria-label": t("common.today") } });
+      (0, import_obsidian6.setIcon)(todayBtn.createSpan({ cls: "dp-btn-icon" }), "calendar-check");
+      todayBtn.createSpan({ cls: "dp-btn-label", text: t("common.today") });
       todayBtn.addEventListener("click", () => {
         triggerHaptic("selection");
         void this.goToToday();
       });
       if (!compact) {
-        const nextBtn = navHost.createEl("button", { text: ">", cls: "dp-nav-arrow", attr: { "aria-label": t("nav.next") } });
+        const nextBtn = navHost.createEl("button", { cls: "dp-nav-arrow", attr: { "aria-label": t("nav.next") } });
+        (0, import_obsidian6.setIcon)(nextBtn, "chevron-right");
         nextBtn.addEventListener("click", async () => {
           triggerHaptic("selection");
           await this.navigateWithSlide(1);
         });
       }
     }
+    if (this instanceof DayPlannerCombinedView) {
+      const view = this;
+      const searchBtn = tools.createEl("button", {
+        cls: `dp-search-btn${view.searchQuery ? " is-active" : ""}`,
+        attr: { "aria-label": t("search.open") }
+      });
+      (0, import_obsidian6.setIcon)(searchBtn, "search");
+      searchBtn.addEventListener("click", () => view.openSearch());
+    }
     if (this.plugin.settings.enableGoogleCalendar) {
-      const syncBtn = headerActions.createEl("button", { attr: { "aria-label": t("nav.sync") } });
-      syncBtn.createSpan({ cls: "dp-btn-icon", text: "\u{1F504}" });
-      syncBtn.createSpan({ cls: "dp-btn-label", text: ` ${t("nav.sync")}` });
+      const syncBtn = tools.createEl("button", { cls: "dp-sync-btn", attr: { "aria-label": t("nav.sync") } });
+      (0, import_obsidian6.setIcon)(syncBtn.createSpan({ cls: "dp-btn-icon" }), "refresh-cw");
       syncBtn.addEventListener("click", () => void this.runSync());
       syncBtn.addEventListener("contextmenu", (e) => {
         e.preventDefault();
@@ -10535,7 +10835,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     if (this.filters !== void 0) {
       const countRules = (g) => (g.children ?? []).reduce((n, c) => n + (isFilterGroup(c) ? countRules(c) : 1), 0);
       const ruleCount = countRules(this.filters);
-      const filterBtn = headerActions.createEl("button", {
+      const filterBtn = tools.createEl("button", {
         text: ruleCount > 0 ? `\u{1F50D} ${t("nav.filter")} \xB7 ${ruleCount}` : `\u{1F50D} ${t("nav.filter")}`
       });
       if (this.showFilterPanel) {
@@ -10562,10 +10862,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
         this.render();
       });
     }
-    const addBtn = headerActions.createEl("button", {
-      text: "\u2795",
-      cls: "mod-cta"
-    });
+    const addBtn = headerActions.createEl("button", { cls: "dp-add-btn", attr: { "aria-label": t("header.add") } });
+    (0, import_obsidian6.setIcon)(addBtn, "plus");
     addBtn.addEventListener("click", () => {
       const defaultDateStr = this.currentDate.format("YYYY-MM-DD");
       const openTaskModal = () => {
@@ -10593,17 +10891,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
         openTaskModal();
       }
     });
-    if (this instanceof DayPlannerCombinedView) {
-      const view = this;
-      const searchBtn = headerActions.createEl("button", {
-        cls: `dp-search-btn${view.searchQuery ? " is-active" : ""}`,
-        attr: { "aria-label": t("search.open") }
-      });
-      (0, import_obsidian6.setIcon)(searchBtn, "search");
-      searchBtn.addEventListener("click", () => view.toggleSearch());
-    }
     if (this instanceof DayPlannerBaseView && !this.useCompactLayout() && this.plugin.settings.showShortcutButton !== false) {
-      const helpBtn = headerActions.createEl("button", {
+      const helpBtn = tools.createEl("button", {
         cls: "dp-help-btn",
         attr: { "aria-label": t("nav.shortcuts") }
       });
@@ -10614,7 +10903,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     }
     if (this instanceof DayPlannerCombinedView && this.hasSideDrawer()) {
       const view = this;
-      const drawerBtn = headerActions.createEl("button", {
+      const drawerBtn = tools.createEl("button", {
         cls: `dp-drawer-toggle${view.isSideDrawerOpen() ? " is-active" : ""}`,
         attr: { "aria-label": t("nav.toggleDrawer") }
       });
@@ -11569,16 +11858,16 @@ ${e.calendarName ?? ""}`.toLowerCase();
       const loopDayStr = loopDay.format("YYYY-MM-DD");
       const isToday = loopDay.isSame(window.moment(), "day");
       const cellHeader = headerGrid.createDiv({
-        cls: `dp-grid-header ${isToday ? "today" : ""}${weekendCls(loopDay)}`,
-        text: `${loopDay.format("ddd")} (${loopDay.format("M/D")})`
+        cls: `dp-grid-header dp-day-pill ${isToday ? "today" : ""}${weekendCls(loopDay)}`
       });
-      cellHeader.style.cssText = "cursor: pointer; text-decoration: underline;";
-      if (isToday) {
-        cellHeader.style.cssText += " border: 2px solid var(--interactive-accent); font-weight: bold;";
-      }
+      cellHeader.createSpan({ cls: "dp-date-pill-dow", text: loopDay.format("ddd") });
+      cellHeader.createSpan({ cls: "dp-date-pill-date", text: loopDay.format("M/D") });
       cellHeader.dataset.date = loopDayStr;
       cellHeader.addEventListener("click", () => {
-        this.handleDateClick(loopDayStr);
+        if (this instanceof DayPlannerCombinedView)
+          void this.openDayInDaily(loopDayStr);
+        else
+          this.handleDateClick(loopDayStr);
       });
     }
     const allDayGrid = container.createDiv({ cls: "dp-weekly-allday-grid" });
@@ -11988,15 +12277,14 @@ ${e.calendarName ?? ""}`.toLowerCase();
       const weekStartDate = gridStartDate.clone().add(w * 7, "days");
       const weekNum = weekStartDate.week();
       if (!phone) {
-        const weekCell = cells.createDiv({ cls: "dp-grid-week-cell" });
-        weekCell.createDiv({
-          text: `Wk ${weekNum}`
-        });
-        weekCell.createDiv({
-          text: "W"
-        });
+        const weekCell = cells.createDiv({ cls: "dp-grid-week-cell dp-day-pill" });
+        weekCell.createSpan({ cls: "dp-date-pill-dow", text: "Wk" });
+        weekCell.createSpan({ cls: "dp-date-pill-date", text: String(weekNum) });
         weekCell.addEventListener("click", () => {
-          this.openNoteForDate(weekStartDate, "weekly");
+          if (this instanceof DayPlannerCombinedView)
+            void this.openWeekInWeekly(weekStartDate.format("YYYY-MM-DD"));
+          else
+            this.openNoteForDate(weekStartDate, "weekly");
         });
       }
       for (let d = 0; d < 7; d++) {
@@ -12677,7 +12965,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
       this.listSearchQuery = "";
     const self = this;
     const container = parent.createDiv({ cls: "dp-gc-list-container" });
+    const globalSearch = this instanceof DayPlannerBaseView ? this.searchQuery : "";
     const header = container.createDiv({ cls: "dp-gc-list-header" });
+    if (this instanceof DayPlannerBaseView)
+      header.hide();
     let searchPlaceholder = "\u{1F50D} Search this month's agenda...";
     if (self.parentNoteType === "daily") {
       searchPlaceholder = "\u{1F50D} Search today's agenda...";
@@ -12703,8 +12994,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
       startDate = window.moment(self.parentNoteDate, "YYYY-MM-DD").startOf("week");
       endDate = window.moment(self.parentNoteDate, "YYYY-MM-DD").endOf("week");
     }
-    const startStr = startDate.format("YYYY-MM-DD");
-    const endStr = endDate.format("YYYY-MM-DD");
+    const startStr = globalSearch ? "0000-00-00" : startDate.format("YYYY-MM-DD");
+    const endStr = globalSearch ? "9999-12-31" : endDate.format("YYYY-MM-DD");
     const todayMoment = window.moment();
     const todayStr = todayMoment.format("YYYY-MM-DD");
     let filteredTasks = this.tasks;
@@ -12714,7 +13005,14 @@ ${e.calendarName ?? ""}`.toLowerCase();
     if (self.listSearchQuery) {
       filteredTasks = filteredTasks.filter((t2) => t2.text.toLowerCase().includes(self.listSearchQuery) || t2.filePath.toLowerCase().includes(self.listSearchQuery));
     }
-    let filteredEvents = this.getCalendarEvents();
+    const terms = searchTerms(globalSearch);
+    let filteredEvents = globalSearch ? this.plugin.gcalCache.filter((e) => {
+      const haystack = `${e.summary}
+${e.location ?? ""}
+${e.description ?? ""}
+${e.calendarName ?? ""}`.toLowerCase();
+      return terms.every((term) => haystack.includes(term));
+    }) : this.getCalendarEvents();
     if (self.listSearchQuery) {
       filteredEvents = filteredEvents.filter((e) => e.summary.toLowerCase().includes(self.listSearchQuery) || e.description && e.description.toLowerCase().includes(self.listSearchQuery));
     }
@@ -13131,6 +13429,15 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     card.addEventListener("click", (e) => {
       if (e.target.closest(".dp-custom-cb, .dp-drawer-card-actions, .dp-priority-trigger"))
         return;
+      if (e.ctrlKey || e.metaKey) {
+        if (this.selectedTaskIds.has(task.id))
+          this.selectedTaskIds.delete(task.id);
+        else
+          this.selectedTaskIds.add(task.id);
+        triggerHaptic("selection");
+        this.applySelectionState();
+        return;
+      }
       this.openTaskEditor(task);
     });
     card.tabIndex = 0;
@@ -13187,35 +13494,52 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     return tasks.filter((task) => task.date === null ? drawer : task.date >= fromStr && task.date <= toStr || task.date === todayStr || drawer && task.date < todayStr);
   }
   async goToDate(dateStr) {
-    if (this.activeTab === "board") {
-      this.currentDate = window.moment(dateStr, "YYYY-MM-DD");
-      this.dataVersion++;
-      await this.switchTab("daily");
-      return;
-    }
+    if (this.activeTab === "board")
+      return this.openDayInDaily(dateStr);
     return super.goToDate(dateStr);
+  }
+  async openDayInDaily(dateStr) {
+    this.currentDate = window.moment(dateStr, "YYYY-MM-DD");
+    this.dataVersion++;
+    if (this.activeTab === "daily")
+      await this.refreshTasks();
+    else
+      await this.switchTab("daily");
+  }
+  async openWeekInWeekly(weekStartStr) {
+    this.currentDate = window.moment(weekStartStr, "YYYY-MM-DD");
+    this.dataVersion++;
+    await this.switchTab("weekly");
   }
   getSearchBar() {
     return this.containerEl.querySelector(".dp-container > .dp-search-float");
-  }
-  toggleSearch() {
-    const bar = this.getSearchBar();
-    if (bar?.hasClass("is-open") && !this.searchQuery)
-      this.closeSearch();
-    else
-      this.openSearch();
   }
   openSearch() {
     const rootEl = this.containerEl.querySelector(".dp-container");
     if (!rootEl)
       return;
     const bar = this.getSearchBar() ?? this.createSearchBar(rootEl);
+    rootEl.addClass("dp-search-mode");
     bar.addClass("is-open");
+    this.placeSearchBar(rootEl);
     const input = bar.querySelector("input");
     input.focus();
     input.select();
   }
+  placeSearchBar(rootEl) {
+    const bar = rootEl.querySelector(":scope > .dp-search-float");
+    const row = rootEl.querySelector(":scope > .dp-header .dp-header-top");
+    if (!bar || !row || !bar.hasClass("is-open"))
+      return;
+    const rootRect = rootEl.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    bar.style.top = `${rowRect.top - rootRect.top}px`;
+    bar.style.left = `${rowRect.left - rootRect.left}px`;
+    bar.style.width = `${rowRect.width}px`;
+    bar.style.height = `${Math.max(32, rowRect.height)}px`;
+  }
   closeSearch() {
+    this.containerEl.querySelector(".dp-container")?.removeClass("dp-search-mode");
     const bar = this.getSearchBar();
     if (bar) {
       bar.removeClass("is-open");
@@ -13242,14 +13566,19 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       attr: { type: "search", placeholder: t("search.placeholder"), "aria-label": t("search.placeholder"), spellcheck: "false" }
     });
     bar.createSpan({ cls: "dp-search-count" });
-    const clear = bar.createEl("button", { cls: "dp-search-clear", attr: { "aria-label": t("search.clear") } });
+    const clear = bar.createEl("button", { cls: "dp-search-clear", attr: { "aria-label": t("search.close") } });
     (0, import_obsidian6.setIcon)(clear, "x");
-    const apply = (delay) => {
+    const apply = (delay, thenList = false) => {
       if (this.searchTimer !== null)
         window.clearTimeout(this.searchTimer);
-      this.searchTimer = window.setTimeout(() => {
+      this.searchTimer = window.setTimeout(async () => {
         this.searchTimer = null;
-        void this.setSearchQuery(input.value.trim());
+        await this.setSearchQuery(input.value.trim());
+        if (thenList && this.searchQuery && this.activeTab !== "list")
+          await this.switchTab("list");
+        const doc = input.ownerDocument;
+        if (bar.hasClass("is-open") && (!doc.activeElement || doc.activeElement === doc.body))
+          input.focus();
       }, delay);
     };
     input.addEventListener("input", (e) => {
@@ -13267,18 +13596,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
         this.containerEl.querySelector(".dp-container")?.focus();
       } else if (e.key === "Enter") {
         e.preventDefault();
-        apply(0);
+        apply(0, true);
       }
     });
-    clear.addEventListener("click", () => {
-      if (input.value) {
-        input.value = "";
-        apply(0);
-        input.focus();
-      } else {
-        this.closeSearch();
-      }
-    });
+    clear.addEventListener("click", () => this.closeSearch());
     return bar;
   }
   syncSearchBar(rootEl) {
@@ -13286,6 +13607,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     rootEl.toggleClass("dp-searching", !!this.searchQuery);
     if (!bar)
       return;
+    this.placeSearchBar(rootEl);
     const count = this.searchQuery ? this.tasks.length + (this.plugin.settings.enableGoogleCalendar ? this.getCalendarEvents().length : 0) : 0;
     bar.toggleClass("has-query", !!this.searchQuery);
     bar.toggleClass("is-empty", !!this.searchQuery && count === 0);
