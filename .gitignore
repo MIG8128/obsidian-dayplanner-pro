@@ -8,5 +8,8 @@ node_modules/
 data.json
 
 *.ts
-
 CLAUDE.md
+esbuild.config.mjs
+package.json
+package-lock.json
+tsconfig.json
