@@ -6,6 +6,7 @@ node_modules/
 
 # Obsidian plugin data: holds Google OAuth client secret / tokens
 data.json
+.env
 
 *.ts
 CLAUDE.md
