@@ -4451,6 +4451,39 @@ body.dp-pointer-dragging * {
     border-color: color-mix(in srgb, var(--color-orange) 30%, transparent);
 }
 
+
+/* -------------------------------------------------------------
+   4.4.3: all-day items in the drawer card's proportions; hosts for the new box selections
+   ------------------------------------------------------------- */
+/* All-day row (Daily, Weekly, N-day): compact rounded cards like the side drawer's, readable text */
+.dp-allday-cell {
+    gap: 4px;
+    max-height: 104px; /* three cards, then the row scrolls */
+}
+.dp-grid-task-item.dp-allday-item {
+    gap: 6px;
+    height: 28px !important;
+    min-height: 28px !important;
+    max-height: 28px !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    font-size: var(--font-ui-smaller, 0.8em) !important;
+    line-height: 1.3 !important;
+    border-radius: var(--radius-m, 8px) !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+.dp-grid-task-item.dp-allday-item .dp-custom-cb {
+    width: 14px;
+    height: 14px;
+    margin-right: 0;
+    font-size: 9px;
+}
+/* The selection box is laid out inside these (the board scrolls sideways: content coordinates) */
+.dp-weekly-allday-grid,
+.dp-kanban-board {
+    position: relative;
+}
+
 `;
 
 // utils.ts
@@ -5023,6 +5056,19 @@ async function restoreTaskLines(app, removed, beforeWrite) {
     await app.vault.modify(file, lines.join("\n"));
   })));
   return restored;
+}
+var BOARD_DRAG_MIME = "application/x-dayloom-task-ids";
+function readDraggedTaskIds(dataTransfer) {
+  if (!dataTransfer)
+    return [];
+  try {
+    const ids = JSON.parse(dataTransfer.getData(BOARD_DRAG_MIME) || "null");
+    if (Array.isArray(ids) && ids.length > 0)
+      return ids.map(String);
+  } catch {
+  }
+  const id = dataTransfer.getData("text/plain");
+  return id ? [id] : [];
 }
 function taskMatchesSearch(task, terms) {
   const haystack = `${task.text}
@@ -8518,17 +8564,20 @@ function acceptBoardCardDrops(drawer, view) {
     highlight(null);
     if (view.activeTab !== "board" || !target)
       return;
-    const id = e.dataTransfer?.getData("text/plain");
-    const task = id ? view.tasks.find((t2) => t2.id === id) : void 0;
-    if (!task)
+    const ids = readDraggedTaskIds(e.dataTransfer);
+    const tasks = view.tasks.filter((t2) => ids.includes(t2.id));
+    if (tasks.length === 0)
       return;
     e.preventDefault();
     if (target.matches(".dp-mc-day"))
-      void view.scheduleTask(task, target.dataset.date, null);
-    else if (target.matches(".dp-drawer-section"))
-      void view.promoteToFocus([task]);
-    else if (task.date !== null)
-      void view.unscheduleTasks([task]);
+      void view.moveTasksToDate(tasks, target.dataset.date);
+    else if (target.dataset.section === "focus")
+      void view.promoteToFocus(tasks);
+    else {
+      const dated = tasks.filter((t2) => t2.date !== null);
+      if (dated.length > 0)
+        void view.unscheduleTasks(dated);
+    }
   });
 }
 function renderSideDrawer(rootEl, view) {
@@ -9397,6 +9446,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     this.unsearchedTasks = [];
     this.searchQuery = "";
     this.staleWhileHidden = false;
+    this.selectionZone = null;
     this.keydownHandler = null;
     this.kanbanViewMode = "kanban";
     this.activeDragClickOffsetMin = 0;
@@ -9552,6 +9602,19 @@ ${e.calendarName ?? ""}`.toLowerCase();
     this.autoScrolledViews.add(viewKind);
     const top = scrollToTarget(scroller, target, smooth ? "smooth" : "auto", fallbackTop);
     this.savedScrollPositions[scrollKey] = { scrollTop: top, scrollLeft: saved?.scrollLeft ?? 0 };
+  }
+  selectionZoneOf(el) {
+    if (el.closest(".dp-side-drawer"))
+      return "drawer";
+    if (el.closest(".dp-daily-allday, .dp-weekly-allday-grid"))
+      return "allday";
+    return "main";
+  }
+  enterSelectionZone(zone) {
+    if (this.selectionZone === zone)
+      return;
+    this.selectedTaskIds.clear();
+    this.selectionZone = zone;
   }
   relevantTasksForSignature(tasks) {
     return tasks;
@@ -9868,6 +9931,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       if (!this.selectedTaskIds.has(source.refId)) {
         this.selectedTaskIds.clear();
         this.selectedTaskIds.add(source.refId);
+        this.selectionZone = "main";
         source.previewRoot.querySelectorAll(".dp-timeline-event.selected").forEach((el) => el.removeClass("selected"));
         card.addClass("selected");
       }
@@ -9884,6 +9948,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       group = selection.length > 1 ? selection : [source.task];
       this.selectedTaskIds.clear();
       group.forEach((task) => this.selectedTaskIds.add(task.id));
+      this.selectionZone = group.length > 1 ? "drawer" : null;
       grabOffset = 10;
       previewRoot = this.containerEl;
       this.initDragPreview(null, group[0].id, grabOffset, previewRoot);
@@ -10061,8 +10126,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
         return;
       }
       if (landing.kind === "board") {
-        for (const task of group)
-          await this.dropTaskOnBoardColumn(task, landing.dateStr);
+        if (group.length > 0)
+          await this.dropTasksOnBoardColumn(group, landing.dateStr);
         return;
       }
       const minutes = landing.kind === "timeline" ? this.snapTimelineMinutes(y - landing.el.getBoundingClientRect().top - grabOffset, source.kind === "timeline") : null;
@@ -10095,10 +10160,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
   }
   async promoteToFocus(tasks) {
     const todayStr = window.moment().format("YYYY-MM-DD");
-    const changing = tasks.filter((task) => task.priority !== "highest" || task.date === null);
+    const changing = tasks.filter((task) => task.priority !== "highest" || task.date !== todayStr);
     if (changing.length === 0)
       return;
-    const changed = await updateTasksInFile(this.app, changing, (task) => task.date === null ? { date: todayStr, dueDate: todayStr, priority: "highest" } : { priority: "highest" }, (n) => t("drawer.focusPromoted", { n }));
+    const changed = await updateTasksInFile(this.app, changing, (task) => task.date === null ? { date: todayStr, dueDate: todayStr, priority: "highest" } : { date: todayStr, priority: "highest" }, (n) => t("drawer.focusPromoted", { n }));
     if (changed > 0)
       await this.refreshTasks();
   }
@@ -10484,6 +10549,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         return;
       e.preventDefault();
       e.stopPropagation();
+      this.enterSelectionZone(this.selectionZoneOf(card));
       if (this.selectedTaskIds.has(id))
         this.selectedTaskIds.delete(id);
       else
@@ -11149,7 +11215,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       if (e.button !== 0 || e.pointerType === "touch")
         return;
       const target = e.target;
-      if (target.closest(".dp-timeline-event, .dp-drawer-card, button, input, .dp-custom-cb, .dp-task-link-btn, .dp-resize-handle"))
+      if (target.closest(".dp-timeline-event, .dp-drawer-card, .dp-grid-task-item, .dp-kanban-card, .dp-kanban-col-header, button, input, .dp-custom-cb, .dp-task-link-btn, .dp-resize-handle"))
         return;
       e.preventDefault();
       moved = false;
@@ -11165,6 +11231,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       marquee.style.height = "0px";
       if (!additive)
         this.selectedTaskIds.clear();
+      this.enterSelectionZone(this.selectionZoneOf(eventsCol));
       doc.addEventListener("pointermove", onMove);
       doc.addEventListener("pointerup", onUp);
       doc.addEventListener("pointercancel", onUp);
@@ -11186,7 +11253,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       marquee.style.height = `${height}px`;
       const box = marquee.getBoundingClientRect();
       getTimedEvents().forEach((el) => {
-        const taskId = el.dataset.taskId ?? el.dataset.drawerTaskId;
+        const taskId = el.dataset.taskId ?? el.dataset.selectId ?? el.dataset.drawerTaskId;
         if (!taskId)
           return;
         const r = el.getBoundingClientRect();
@@ -11914,6 +11981,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       untimedAllDayGCal.forEach((e) => this.renderAllDayEventChip(e, dateStr, listEl));
       untimedTasks.sort((a, b) => a.text.localeCompare(b.text));
       untimedTasks.forEach((task) => this.renderAllDayTaskChip(task, listEl));
+      this.registerMarqueeSelection(allDaySection, () => Array.from(allDaySection.querySelectorAll(".dp-allday-item")));
     }
     this.applyAutoScroll(parent, scrollKey, "daily", "now", () => this.getAutoScrollY([dateStr], startHour, hourHeight));
     this.playNavSlide(timelineWrapper, parent);
@@ -11982,6 +12050,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       });
     }
     const allDayGrid = container.createDiv({ cls: "dp-weekly-allday-grid" });
+    this.registerMarqueeSelection(allDayGrid, () => Array.from(allDayGrid.querySelectorAll(".dp-allday-item")));
     allDayGrid.style.gridTemplateColumns = dayColumnTemplate;
     allDayGrid.createDiv({ cls: "dp-allday-label", text: t("common.allDay") });
     for (let i = 0; i < daysCount; i++) {
@@ -12413,11 +12482,21 @@ ${e.calendarName ?? ""}`.toLowerCase();
           e.stopPropagation();
           if (phone)
             void this.focusDay(loopDayStr);
+          else if (this instanceof DayPlannerCombinedView)
+            void this.openDayInDaily(loopDayStr);
           else
             this.handleDateClick(loopDayStr);
         });
-        if (phone)
+        if (phone) {
           cell.addEventListener("click", () => this.focusDay(loopDayStr));
+        } else if (this instanceof DayPlannerCombinedView) {
+          const view = this;
+          cell.addEventListener("click", (e) => {
+            if (e.target.closest(".dp-grid-task-item, button, .dp-task-link-btn"))
+              return;
+            void view.openDayInDaily(loopDayStr);
+          });
+        }
         const listWrapper = cell.createDiv({ cls: "dp-grid-task-list" });
         const dayTasks = [...tasksByDate.get(loopDayStr) || []];
         dayTasks.sort((a, b) => {
@@ -12566,6 +12645,25 @@ ${e.calendarName ?? ""}`.toLowerCase();
     } else {
       this.renderStandardKanbanBoard(board);
     }
+    this.registerMarqueeSelection(board, () => Array.from(board.querySelectorAll(".dp-kanban-card")));
+  }
+  startBoardCardDrag(e, task, card) {
+    if (!e.dataTransfer)
+      return;
+    const ids = this.selectedTaskIds.has(task.id) ? this.tasks.filter((t2) => this.selectedTaskIds.has(t2.id)).map((t2) => t2.id) : [task.id];
+    e.dataTransfer.setData("text/plain", task.id);
+    e.dataTransfer.setData(BOARD_DRAG_MIME, JSON.stringify(ids));
+    const board = card.closest(".dp-kanban-board") ?? card;
+    const moving = new Set(ids);
+    board.querySelectorAll(".dp-kanban-card").forEach((el) => {
+      if (moving.has(el.dataset.taskId ?? ""))
+        el.style.opacity = "0.4";
+    });
+  }
+  endBoardCardDrag(card) {
+    (card.closest(".dp-kanban-board") ?? card).querySelectorAll(".dp-kanban-card").forEach((el) => {
+      el.style.opacity = "";
+    });
   }
   mountBoardModeToggle(rootEl) {
     const headerActions = rootEl?.querySelector(":scope > .dp-header .dp-header-actions");
@@ -12830,15 +12928,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
             });
             modal.open();
           });
-          card.addEventListener("dragstart", (e) => {
-            if (e.dataTransfer) {
-              e.dataTransfer.setData("text/plain", task.id);
-              card.style.opacity = "0.4";
-            }
-          });
-          card.addEventListener("dragend", () => {
-            card.style.opacity = "1";
-          });
+          card.addEventListener("dragstart", (e) => this.startBoardCardDrag(e, task, card));
+          card.addEventListener("dragend", () => this.endBoardCardDrag(card));
         });
       }
       colEl.addEventListener("dragover", (e) => {
@@ -12851,56 +12942,54 @@ ${e.calendarName ?? ""}`.toLowerCase();
       colEl.addEventListener("drop", async (e) => {
         e.preventDefault();
         colEl.classList.remove("drag-over");
-        const taskId = e.dataTransfer?.getData("text/plain");
-        if (!taskId)
-          return;
-        const targetTask = this.tasks.find((t2) => t2.id === taskId);
-        if (!targetTask)
-          return;
-        await this.dropTaskOnBoardColumn(targetTask, col.id, col.title);
+        const ids = readDraggedTaskIds(e.dataTransfer);
+        const dropped = this.tasks.filter((t2) => ids.includes(t2.id));
+        if (dropped.length > 0)
+          await this.dropTasksOnBoardColumn(dropped, col.id, col.title);
       });
     });
   }
-  async dropTaskOnBoardColumn(task, colId, colTitle = colId) {
+  async dropTasksOnBoardColumn(tasks, colId, colTitle = colId) {
+    let updatesFor;
     if (this.kanbanViewMode === "priority") {
       const priority = colId;
-      if (task.priority === priority)
-        return;
-      if (await updateTaskInFile3(this.app, task, { priority })) {
-        new import_obsidian6.Notice(`Priority re-assigned to '${colTitle}'`);
-        await this.refreshTasks();
+      updatesFor = (task) => task.priority === priority ? null : { priority };
+    } else {
+      const referenceDate = window.moment().startOf("day");
+      let date;
+      switch (colId) {
+        case "undated":
+          date = null;
+          break;
+        case "overdue":
+          date = referenceDate.clone().subtract(1, "day").format("YYYY-MM-DD");
+          break;
+        case "today":
+          date = referenceDate.format("YYYY-MM-DD");
+          break;
+        case "tomorrow":
+          date = referenceDate.clone().add(1, "day").format("YYYY-MM-DD");
+          break;
+        case "future":
+          date = referenceDate.clone().add(3, "days").format("YYYY-MM-DD");
+          break;
+        case "completed":
+          break;
+        default:
+          return;
       }
+      updatesFor = (task) => colId === "completed" ? task.statusChar === "x" ? null : { statusChar: "x" } : { date, statusChar: task.statusChar === "x" || task.statusChar === "-" ? " " : task.statusChar };
+    }
+    const moving = tasks.filter((task) => updatesFor(task) !== null);
+    if (moving.length === 0)
       return;
-    }
-    const referenceDate = window.moment().startOf("day");
-    const reopened = task.statusChar === "x" || task.statusChar === "-" ? " " : task.statusChar;
-    const updates = { statusChar: reopened };
-    switch (colId) {
-      case "undated":
-        updates.date = null;
-        break;
-      case "overdue":
-        updates.date = referenceDate.clone().subtract(1, "day").format("YYYY-MM-DD");
-        break;
-      case "today":
-        updates.date = referenceDate.format("YYYY-MM-DD");
-        break;
-      case "tomorrow":
-        updates.date = referenceDate.clone().add(1, "day").format("YYYY-MM-DD");
-        break;
-      case "future":
-        updates.date = referenceDate.clone().add(3, "days").format("YYYY-MM-DD");
-        break;
-      case "completed":
-        updates.statusChar = "x";
-        break;
-      default:
-        return;
-    }
-    if (await updateTaskInFile3(this.app, task, updates)) {
-      new import_obsidian6.Notice(`Moved task to '${colTitle}' column.`);
-      await this.refreshTasks();
-    }
+    const changed = await updateTasksInFile(this.app, moving, (task) => updatesFor(task), (n) => `Moved ${n} tasks to '${colTitle}'.`);
+    if (changed === 0)
+      return;
+    if (moving.length === 1)
+      new import_obsidian6.Notice(`Moved task to '${colTitle}'.`);
+    this.selectedTaskIds.clear();
+    await this.refreshTasks();
   }
   renderPriorityFocusBoard(board) {
     const columns = [
@@ -13039,15 +13128,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
             });
             modal.open();
           });
-          card.addEventListener("dragstart", (e) => {
-            if (e.dataTransfer) {
-              e.dataTransfer.setData("text/plain", task.id);
-              card.style.opacity = "0.4";
-            }
-          });
-          card.addEventListener("dragend", () => {
-            card.style.opacity = "1";
-          });
+          card.addEventListener("dragstart", (e) => this.startBoardCardDrag(e, task, card));
+          card.addEventListener("dragend", () => this.endBoardCardDrag(card));
         });
       }
       colEl.addEventListener("dragover", (e) => {
@@ -13060,13 +13142,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
       colEl.addEventListener("drop", async (e) => {
         e.preventDefault();
         colEl.classList.remove("drag-over");
-        const taskId = e.dataTransfer?.getData("text/plain");
-        if (!taskId)
-          return;
-        const targetTask = this.tasks.find((t2) => t2.id === taskId);
-        if (!targetTask)
-          return;
-        await this.dropTaskOnBoardColumn(targetTask, col.priority, col.title);
+        const ids = readDraggedTaskIds(e.dataTransfer);
+        const dropped = this.tasks.filter((t2) => ids.includes(t2.id));
+        if (dropped.length > 0)
+          await this.dropTasksOnBoardColumn(dropped, col.priority, col.title);
       });
     });
   }
@@ -13541,6 +13620,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       if (e.target.closest(".dp-custom-cb, .dp-drawer-card-actions, .dp-priority-trigger"))
         return;
       if (e.ctrlKey || e.metaKey) {
+        this.enterSelectionZone("drawer");
         if (this.selectedTaskIds.has(task.id))
           this.selectedTaskIds.delete(task.id);
         else
