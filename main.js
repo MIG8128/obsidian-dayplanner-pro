@@ -69,7 +69,8 @@ var DEFAULT_SETTINGS = {
   sideDrawerOpen: true,
   sideDrawerPanel: "tasks",
   defaultTaskDuration: 60,
-  showShortcutButton: true
+  showShortcutButton: true,
+  language: "auto"
 };
 var VIEW_TYPES = {
   COMBINED: "day-planner-pro-view",
@@ -3328,8 +3329,8 @@ function compareTasks(a, b) {
 }
 function taskListSignature(tasks) {
   let key = "";
-  for (const t of tasks)
-    key += `${t.id}\0${t.date}\0${t.originalLine}
+  for (const t2 of tasks)
+    key += `${t2.id}\0${t2.date}\0${t2.originalLine}
 `;
   return key;
 }
@@ -3648,11 +3649,11 @@ function compilePathRule(raw) {
   if (!body)
     return null;
   if (!body.includes("*")) {
-    return { keep, test: (t) => t === body || t === `${body}.md` || t.startsWith(`${body}/`) };
+    return { keep, test: (t2) => t2 === body || t2 === `${body}.md` || t2.startsWith(`${body}/`) };
   }
   const pattern = body.split(/(\*\*|\*)/).map((part) => part === "**" ? ".*" : part === "*" ? "[^/]*" : part.replace(/[.+?^${}()|[\]\\]/g, "\\$&")).join("");
   const re = new RegExp(`^${pattern}(?:\\.md)?(?:/.*)?$`);
-  return { keep, test: (t) => re.test(t) };
+  return { keep, test: (t2) => re.test(t2) };
 }
 var compiledRulesKey = null;
 var compiledRules = [];
@@ -4588,7 +4589,7 @@ async function syncTaskToGCalUnlocked(plugin, task, calendarId) {
   } catch {
     return false;
   }
-  const linkedIds = new Set((plugin.tasksCache || []).map((t) => t.gcalEventId).filter(Boolean));
+  const linkedIds = new Set((plugin.tasksCache || []).map((t2) => t2.gcalEventId).filter(Boolean));
   const duplicate = existingEvents.find((e) => e.dateStr === task.date && e.startTimeStr === task.startTime && (e.summary === displayTitle || e.summary === task.text) && (e.description ?? "").startsWith(OWNED_DESC_PREFIX) && !linkedIds.has(e.id));
   if (duplicate) {
     plugin.markSelfWrite(task.filePath);
@@ -4625,30 +4626,30 @@ async function syncAllTasksToGCal(plugin, calendarId, repairOnly = false) {
     const owned = await listOwnedEvents(plugin, calendarId, windowStart.toISOString(), windowEnd.toISOString());
     const allTasks = await scanVaultTasks(plugin.app);
     const byId = /* @__PURE__ */ new Map();
-    for (const t of allTasks) {
-      if (t.gcalEventId)
-        byId.set(t.gcalEventId, [...byId.get(t.gcalEventId) ?? [], t]);
+    for (const t2 of allTasks) {
+      if (t2.gcalEventId)
+        byId.set(t2.gcalEventId, [...byId.get(t2.gcalEventId) ?? [], t2]);
     }
     const unlinkedByRepair = /* @__PURE__ */ new Set();
     for (const [id, group] of byId) {
       if (group.length < 2)
         continue;
       const item = owned.get(id);
-      const keep = group.find((t) => item && eventMatchesTask(item, t)) ?? group[0];
-      for (const t of group) {
-        if (t === keep)
+      const keep = group.find((t2) => item && eventMatchesTask(item, t2)) ?? group[0];
+      for (const t2 of group) {
+        if (t2 === keep)
           continue;
-        plugin.markSelfWrite(t.filePath);
-        if (await updateTaskInFile(plugin.app, t, { gcalEventId: null })) {
+        plugin.markSelfWrite(t2.filePath);
+        if (await updateTaskInFile(plugin.app, t2, { gcalEventId: null })) {
           report.repaired++;
-          unlinkedByRepair.add(t);
+          unlinkedByRepair.add(t2);
         }
       }
     }
     const fromStr = windowStart.format("YYYY-MM-DD");
     const toStr = windowEnd.format("YYYY-MM-DD");
-    const timed = allTasks.filter((t) => t.date && t.startTime && t.endTime && t.date >= fromStr && t.date <= toStr);
-    const claimed = new Set(allTasks.map((t) => t.gcalEventId).filter((id) => !!id));
+    const timed = allTasks.filter((t2) => t2.date && t2.startTime && t2.endTime && t2.date >= fromStr && t2.date <= toStr);
+    const claimed = new Set(allTasks.map((t2) => t2.gcalEventId).filter((id) => !!id));
     for (const task of timed) {
       if (task.gcalEventId) {
         const item = owned.get(task.gcalEventId);
@@ -4700,6 +4701,1000 @@ var import_obsidian6 = require("obsidian");
 
 // modals.ts
 var import_obsidian4 = require("obsidian");
+
+// i18n.ts
+var en = {
+  "common.today": "Today",
+  "common.tomorrow": "Tomorrow",
+  "common.cancel": "Cancel",
+  "common.save": "Save",
+  "common.create": "Create",
+  "common.delete": "Delete",
+  "common.undo": "Undo",
+  "common.allDay": "All Day",
+  "common.description": "Description",
+  "common.priority": "Priority",
+  "common.status": "Status",
+  "common.startDate": "Start Date",
+  "common.endDate": "End Date",
+  "common.startTime": "Start Time",
+  "common.endTime": "End Time",
+  "common.updated": 'Updated "{title}". ',
+  "nav.previous": "Previous",
+  "nav.next": "Next",
+  "nav.sync": "Sync",
+  "nav.filter": "Filter",
+  "nav.shortcuts": "Keyboard Shortcuts (?)",
+  "nav.toggleDrawer": "Toggle side drawer (S)",
+  "notice.taskAdded": "New task added successfully.",
+  "notice.openViewFirst": "Open a Dayloom view first.",
+  "notice.openDayloomFirst": "Open Dayloom first.",
+  "view.daily": "Daily",
+  "view.dailyTimeline": "Daily Timeline",
+  "view.twoDay": "2-Day View",
+  "view.nDay": "{n}-day View",
+  "view.nDaySuffix": "-day View",
+  "view.weekly": "Weekly View",
+  "view.monthly": "Monthly",
+  "view.monthlyCalendar": "Monthly Calendar",
+  "view.board": "Board",
+  "view.list": "List",
+  "view.listView": "List View",
+  "board.kanban": "Kanban",
+  "board.kanbanTitle": "Standard Kanban",
+  "board.priorityTitle": "Priority Focus",
+  "board.undated": "Undated",
+  "board.overdue": "Overdue",
+  "board.future": "Future",
+  "board.completed": "Completed",
+  "priority.highest": "Highest",
+  "priority.high": "High",
+  "priority.medium": "Medium",
+  "priority.normal": "Normal",
+  "priority.low": "Low",
+  "priority.lowest": "Lowest",
+  "status.todo": "Todo",
+  "status.inProgress": "In Progress",
+  "status.done": "Done",
+  "status.cancelled": "Cancelled",
+  "drawer.tasks": "Tasks",
+  "drawer.overdueTasks": "Overdue Tasks",
+  "drawer.undatedTasks": "Undated Tasks",
+  "drawer.allCaughtUp": "All caught up! \u{1F389}",
+  "drawer.rollToToday": "Roll to today",
+  "drawer.rollToTodayTooltip": "Roll all overdue tasks to today (times are kept)",
+  "drawer.noUndated": "No undated tasks. Drag a scheduled task here to unschedule it.",
+  "drawer.capturePlaceholder": "+ Add an undated task (\u{1F53A} \u23EB for priority)",
+  "drawer.captureAria": "Quick capture: add an undated task",
+  "drawer.close": "Close side drawer (S)",
+  "drawer.card.moveToday": "Move to today ({date})",
+  "drawer.card.tomorrow": "Tmrw",
+  "drawer.card.moveTomorrow": "Move to tomorrow ({date})",
+  "drawer.card.nextWeek": "+1 wk",
+  "drawer.card.moveNextWeek": "Move to next week ({date})",
+  "drawer.card.undate": "Undate",
+  "drawer.card.undateTooltip": "Clear the date (move to Undated)",
+  "shortcuts.title": "Keyboard Shortcuts",
+  "shortcuts.group.navigate": "Navigate",
+  "shortcuts.group.switchView": "Switch view",
+  "shortcuts.group.panels": "Panels",
+  "shortcuts.group.drawerCard": "Side drawer card (Tab to focus)",
+  "shortcuts.group.dragging": "While dragging (desktop)",
+  "shortcuts.next": "Next day / period (compact Board: next column)",
+  "shortcuts.prev": "Previous day / period (compact Board: previous column)",
+  "shortcuts.today": "Jump to today",
+  "shortcuts.daily": "Daily timeline",
+  "shortcuts.nDay": "N-day view",
+  "shortcuts.weekly": "Weekly view",
+  "shortcuts.monthly": "Monthly calendar",
+  "shortcuts.list": "List view",
+  "shortcuts.drawer": "Toggle the sidebar drawer (desktop)",
+  "shortcuts.help": "Show this help",
+  "shortcuts.sync": "Sync (rescan tasks, refresh Google Calendar)",
+  "shortcuts.fit": "Fit it into the first free slot (next 14 days)",
+  "shortcuts.edit": "Edit the task",
+  "shortcuts.pageDates": "Page dates without dropping the task",
+  "shortcuts.cancelDrag": "Cancel the drag",
+  "shortcuts.hideButton": "Hide the shortcut (?) button in the header",
+  "shortcuts.hint": "? and h open this list either way.",
+  "addChoice.title": "Add New Item \u2795",
+  "addChoice.task": "Add Local Task",
+  "addChoice.taskDesc": "Create a local task inside your vault's daily note or default file.",
+  "addChoice.appointment": "Add Appointment",
+  "addChoice.appointmentDesc": "Create a new event and schedule it directly on Google Calendar.",
+  "taskModal.title": "Create or edit Task",
+  "taskModal.descPlaceholder": "Enter task details...",
+  "taskModal.fileLocation": "Task File Location",
+  "taskModal.openInFile": "Open in File \u2197",
+  "taskModal.notInFile": "This task hasn't been created in a file yet.",
+  "taskModal.date": "Date",
+  "taskModal.tasksCompat": "Tasks Plugin Compatibility \u{1F501}",
+  "taskModal.recurrence": "Recurrence",
+  "taskModal.recurrencePlaceholder": "e.g., every week",
+  "taskModal.scheduled": "Scheduled Date",
+  "taskModal.due": "Due Date",
+  "taskModal.completion": "Completion Date",
+  "taskModal.cancelledDate": "Cancelled Date",
+  "taskModal.emptyText": "Please enter task content!",
+  "eventModal.summary": "Event Title",
+  "eventModal.summaryPlaceholder": "Enter event summary...",
+  "eventModal.targetCalendar": "Target Calendar",
+  "eventModal.calendar": "Calendar",
+  "eventModal.location": "Location",
+  "eventModal.locationPlaceholder": "Add location...",
+  "eventModal.descPlaceholder": "Add description...",
+  "eventModal.duplicate": "Duplicate",
+  "eventModal.deleted": "\u{1F4C5} Google Calendar event deleted.",
+  "eventModal.duplicated": "\u{1F4C5} Google Calendar event duplicated.",
+  "eventModal.titleRequired": "Please enter an event title.",
+  "eventModal.updated": "\u{1F4C5} Google Calendar event updated.",
+  "eventModal.added": "\u{1F4C5} Event added to Google Calendar.",
+  "syncModal.title": "Synchronize Tasks with Google Calendar \u{1F4E4}",
+  "syncModal.desc": "This will scan all timed tasks in your vault (containing dates and times) and synchronize them to your selected Google Calendar. Existing tasks linked via gcalId will be updated, and new ones will be created.",
+  "syncModal.chooseCalendar": "Choose Target Calendar",
+  "syncModal.noCalendars": "No enabled Google Calendars",
+  "syncModal.syncNow": "Sync Tasks Now",
+  "syncModal.syncing": "Syncing...",
+  "syncModal.selectCalendar": "\u26A0\uFE0F Please select a valid target Google Calendar.",
+  "syncModal.starting": "\u{1F504} Starting background task synchronization...",
+  "syncModal.complete": "\u2705 Task synchronization complete! Created: {created}, Updated: {updated}, Repaired: {repaired}, Removed: {removed}, Skipped: {skipped}",
+  "syncModal.failed": "\u274C Task synchronization failed. Check console for details.",
+  "pathModal.title": "Select File/Folder to Exclude \u{1F4C2}",
+  "pathModal.folders": "Folders",
+  "pathModal.files": "Files",
+  "pathModal.search": "Search folder or file name...",
+  "pathModal.noFolders": "No folders found.",
+  "pathModal.noFiles": "No files found.",
+  "settings.heading": "Dayloom Settings",
+  "settings.tab.general": "General",
+  "settings.tab.timeline": "Timeline",
+  "settings.tab.gcal": "Google Calendar",
+  "settings.tab.reminders": "Notifications",
+  "settings.tab.display": "View/Display",
+  "settings.language.desc": "Display language for Dayloom. Auto follows the language Obsidian is set to.",
+  "settings.language.changed": "Dayloom language updated.",
+  "settings.defaultTaskFile.name": "Default Task File Path",
+  "settings.defaultTaskFile.desc": "The default markdown file where tasks will be added when creating them in the planner.",
+  "settings.exclusion.name": "Excluded Files & Folders",
+  "settings.exclusion.desc": 'Notes matched here are not scanned for tasks. Pick a folder or note from the suggestions, or type a pattern: * stays within one folder, ** crosses folders (e.g. **/Templates). "Keep" re-includes something inside an excluded folder.',
+  "settings.exclusion.ruleType": "Rule type",
+  "settings.exclusion.placeholder": "Folder, note or pattern\u2026",
+  "settings.exclusion.exclude": "Exclude",
+  "settings.exclusion.keep": "Keep",
+  "settings.exclusion.empty": "No rules: every note in the vault is scanned.",
+  "settings.exclusion.notFound": " (not found in the vault)",
+  "settings.exclusion.clickToSwitch": "click to switch",
+  "settings.exclusion.remove": "Remove {path}",
+  "settings.exclusion.summary": "Leaving out {excluded} of {total} notes.",
+  "settings.dailyNotes.heading": "Daily notes",
+  "settings.dailyFolder.name": "Daily Notes Folder Path",
+  "settings.dailyFolder.desc": "Obsidian folder path for your daily notes. Leave empty for root folder.",
+  "settings.dailyFormat.name": "Daily Notes File Format",
+  "settings.dailyFormat.desc": "File name format for daily notes (Default: YYYY-MM-DD).",
+  "settings.dailyTemplate.name": "Daily Note Template",
+  "settings.dailyTemplate.desc": "Choose the markdown file in your vault to use as a template for new Daily Notes.",
+  "settings.weeklyNotes.heading": "Weekly notes",
+  "settings.weeklyFolder.name": "Weekly Notes Folder Path",
+  "settings.weeklyFolder.desc": "Obsidian folder path for your weekly notes. Leave empty for root folder.",
+  "settings.weeklyFormat.name": "Weekly Notes File Format",
+  "settings.weeklyFormat.desc": "File name format for weekly notes (Default: gggg-[W]ww).",
+  "settings.weeklyTemplate.name": "Weekly Note Template",
+  "settings.weeklyTemplate.desc": "Choose the markdown file in your vault to use as a template for new Weekly Notes.",
+  "settings.nDay.name": "N-day view length",
+  "settings.nDay.desc": "Number of consecutive days to show in the N-day calendar view.",
+  "settings.separateHeights.name": "Separate Dayloom and Dayloom Compact Heights",
+  "settings.separateHeights.desc": "Enable this to adjust the zoom (hour height) of Dayloom and Dayloom Compact independently.",
+  "settings.hourHeightMain.name": "Timeline Hour Height (Dayloom)",
+  "settings.hourHeightMain.desc": "Adjust the vertical spacing height (in pixels) for 1 hour on Dayloom timelines. (Default: 60px)",
+  "settings.hourHeightCompact.name": "Timeline Hour Height (Dayloom Compact)",
+  "settings.hourHeightCompact.desc": "Adjust the vertical spacing height (in pixels) for 1 hour on Dayloom Compact timelines. (Default: 60px)",
+  "settings.hourHeightSynced.name": "Timeline Hour Height (Synced)",
+  "settings.hourHeightSynced.desc": "Adjust the vertical spacing height (in pixels) for 1 hour on all timelines. (Default: 60px)",
+  "settings.startHour.name": "Timeline Start Hour",
+  "settings.startHour.desc": "The hour at which the daily and weekly timeline starts.",
+  "settings.startHour.error": "Start hour must be before end hour.",
+  "settings.endHour.name": "Timeline End Hour",
+  "settings.endHour.desc": "The hour at which the daily and weekly timeline ends.",
+  "settings.endHour.error": "End hour must be after start hour.",
+  "settings.defaultDuration.name": "Default Task Duration (minutes)",
+  "settings.defaultDuration.desc": "Length of the time block an untimed task gets when you drag it onto the timeline from the side drawer or an all-day row (end time = start time + this). Any value from 1 to 1440.",
+  "settings.hideMetadata.name": "Hide Inline Metadata Fields",
+  "settings.hideMetadata.desc": "Hide bracketed inline fields such as [gcalId:: ...] from task titles in the planner, and the [gcalId:: ...] sync tag in Reading View and Live Preview. Files keep them; only the display is cleaned.",
+  "settings.shortcutButton.name": "Show shortcut button in header",
+  "settings.shortcutButton.desc": "Show the keyboard shortcut (?) button in the timeline header. The ? and h keys open the shortcut list either way.",
+  "settings.haptics.name": "Haptic Feedback",
+  "settings.haptics.desc": "Vibrate briefly when completing tasks, switching tabs or modes, and dragging or resizing timeline items. Only on mobile devices that support vibration.",
+  "settings.reminderType.name": "Reminder Type",
+  "settings.reminderType.desc": "How to alert you before a task or event starts. Auto shows an in-app notice while Obsidian is focused and a system notification otherwise.",
+  "settings.reminderType.off": "Off",
+  "settings.reminderType.auto": "Auto",
+  "settings.reminderType.notice": "In-app notice",
+  "settings.reminderType.system": "System notification",
+  "settings.reminderTiming.name": "Reminder Timing",
+  "settings.reminderTiming.desc": "When to alert you relative to the start time of a task or event.",
+  "settings.reminderTiming.atStart": "At event start time",
+  "settings.reminderTiming.before": "{n} minutes before",
+  "settings.reminderSound.name": "Reminder Sound",
+  "settings.reminderSound.desc": "Play a short two-tone chime with each reminder.",
+  "settings.reminderSound.test": "Play test chime",
+  "settings.remindTasks.name": "Remind for Tasks",
+  "settings.remindTasks.desc": "Send reminders for vault tasks with a start time (\u23F0HH:mm) scheduled for today.",
+  "settings.remindGCal.name": "Remind for Google Calendar Events",
+  "settings.remindGCal.desc": "Send reminders for timed Google Calendar events today. All-day events are skipped.",
+  "settings.enableGCal.name": "Enable Google Calendar Integration",
+  "settings.enableGCal.desc": "When enabled, your active Google Calendar events will be fetched and shown alongside tasks.",
+  "settings.taskSyncCal.name": "Task Sync Google Calendar",
+  "settings.taskSyncCal.desc": "Choose the Google Calendar to synchronize your timed vault tasks with.",
+  "settings.taskSyncCal.select": "Select a calendar...",
+  "settings.oauth.heading": "Google Calendar OAuth 2.0 (sync & editing)",
+  "settings.oauth.intro": "To sync calendars (including private ones) and edit/drag events directly in the timeline, you need to configure your custom OAuth 2.0 web application credentials.",
+  "settings.clientId.name": "Google Client ID",
+  "settings.clientId.desc": "OAuth Web Client Application ID.",
+  "settings.clientSecret.name": "Google Client Secret",
+  "settings.clientSecret.desc": "OAuth Web Client Secret Key.",
+  "settings.refreshToken.name": "Google Refresh Token",
+  "settings.refreshToken.desc": "Offline persistent refresh token for background writing API authorization.",
+  "settings.calendars.heading": "Google Calendars \u{1F4C5}",
+  "settings.calendars.add": "+ Add Calendar",
+  "settings.calendars.empty": 'No Google Calendars configured yet. Click "Add Calendar" to start integrating.',
+  "settings.calendars.namePlaceholder": "Name (e.g., Work, Personal)",
+  "settings.calendars.idPlaceholder": "primary or Google email address",
+  "settings.taskColor.name": "Local Task Color",
+  "settings.taskColor.desc": "Color for the highlight borders of your local (vault) tasks, shown alongside the calendar colors above."
+};
+var ko = {
+  "common.today": "\uC624\uB298",
+  "common.tomorrow": "\uB0B4\uC77C",
+  "common.cancel": "\uCDE8\uC18C",
+  "common.save": "\uC800\uC7A5",
+  "common.create": "\uB9CC\uB4E4\uAE30",
+  "common.delete": "\uC0AD\uC81C",
+  "common.undo": "\uB418\uB3CC\uB9AC\uAE30",
+  "common.allDay": "\uC885\uC77C",
+  "common.description": "\uC124\uBA85",
+  "common.priority": "\uC6B0\uC120\uC21C\uC704",
+  "common.status": "\uC0C1\uD0DC",
+  "common.startDate": "\uC2DC\uC791\uC77C",
+  "common.endDate": "\uC885\uB8CC\uC77C",
+  "common.startTime": "\uC2DC\uC791 \uC2DC\uAC04",
+  "common.endTime": "\uC885\uB8CC \uC2DC\uAC04",
+  "common.updated": '"{title}" \uC218\uC815\uB428. ',
+  "nav.previous": "\uC774\uC804",
+  "nav.next": "\uB2E4\uC74C",
+  "nav.sync": "\uB3D9\uAE30\uD654",
+  "nav.filter": "\uD544\uD130",
+  "nav.shortcuts": "\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4 (?)",
+  "nav.toggleDrawer": "\uC0AC\uC774\uB4DC \uC11C\uB78D \uC5F4\uAE30/\uB2EB\uAE30 (S)",
+  "notice.taskAdded": "\uC0C8 \uD560 \uC77C\uC774 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "notice.openViewFirst": "\uBA3C\uC800 Dayloom \uBDF0\uB97C \uC5EC\uC138\uC694.",
+  "notice.openDayloomFirst": "\uBA3C\uC800 Dayloom\uC744 \uC5EC\uC138\uC694.",
+  "view.daily": "\uC77C\uAC04",
+  "view.dailyTimeline": "\uC77C\uAC04 \uD0C0\uC784\uB77C\uC778",
+  "view.twoDay": "2\uC77C \uBCF4\uAE30",
+  "view.nDay": "{n}\uC77C \uBCF4\uAE30",
+  "view.nDaySuffix": "\uC77C \uBCF4\uAE30",
+  "view.weekly": "\uC8FC\uAC04 \uBCF4\uAE30",
+  "view.monthly": "\uC6D4\uAC04",
+  "view.monthlyCalendar": "\uC6D4\uAC04 \uB2EC\uB825",
+  "view.board": "\uBCF4\uB4DC",
+  "view.list": "\uBAA9\uB85D",
+  "view.listView": "\uBAA9\uB85D \uBCF4\uAE30",
+  "board.kanban": "\uCE78\uBC18",
+  "board.kanbanTitle": "\uAE30\uBCF8 \uCE78\uBC18",
+  "board.priorityTitle": "\uC6B0\uC120\uC21C\uC704 \uC9D1\uC911",
+  "board.undated": "\uB0A0\uC9DC \uC5C6\uC74C",
+  "board.overdue": "\uAE30\uD55C \uC9C0\uB0A8",
+  "board.future": "\uC608\uC815",
+  "board.completed": "\uC644\uB8CC\uB428",
+  "priority.highest": "\uCD5C\uC0C1",
+  "priority.high": "\uB192\uC74C",
+  "priority.medium": "\uC911\uAC04",
+  "priority.normal": "\uBCF4\uD1B5",
+  "priority.low": "\uB0AE\uC74C",
+  "priority.lowest": "\uCD5C\uD558",
+  "status.todo": "\uD560 \uC77C",
+  "status.inProgress": "\uC9C4\uD589 \uC911",
+  "status.done": "\uC644\uB8CC",
+  "status.cancelled": "\uCDE8\uC18C\uB428",
+  "drawer.tasks": "\uD560 \uC77C",
+  "drawer.overdueTasks": "\uAE30\uD55C \uC9C0\uB09C \uD560 \uC77C",
+  "drawer.undatedTasks": "\uB0A0\uC9DC \uC5C6\uB294 \uD560 \uC77C",
+  "drawer.allCaughtUp": "\uBAA8\uB450 \uCC98\uB9AC\uD588\uC5B4\uC694! \u{1F389}",
+  "drawer.rollToToday": "\uC624\uB298\uB85C \uC62E\uAE30\uAE30",
+  "drawer.rollToTodayTooltip": "\uAE30\uD55C \uC9C0\uB09C \uD560 \uC77C\uC744 \uBAA8\uB450 \uC624\uB298\uB85C \uC62E\uAE30\uAE30 (\uC2DC\uAC04\uC740 \uC720\uC9C0)",
+  "drawer.noUndated": "\uB0A0\uC9DC \uC5C6\uB294 \uD560 \uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uC77C\uC815\uC774 \uC7A1\uD78C \uD560 \uC77C\uC744 \uC5EC\uAE30\uB85C \uB04C\uC5B4\uC624\uBA74 \uB0A0\uC9DC\uAC00 \uD574\uC81C\uB429\uB2C8\uB2E4.",
+  "drawer.capturePlaceholder": "+ \uB0A0\uC9DC \uC5C6\uB294 \uD560 \uC77C \uCD94\uAC00 (\u{1F53A} \u23EB \uB85C \uC6B0\uC120\uC21C\uC704)",
+  "drawer.captureAria": "\uBE60\uB978 \uC785\uB825: \uB0A0\uC9DC \uC5C6\uB294 \uD560 \uC77C \uCD94\uAC00",
+  "drawer.close": "\uC0AC\uC774\uB4DC \uC11C\uB78D \uB2EB\uAE30 (S)",
+  "drawer.card.moveToday": "\uC624\uB298\uB85C \uC62E\uAE30\uAE30 ({date})",
+  "drawer.card.tomorrow": "\uB0B4\uC77C",
+  "drawer.card.moveTomorrow": "\uB0B4\uC77C\uB85C \uC62E\uAE30\uAE30 ({date})",
+  "drawer.card.nextWeek": "+1\uC8FC",
+  "drawer.card.moveNextWeek": "\uB2E4\uC74C \uC8FC\uB85C \uC62E\uAE30\uAE30 ({date})",
+  "drawer.card.undate": "\uB0A0\uC9DC \uD574\uC81C",
+  "drawer.card.undateTooltip": "\uB0A0\uC9DC \uC9C0\uC6B0\uAE30 (\uB0A0\uC9DC \uC5C6\uC74C\uC73C\uB85C \uC774\uB3D9)",
+  "shortcuts.title": "\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4",
+  "shortcuts.group.navigate": "\uC774\uB3D9",
+  "shortcuts.group.switchView": "\uBCF4\uAE30 \uC804\uD658",
+  "shortcuts.group.panels": "\uD328\uB110",
+  "shortcuts.group.drawerCard": "\uC0AC\uC774\uB4DC \uC11C\uB78D \uCE74\uB4DC (Tab\uC73C\uB85C \uD3EC\uCEE4\uC2A4)",
+  "shortcuts.group.dragging": "\uB4DC\uB798\uADF8 \uC911 (\uB370\uC2A4\uD06C\uD1B1)",
+  "shortcuts.next": "\uB2E4\uC74C \uB0A0 / \uAE30\uAC04 (\uCEF4\uD329\uD2B8 \uBCF4\uB4DC: \uB2E4\uC74C \uC5F4)",
+  "shortcuts.prev": "\uC774\uC804 \uB0A0 / \uAE30\uAC04 (\uCEF4\uD329\uD2B8 \uBCF4\uB4DC: \uC774\uC804 \uC5F4)",
+  "shortcuts.today": "\uC624\uB298\uB85C \uC774\uB3D9",
+  "shortcuts.daily": "\uC77C\uAC04 \uD0C0\uC784\uB77C\uC778",
+  "shortcuts.nDay": "N\uC77C \uBCF4\uAE30",
+  "shortcuts.weekly": "\uC8FC\uAC04 \uBCF4\uAE30",
+  "shortcuts.monthly": "\uC6D4\uAC04 \uB2EC\uB825",
+  "shortcuts.list": "\uBAA9\uB85D \uBCF4\uAE30",
+  "shortcuts.drawer": "\uC0AC\uC774\uB4DC \uC11C\uB78D \uC5F4\uAE30/\uB2EB\uAE30 (\uB370\uC2A4\uD06C\uD1B1)",
+  "shortcuts.help": "\uC774 \uB3C4\uC6C0\uB9D0 \uBCF4\uAE30",
+  "shortcuts.sync": "\uB3D9\uAE30\uD654 (\uD560 \uC77C \uB2E4\uC2DC \uAC80\uC0C9, \uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC0C8\uB85C\uACE0\uCE68)",
+  "shortcuts.fit": "\uCCAB \uBC88\uC9F8 \uBE48 \uC2DC\uAC04\uC5D0 \uB123\uAE30 (\uC55E\uC73C\uB85C 14\uC77C)",
+  "shortcuts.edit": "\uD560 \uC77C \uD3B8\uC9D1",
+  "shortcuts.pageDates": "\uD560 \uC77C\uC744 \uB193\uC9C0 \uC54A\uACE0 \uB0A0\uC9DC \uB118\uAE30\uAE30",
+  "shortcuts.cancelDrag": "\uB4DC\uB798\uADF8 \uCDE8\uC18C",
+  "shortcuts.hideButton": "\uD5E4\uB354\uC758 \uB2E8\uCD95\uD0A4 (?) \uBC84\uD2BC \uC228\uAE30\uAE30",
+  "shortcuts.hint": "? \uC640 h \uD0A4\uB85C \uC5B8\uC81C\uB4E0 \uC774 \uBAA9\uB85D\uC744 \uC5F4 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "addChoice.title": "\uC0C8 \uD56D\uBAA9 \uCD94\uAC00 \u2795",
+  "addChoice.task": "\uB85C\uCEEC \uD560 \uC77C \uCD94\uAC00",
+  "addChoice.taskDesc": "\uBCFC\uD2B8\uC758 \uB370\uC77C\uB9AC \uB178\uD2B8\uB098 \uAE30\uBCF8 \uD30C\uC77C\uC5D0 \uD560 \uC77C\uC744 \uB9CC\uB4ED\uB2C8\uB2E4.",
+  "addChoice.appointment": "\uC77C\uC815 \uCD94\uAC00",
+  "addChoice.appointmentDesc": "\uAD6C\uAE00 \uCE98\uB9B0\uB354\uC5D0 \uBC14\uB85C \uC0C8 \uC77C\uC815\uC744 \uB9CC\uB4ED\uB2C8\uB2E4.",
+  "taskModal.title": "\uD560 \uC77C \uB9CC\uB4E4\uAE30/\uD3B8\uC9D1",
+  "taskModal.descPlaceholder": "\uD560 \uC77C \uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694...",
+  "taskModal.fileLocation": "\uD560 \uC77C \uD30C\uC77C \uC704\uCE58",
+  "taskModal.openInFile": "\uD30C\uC77C\uC5D0\uC11C \uC5F4\uAE30 \u2197",
+  "taskModal.notInFile": "\uC774 \uD560 \uC77C\uC740 \uC544\uC9C1 \uD30C\uC77C\uC5D0 \uB9CC\uB4E4\uC5B4\uC9C0\uC9C0 \uC54A\uC558\uC2B5\uB2C8\uB2E4.",
+  "taskModal.date": "\uB0A0\uC9DC",
+  "taskModal.tasksCompat": "Tasks \uD50C\uB7EC\uADF8\uC778 \uD638\uD658 \u{1F501}",
+  "taskModal.recurrence": "\uBC18\uBCF5",
+  "taskModal.recurrencePlaceholder": "\uC608: every week",
+  "taskModal.scheduled": "\uC608\uC815\uC77C",
+  "taskModal.due": "\uB9C8\uAC10\uC77C",
+  "taskModal.completion": "\uC644\uB8CC\uC77C",
+  "taskModal.cancelledDate": "\uCDE8\uC18C\uC77C",
+  "taskModal.emptyText": "\uD560 \uC77C \uB0B4\uC6A9\uC744 \uC785\uB825\uD558\uC138\uC694!",
+  "eventModal.summary": "\uC77C\uC815 \uC81C\uBAA9",
+  "eventModal.summaryPlaceholder": "\uC77C\uC815 \uC81C\uBAA9\uC744 \uC785\uB825\uD558\uC138\uC694...",
+  "eventModal.targetCalendar": "\uB300\uC0C1 \uCE98\uB9B0\uB354",
+  "eventModal.calendar": "\uCE98\uB9B0\uB354",
+  "eventModal.location": "\uC7A5\uC18C",
+  "eventModal.locationPlaceholder": "\uC7A5\uC18C \uCD94\uAC00...",
+  "eventModal.descPlaceholder": "\uC124\uBA85 \uCD94\uAC00...",
+  "eventModal.duplicate": "\uBCF5\uC81C",
+  "eventModal.deleted": "\u{1F4C5} \uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815\uC774 \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "eventModal.duplicated": "\u{1F4C5} \uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815\uC774 \uBCF5\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "eventModal.titleRequired": "\uC77C\uC815 \uC81C\uBAA9\uC744 \uC785\uB825\uD558\uC138\uC694.",
+  "eventModal.updated": "\u{1F4C5} \uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815\uC774 \uC5C5\uB370\uC774\uD2B8\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "eventModal.added": "\u{1F4C5} \uAD6C\uAE00 \uCE98\uB9B0\uB354\uC5D0 \uC77C\uC815\uC774 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "syncModal.title": "\uD560 \uC77C\uC744 \uAD6C\uAE00 \uCE98\uB9B0\uB354\uC640 \uB3D9\uAE30\uD654 \u{1F4E4}",
+  "syncModal.desc": "\uBCFC\uD2B8\uC5D0\uC11C \uB0A0\uC9DC\uC640 \uC2DC\uAC04\uC774 \uC788\uB294 \uD560 \uC77C\uC744 \uBAA8\uB450 \uCC3E\uC544 \uC120\uD0DD\uD55C \uAD6C\uAE00 \uCE98\uB9B0\uB354\uC640 \uB3D9\uAE30\uD654\uD569\uB2C8\uB2E4. gcalId\uB85C \uC5F0\uACB0\uB41C \uD560 \uC77C\uC740 \uC5C5\uB370\uC774\uD2B8\uB418\uACE0, \uC0C8 \uD560 \uC77C\uC740 \uC0C8\uB85C \uB9CC\uB4E4\uC5B4\uC9D1\uB2C8\uB2E4.",
+  "syncModal.chooseCalendar": "\uB300\uC0C1 \uCE98\uB9B0\uB354 \uC120\uD0DD",
+  "syncModal.noCalendars": "\uD65C\uC131\uD654\uB41C \uAD6C\uAE00 \uCE98\uB9B0\uB354\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4",
+  "syncModal.syncNow": "\uC9C0\uAE08 \uB3D9\uAE30\uD654",
+  "syncModal.syncing": "\uB3D9\uAE30\uD654 \uC911...",
+  "syncModal.selectCalendar": "\u26A0\uFE0F \uC62C\uBC14\uB978 \uB300\uC0C1 \uAD6C\uAE00 \uCE98\uB9B0\uB354\uB97C \uC120\uD0DD\uD558\uC138\uC694.",
+  "syncModal.starting": "\u{1F504} \uBC31\uADF8\uB77C\uC6B4\uB4DC \uB3D9\uAE30\uD654\uB97C \uC2DC\uC791\uD569\uB2C8\uB2E4...",
+  "syncModal.complete": "\u2705 \uB3D9\uAE30\uD654 \uC644\uB8CC! \uC0DD\uC131: {created}, \uC5C5\uB370\uC774\uD2B8: {updated}, \uBCF5\uAD6C: {repaired}, \uC0AD\uC81C: {removed}, \uAC74\uB108\uB700: {skipped}",
+  "syncModal.failed": "\u274C \uB3D9\uAE30\uD654\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uC790\uC138\uD55C \uB0B4\uC6A9\uC740 \uCF58\uC194\uC744 \uD655\uC778\uD558\uC138\uC694.",
+  "pathModal.title": "\uC81C\uC678\uD560 \uD30C\uC77C/\uD3F4\uB354 \uC120\uD0DD \u{1F4C2}",
+  "pathModal.folders": "\uD3F4\uB354",
+  "pathModal.files": "\uD30C\uC77C",
+  "pathModal.search": "\uD3F4\uB354\uB098 \uD30C\uC77C \uC774\uB984 \uAC80\uC0C9...",
+  "pathModal.noFolders": "\uD3F4\uB354\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "pathModal.noFiles": "\uD30C\uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "settings.heading": "Dayloom \uC124\uC815",
+  "settings.tab.general": "\uC77C\uBC18",
+  "settings.tab.timeline": "\uD0C0\uC784\uB77C\uC778",
+  "settings.tab.gcal": "\uAD6C\uAE00 \uCE98\uB9B0\uB354",
+  "settings.tab.reminders": "\uC54C\uB9BC",
+  "settings.tab.display": "\uBCF4\uAE30/\uD45C\uC2DC",
+  "settings.language.desc": "Dayloom\uC758 \uD45C\uC2DC \uC5B8\uC5B4\uC785\uB2C8\uB2E4. \uC790\uB3D9 \uAC10\uC9C0\uB294 Obsidian\uC758 \uC5B8\uC5B4 \uC124\uC815\uC744 \uB530\uB985\uB2C8\uB2E4.",
+  "settings.language.changed": "Dayloom \uC5B8\uC5B4\uAC00 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "settings.defaultTaskFile.name": "\uAE30\uBCF8 \uD560 \uC77C \uD30C\uC77C \uACBD\uB85C",
+  "settings.defaultTaskFile.desc": "\uD50C\uB798\uB108\uC5D0\uC11C \uD560 \uC77C\uC744 \uB9CC\uB4E4 \uB54C \uCD94\uAC00\uB420 \uAE30\uBCF8 \uB9C8\uD06C\uB2E4\uC6B4 \uD30C\uC77C\uC785\uB2C8\uB2E4.",
+  "settings.exclusion.name": "\uC81C\uC678\uD560 \uD30C\uC77C \uBC0F \uD3F4\uB354",
+  "settings.exclusion.desc": '\uC5EC\uAE30\uC5D0 \uD574\uB2F9\uD558\uB294 \uB178\uD2B8\uB294 \uD560 \uC77C \uAC80\uC0C9\uC5D0\uC11C \uC81C\uC678\uB429\uB2C8\uB2E4. \uC81C\uC548 \uBAA9\uB85D\uC5D0\uC11C \uD3F4\uB354\uB098 \uB178\uD2B8\uB97C \uACE0\uB974\uAC70\uB098 \uD328\uD134\uC744 \uC785\uB825\uD558\uC138\uC694: * \uB294 \uD55C \uD3F4\uB354 \uC548\uC5D0\uC11C, ** \uB294 \uC5EC\uB7EC \uD3F4\uB354\uC5D0 \uAC78\uCCD0 \uC77C\uCE58\uD569\uB2C8\uB2E4 (\uC608: **/Templates). "\uC720\uC9C0"\uB294 \uC81C\uC678\uB41C \uD3F4\uB354 \uC548\uC758 \uD56D\uBAA9\uC744 \uB2E4\uC2DC \uD3EC\uD568\uD569\uB2C8\uB2E4.',
+  "settings.exclusion.ruleType": "\uADDC\uCE59 \uC885\uB958",
+  "settings.exclusion.placeholder": "\uD3F4\uB354, \uB178\uD2B8 \uB610\uB294 \uD328\uD134\u2026",
+  "settings.exclusion.exclude": "\uC81C\uC678",
+  "settings.exclusion.keep": "\uC720\uC9C0",
+  "settings.exclusion.empty": "\uADDC\uCE59 \uC5C6\uC74C: \uBCFC\uD2B8\uC758 \uBAA8\uB4E0 \uB178\uD2B8\uB97C \uAC80\uC0C9\uD569\uB2C8\uB2E4.",
+  "settings.exclusion.notFound": " (\uBCFC\uD2B8\uC5D0 \uC5C6\uC74C)",
+  "settings.exclusion.clickToSwitch": "\uD074\uB9AD\uD558\uC5EC \uC804\uD658",
+  "settings.exclusion.remove": "{path} \uC0AD\uC81C",
+  "settings.exclusion.summary": "\uB178\uD2B8 {total}\uAC1C \uC911 {excluded}\uAC1C\uB97C \uC81C\uC678\uD569\uB2C8\uB2E4.",
+  "settings.dailyNotes.heading": "\uB370\uC77C\uB9AC \uB178\uD2B8",
+  "settings.dailyFolder.name": "\uB370\uC77C\uB9AC \uB178\uD2B8 \uD3F4\uB354 \uACBD\uB85C",
+  "settings.dailyFolder.desc": "\uB370\uC77C\uB9AC \uB178\uD2B8\uAC00 \uC800\uC7A5\uB418\uB294 Obsidian \uD3F4\uB354 \uACBD\uB85C\uC785\uB2C8\uB2E4. \uBE44\uC6CC \uB450\uBA74 \uCD5C\uC0C1\uC704 \uD3F4\uB354\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4.",
+  "settings.dailyFormat.name": "\uB370\uC77C\uB9AC \uB178\uD2B8 \uD30C\uC77C\uBA85 \uD615\uC2DD",
+  "settings.dailyFormat.desc": "\uB370\uC77C\uB9AC \uB178\uD2B8\uC758 \uD30C\uC77C\uBA85 \uD615\uC2DD\uC785\uB2C8\uB2E4 (\uAE30\uBCF8\uAC12: YYYY-MM-DD).",
+  "settings.dailyTemplate.name": "\uB370\uC77C\uB9AC \uB178\uD2B8 \uD15C\uD50C\uB9BF",
+  "settings.dailyTemplate.desc": "\uC0C8 \uB370\uC77C\uB9AC \uB178\uD2B8\uC758 \uD15C\uD50C\uB9BF\uC73C\uB85C \uC0AC\uC6A9\uD560 \uBCFC\uD2B8\uC758 \uB9C8\uD06C\uB2E4\uC6B4 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uC138\uC694.",
+  "settings.weeklyNotes.heading": "\uC8FC\uAC04 \uB178\uD2B8",
+  "settings.weeklyFolder.name": "\uC8FC\uAC04 \uB178\uD2B8 \uD3F4\uB354 \uACBD\uB85C",
+  "settings.weeklyFolder.desc": "\uC8FC\uAC04 \uB178\uD2B8\uAC00 \uC800\uC7A5\uB418\uB294 Obsidian \uD3F4\uB354 \uACBD\uB85C\uC785\uB2C8\uB2E4. \uBE44\uC6CC \uB450\uBA74 \uCD5C\uC0C1\uC704 \uD3F4\uB354\uB97C \uC0AC\uC6A9\uD569\uB2C8\uB2E4.",
+  "settings.weeklyFormat.name": "\uC8FC\uAC04 \uB178\uD2B8 \uD30C\uC77C\uBA85 \uD615\uC2DD",
+  "settings.weeklyFormat.desc": "\uC8FC\uAC04 \uB178\uD2B8\uC758 \uD30C\uC77C\uBA85 \uD615\uC2DD\uC785\uB2C8\uB2E4 (\uAE30\uBCF8\uAC12: gggg-[W]ww).",
+  "settings.weeklyTemplate.name": "\uC8FC\uAC04 \uB178\uD2B8 \uD15C\uD50C\uB9BF",
+  "settings.weeklyTemplate.desc": "\uC0C8 \uC8FC\uAC04 \uB178\uD2B8\uC758 \uD15C\uD50C\uB9BF\uC73C\uB85C \uC0AC\uC6A9\uD560 \uBCFC\uD2B8\uC758 \uB9C8\uD06C\uB2E4\uC6B4 \uD30C\uC77C\uC744 \uC120\uD0DD\uD558\uC138\uC694.",
+  "settings.nDay.name": "N\uC77C \uBCF4\uAE30 \uAE38\uC774",
+  "settings.nDay.desc": "N\uC77C \uBCF4\uAE30\uC5D0\uC11C \uC5F0\uC18D\uC73C\uB85C \uD45C\uC2DC\uD560 \uB0A0\uC9DC \uC218\uC785\uB2C8\uB2E4.",
+  "settings.separateHeights.name": "Dayloom\uACFC Dayloom Compact \uB192\uC774 \uB530\uB85C \uC124\uC815",
+  "settings.separateHeights.desc": "Dayloom\uACFC Dayloom Compact\uC758 \uD655\uB300 \uC815\uB3C4(1\uC2DC\uAC04 \uB192\uC774)\uB97C \uAC01\uAC01 \uC870\uC808\uD569\uB2C8\uB2E4.",
+  "settings.hourHeightMain.name": "\uD0C0\uC784\uB77C\uC778 1\uC2DC\uAC04 \uB192\uC774 (Dayloom)",
+  "settings.hourHeightMain.desc": "Dayloom \uD0C0\uC784\uB77C\uC778\uC5D0\uC11C 1\uC2DC\uAC04\uC758 \uC138\uB85C \uB192\uC774(\uD53D\uC140)\uB97C \uC870\uC808\uD569\uB2C8\uB2E4. (\uAE30\uBCF8\uAC12: 60px)",
+  "settings.hourHeightCompact.name": "\uD0C0\uC784\uB77C\uC778 1\uC2DC\uAC04 \uB192\uC774 (Dayloom Compact)",
+  "settings.hourHeightCompact.desc": "Dayloom Compact \uD0C0\uC784\uB77C\uC778\uC5D0\uC11C 1\uC2DC\uAC04\uC758 \uC138\uB85C \uB192\uC774(\uD53D\uC140)\uB97C \uC870\uC808\uD569\uB2C8\uB2E4. (\uAE30\uBCF8\uAC12: 60px)",
+  "settings.hourHeightSynced.name": "\uD0C0\uC784\uB77C\uC778 1\uC2DC\uAC04 \uB192\uC774 (\uACF5\uD1B5)",
+  "settings.hourHeightSynced.desc": "\uBAA8\uB4E0 \uD0C0\uC784\uB77C\uC778\uC5D0\uC11C 1\uC2DC\uAC04\uC758 \uC138\uB85C \uB192\uC774(\uD53D\uC140)\uB97C \uC870\uC808\uD569\uB2C8\uB2E4. (\uAE30\uBCF8\uAC12: 60px)",
+  "settings.startHour.name": "\uD0C0\uC784\uB77C\uC778 \uC2DC\uC791 \uC2DC\uAC01",
+  "settings.startHour.desc": "\uC77C\uAC04 \uBC0F \uC8FC\uAC04 \uD0C0\uC784\uB77C\uC778\uC774 \uC2DC\uC791\uB418\uB294 \uC2DC\uAC01\uC785\uB2C8\uB2E4.",
+  "settings.startHour.error": "\uC2DC\uC791 \uC2DC\uAC01\uC740 \uC885\uB8CC \uC2DC\uAC01\uBCF4\uB2E4 \uC55E\uC11C\uC57C \uD569\uB2C8\uB2E4.",
+  "settings.endHour.name": "\uD0C0\uC784\uB77C\uC778 \uC885\uB8CC \uC2DC\uAC01",
+  "settings.endHour.desc": "\uC77C\uAC04 \uBC0F \uC8FC\uAC04 \uD0C0\uC784\uB77C\uC778\uC774 \uB05D\uB098\uB294 \uC2DC\uAC01\uC785\uB2C8\uB2E4.",
+  "settings.endHour.error": "\uC885\uB8CC \uC2DC\uAC01\uC740 \uC2DC\uC791 \uC2DC\uAC01\uBCF4\uB2E4 \uB4A4\uC5EC\uC57C \uD569\uB2C8\uB2E4.",
+  "settings.defaultDuration.name": "\uAE30\uBCF8 \uD560 \uC77C \uAE38\uC774 (\uBD84)",
+  "settings.defaultDuration.desc": "\uC2DC\uAC04\uC774 \uC5C6\uB294 \uD560 \uC77C\uC744 \uC0AC\uC774\uB4DC \uC11C\uB78D\uC774\uB098 \uC885\uC77C \uD589\uC5D0\uC11C \uD0C0\uC784\uB77C\uC778\uC73C\uB85C \uB04C\uC5B4 \uB193\uC744 \uB54C \uC815\uD574\uC9C0\uB294 \uAE38\uC774\uC785\uB2C8\uB2E4 (\uC885\uB8CC \uC2DC\uAC04 = \uC2DC\uC791 \uC2DC\uAC04 + \uC774 \uAC12). 1\uBD80\uD130 1440\uAE4C\uC9C0 \uC785\uB825\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "settings.hideMetadata.name": "\uC778\uB77C\uC778 \uBA54\uD0C0\uB370\uC774\uD130 \uD544\uB4DC \uC228\uAE30\uAE30",
+  "settings.hideMetadata.desc": "\uD50C\uB798\uB108\uC758 \uD560 \uC77C \uC81C\uBAA9\uC5D0\uC11C [gcalId:: ...] \uAC19\uC740 \uB300\uAD04\uD638 \uC778\uB77C\uC778 \uD544\uB4DC\uB97C \uC228\uAE30\uACE0, \uC77D\uAE30 \uBCF4\uAE30\uC640 \uC2E4\uC2DC\uAC04 \uBBF8\uB9AC\uBCF4\uAE30\uC5D0\uC11C [gcalId:: ...] \uB3D9\uAE30\uD654 \uD0DC\uADF8\uB97C \uC228\uAE41\uB2C8\uB2E4. \uD30C\uC77C \uB0B4\uC6A9\uC740 \uADF8\uB300\uB85C\uC774\uBA70 \uD45C\uC2DC\uB9CC \uC815\uB9AC\uB429\uB2C8\uB2E4.",
+  "settings.shortcutButton.name": "\uD5E4\uB354\uC5D0 \uB2E8\uCD95\uD0A4 \uBC84\uD2BC \uD45C\uC2DC",
+  "settings.shortcutButton.desc": "\uD0C0\uC784\uB77C\uC778 \uD5E4\uB354\uC5D0 \uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4 (?) \uBC84\uD2BC\uC744 \uD45C\uC2DC\uD569\uB2C8\uB2E4. ? \uC640 h \uD0A4\uB85C\uB294 \uC5B8\uC81C\uB4E0 \uB2E8\uCD95\uD0A4 \uBAA9\uB85D\uC744 \uC5F4 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "settings.haptics.name": "\uD585\uD2F1 \uD53C\uB4DC\uBC31",
+  "settings.haptics.desc": "\uD560 \uC77C \uC644\uB8CC, \uD0ED\uC774\uB098 \uBAA8\uB4DC \uC804\uD658, \uD0C0\uC784\uB77C\uC778 \uD56D\uBAA9\uC744 \uB04C\uAC70\uB098 \uD06C\uAE30\uB97C \uBC14\uAFC0 \uB54C \uC9E7\uAC8C \uC9C4\uB3D9\uD569\uB2C8\uB2E4. \uC9C4\uB3D9\uC744 \uC9C0\uC6D0\uD558\uB294 \uBAA8\uBC14\uC77C \uAE30\uAE30\uC5D0\uC11C\uB9CC \uB3D9\uC791\uD569\uB2C8\uB2E4.",
+  "settings.reminderType.name": "\uC54C\uB9BC \uBC29\uC2DD",
+  "settings.reminderType.desc": "\uD560 \uC77C\uC774\uB098 \uC77C\uC815\uC774 \uC2DC\uC791\uB418\uAE30 \uC804\uC5D0 \uC54C\uB9AC\uB294 \uBC29\uC2DD\uC785\uB2C8\uB2E4. \uC790\uB3D9\uC740 Obsidian\uC774 \uD65C\uC131 \uC0C1\uD0DC\uC77C \uB54C \uC571 \uB0B4 \uC54C\uB9BC\uC744, \uADF8\uB807\uC9C0 \uC54A\uC73C\uBA74 \uC2DC\uC2A4\uD15C \uC54C\uB9BC\uC744 \uD45C\uC2DC\uD569\uB2C8\uB2E4.",
+  "settings.reminderType.off": "\uB044\uAE30",
+  "settings.reminderType.auto": "\uC790\uB3D9",
+  "settings.reminderType.notice": "\uC571 \uB0B4 \uC54C\uB9BC",
+  "settings.reminderType.system": "\uC2DC\uC2A4\uD15C \uC54C\uB9BC",
+  "settings.reminderTiming.name": "\uC54C\uB9BC \uC2DC\uC810",
+  "settings.reminderTiming.desc": "\uD560 \uC77C\uC774\uB098 \uC77C\uC815\uC758 \uC2DC\uC791 \uC2DC\uAC04\uC744 \uAE30\uC900\uC73C\uB85C \uC54C\uB9BC\uC744 \uBCF4\uB0BC \uC2DC\uC810\uC785\uB2C8\uB2E4.",
+  "settings.reminderTiming.atStart": "\uC2DC\uC791 \uC2DC\uAC04\uC5D0",
+  "settings.reminderTiming.before": "{n}\uBD84 \uC804",
+  "settings.reminderSound.name": "\uC54C\uB9BC \uC18C\uB9AC",
+  "settings.reminderSound.desc": "\uC54C\uB9BC\uB9C8\uB2E4 \uC9E7\uC740 \uB450 \uC74C \uCC28\uC784\uC744 \uC7AC\uC0DD\uD569\uB2C8\uB2E4.",
+  "settings.reminderSound.test": "\uCC28\uC784 \uBBF8\uB9AC \uB4E3\uAE30",
+  "settings.remindTasks.name": "\uD560 \uC77C \uC54C\uB9BC",
+  "settings.remindTasks.desc": "\uC624\uB298\uB85C \uC608\uC815\uB418\uACE0 \uC2DC\uC791 \uC2DC\uAC04(\u23F0HH:mm)\uC774 \uC788\uB294 \uBCFC\uD2B8 \uD560 \uC77C\uC744 \uC54C\uB9BD\uB2C8\uB2E4.",
+  "settings.remindGCal.name": "\uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815 \uC54C\uB9BC",
+  "settings.remindGCal.desc": "\uC624\uB298 \uC2DC\uAC04\uC774 \uC815\uD574\uC9C4 \uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815\uC744 \uC54C\uB9BD\uB2C8\uB2E4. \uC885\uC77C \uC77C\uC815\uC740 \uC81C\uC678\uB429\uB2C8\uB2E4.",
+  "settings.enableGCal.name": "\uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC5F0\uB3D9 \uC0AC\uC6A9",
+  "settings.enableGCal.desc": "\uCF1C\uBA74 \uD65C\uC131\uD654\uB41C \uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815\uC744 \uAC00\uC838\uC640 \uD560 \uC77C\uACFC \uD568\uAED8 \uD45C\uC2DC\uD569\uB2C8\uB2E4.",
+  "settings.taskSyncCal.name": "\uD560 \uC77C \uB3D9\uAE30\uD654 \uCE98\uB9B0\uB354",
+  "settings.taskSyncCal.desc": "\uC2DC\uAC04\uC774 \uC788\uB294 \uBCFC\uD2B8 \uD560 \uC77C\uC744 \uB3D9\uAE30\uD654\uD560 \uAD6C\uAE00 \uCE98\uB9B0\uB354\uB97C \uC120\uD0DD\uD558\uC138\uC694.",
+  "settings.taskSyncCal.select": "\uCE98\uB9B0\uB354 \uC120\uD0DD...",
+  "settings.oauth.heading": "\uAD6C\uAE00 \uCE98\uB9B0\uB354 OAuth 2.0 (\uB3D9\uAE30\uD654 \uBC0F \uD3B8\uC9D1)",
+  "settings.oauth.intro": "\uBE44\uACF5\uAC1C \uCE98\uB9B0\uB354\uB97C \uD3EC\uD568\uD574 \uB3D9\uAE30\uD654\uD558\uACE0 \uD0C0\uC784\uB77C\uC778\uC5D0\uC11C \uC77C\uC815\uC744 \uBC14\uB85C \uD3B8\uC9D1\uD558\uAC70\uB098 \uB04C\uC5B4 \uC62E\uAE30\uB824\uBA74, \uC9C1\uC811 \uB9CC\uB4E0 OAuth 2.0 \uC6F9 \uC560\uD50C\uB9AC\uCF00\uC774\uC158 \uC790\uACA9 \uC99D\uBA85\uC744 \uC124\uC815\uD574\uC57C \uD569\uB2C8\uB2E4.",
+  "settings.clientId.name": "\uAD6C\uAE00 \uD074\uB77C\uC774\uC5B8\uD2B8 ID",
+  "settings.clientId.desc": "OAuth \uC6F9 \uD074\uB77C\uC774\uC5B8\uD2B8 \uC560\uD50C\uB9AC\uCF00\uC774\uC158 ID\uC785\uB2C8\uB2E4.",
+  "settings.clientSecret.name": "\uAD6C\uAE00 \uD074\uB77C\uC774\uC5B8\uD2B8 \uBCF4\uC548 \uBE44\uBC00",
+  "settings.clientSecret.desc": "OAuth \uC6F9 \uD074\uB77C\uC774\uC5B8\uD2B8 \uBCF4\uC548 \uBE44\uBC00 \uD0A4\uC785\uB2C8\uB2E4.",
+  "settings.refreshToken.name": "\uAD6C\uAE00 \uAC31\uC2E0 \uD1A0\uD070",
+  "settings.refreshToken.desc": "\uBC31\uADF8\uB77C\uC6B4\uB4DC \uC4F0\uAE30 API \uC778\uC99D\uC5D0 \uC4F0\uC774\uB294 \uC624\uD504\uB77C\uC778 \uAC31\uC2E0 \uD1A0\uD070\uC785\uB2C8\uB2E4.",
+  "settings.calendars.heading": "\uAD6C\uAE00 \uCE98\uB9B0\uB354 \u{1F4C5}",
+  "settings.calendars.add": "+ \uCE98\uB9B0\uB354 \uCD94\uAC00",
+  "settings.calendars.empty": '\uC544\uC9C1 \uB4F1\uB85D\uB41C \uAD6C\uAE00 \uCE98\uB9B0\uB354\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4. "\uCE98\uB9B0\uB354 \uCD94\uAC00"\uB97C \uB20C\uB7EC \uC5F0\uB3D9\uC744 \uC2DC\uC791\uD558\uC138\uC694.',
+  "settings.calendars.namePlaceholder": "\uC774\uB984 (\uC608: \uC5C5\uBB34, \uAC1C\uC778)",
+  "settings.calendars.idPlaceholder": "primary \uB610\uB294 \uAD6C\uAE00 \uC774\uBA54\uC77C \uC8FC\uC18C",
+  "settings.taskColor.name": "\uB85C\uCEEC \uD560 \uC77C \uC0C9\uC0C1",
+  "settings.taskColor.desc": "\uB85C\uCEEC(\uBCFC\uD2B8) \uD560 \uC77C\uC758 \uAC15\uC870 \uD14C\uB450\uB9AC \uC0C9\uC0C1\uC73C\uB85C, \uC704\uC758 \uCE98\uB9B0\uB354 \uC0C9\uC0C1\uACFC \uD568\uAED8 \uD45C\uC2DC\uB429\uB2C8\uB2E4."
+};
+var ja = {
+  "common.today": "\u4ECA\u65E5",
+  "common.tomorrow": "\u660E\u65E5",
+  "common.cancel": "\u30AD\u30E3\u30F3\u30BB\u30EB",
+  "common.save": "\u4FDD\u5B58",
+  "common.create": "\u4F5C\u6210",
+  "common.delete": "\u524A\u9664",
+  "common.undo": "\u5143\u306B\u623B\u3059",
+  "common.allDay": "\u7D42\u65E5",
+  "common.description": "\u8AAC\u660E",
+  "common.priority": "\u512A\u5148\u5EA6",
+  "common.status": "\u30B9\u30C6\u30FC\u30BF\u30B9",
+  "common.startDate": "\u958B\u59CB\u65E5",
+  "common.endDate": "\u7D42\u4E86\u65E5",
+  "common.startTime": "\u958B\u59CB\u6642\u523B",
+  "common.endTime": "\u7D42\u4E86\u6642\u523B",
+  "common.updated": "\u300C{title}\u300D\u3092\u66F4\u65B0\u3057\u307E\u3057\u305F\u3002",
+  "nav.previous": "\u524D\u3078",
+  "nav.next": "\u6B21\u3078",
+  "nav.sync": "\u540C\u671F",
+  "nav.filter": "\u30D5\u30A3\u30EB\u30BF\u30FC",
+  "nav.shortcuts": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8 (?)",
+  "nav.toggleDrawer": "\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u306E\u5207\u308A\u66FF\u3048 (S)",
+  "notice.taskAdded": "\u65B0\u3057\u3044\u30BF\u30B9\u30AF\u3092\u8FFD\u52A0\u3057\u307E\u3057\u305F\u3002",
+  "notice.openViewFirst": "\u5148\u306B Dayloom \u30D3\u30E5\u30FC\u3092\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
+  "notice.openDayloomFirst": "\u5148\u306B Dayloom \u3092\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
+  "view.daily": "\u65E5",
+  "view.dailyTimeline": "\u65E5\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3",
+  "view.twoDay": "2\u65E5\u30D3\u30E5\u30FC",
+  "view.nDay": "{n}\u65E5\u30D3\u30E5\u30FC",
+  "view.nDaySuffix": "\u65E5\u30D3\u30E5\u30FC",
+  "view.weekly": "\u9031\u30D3\u30E5\u30FC",
+  "view.monthly": "\u6708",
+  "view.monthlyCalendar": "\u6708\u30AB\u30EC\u30F3\u30C0\u30FC",
+  "view.board": "\u30DC\u30FC\u30C9",
+  "view.list": "\u30EA\u30B9\u30C8",
+  "view.listView": "\u30EA\u30B9\u30C8\u30D3\u30E5\u30FC",
+  "board.kanban": "\u30AB\u30F3\u30D0\u30F3",
+  "board.kanbanTitle": "\u6A19\u6E96\u30AB\u30F3\u30D0\u30F3",
+  "board.priorityTitle": "\u512A\u5148\u5EA6\u30D5\u30A9\u30FC\u30AB\u30B9",
+  "board.undated": "\u65E5\u4ED8\u306A\u3057",
+  "board.overdue": "\u671F\u9650\u5207\u308C",
+  "board.future": "\u4ECA\u5F8C",
+  "board.completed": "\u5B8C\u4E86\u6E08\u307F",
+  "priority.highest": "\u6700\u9AD8",
+  "priority.high": "\u9AD8",
+  "priority.medium": "\u4E2D",
+  "priority.normal": "\u6A19\u6E96",
+  "priority.low": "\u4F4E",
+  "priority.lowest": "\u6700\u4F4E",
+  "status.todo": "\u672A\u7740\u624B",
+  "status.inProgress": "\u9032\u884C\u4E2D",
+  "status.done": "\u5B8C\u4E86",
+  "status.cancelled": "\u30AD\u30E3\u30F3\u30BB\u30EB\u6E08\u307F",
+  "drawer.tasks": "\u30BF\u30B9\u30AF",
+  "drawer.overdueTasks": "\u671F\u9650\u5207\u308C\u306E\u30BF\u30B9\u30AF",
+  "drawer.undatedTasks": "\u65E5\u4ED8\u306A\u3057\u306E\u30BF\u30B9\u30AF",
+  "drawer.allCaughtUp": "\u3059\u3079\u3066\u7247\u4ED8\u304D\u307E\u3057\u305F\uFF01\u{1F389}",
+  "drawer.rollToToday": "\u4ECA\u65E5\u3078\u79FB\u52D5",
+  "drawer.rollToTodayTooltip": "\u671F\u9650\u5207\u308C\u306E\u30BF\u30B9\u30AF\u3092\u3059\u3079\u3066\u4ECA\u65E5\u3078\u79FB\u52D5\uFF08\u6642\u523B\u306F\u4FDD\u6301\uFF09",
+  "drawer.noUndated": "\u65E5\u4ED8\u306A\u3057\u306E\u30BF\u30B9\u30AF\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u4E88\u5B9A\u6E08\u307F\u306E\u30BF\u30B9\u30AF\u3092\u3053\u3053\u3078\u30C9\u30E9\u30C3\u30B0\u3059\u308B\u3068\u65E5\u4ED8\u304C\u5916\u308C\u307E\u3059\u3002",
+  "drawer.capturePlaceholder": "+ \u65E5\u4ED8\u306A\u3057\u306E\u30BF\u30B9\u30AF\u3092\u8FFD\u52A0\uFF08\u{1F53A} \u23EB \u3067\u512A\u5148\u5EA6\uFF09",
+  "drawer.captureAria": "\u30AF\u30A4\u30C3\u30AF\u5165\u529B\uFF1A\u65E5\u4ED8\u306A\u3057\u306E\u30BF\u30B9\u30AF\u3092\u8FFD\u52A0",
+  "drawer.close": "\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u3092\u9589\u3058\u308B (S)",
+  "drawer.card.moveToday": "\u4ECA\u65E5\u3078\u79FB\u52D5 ({date})",
+  "drawer.card.tomorrow": "\u660E\u65E5",
+  "drawer.card.moveTomorrow": "\u660E\u65E5\u3078\u79FB\u52D5 ({date})",
+  "drawer.card.nextWeek": "+1\u9031",
+  "drawer.card.moveNextWeek": "\u6765\u9031\u3078\u79FB\u52D5 ({date})",
+  "drawer.card.undate": "\u65E5\u4ED8\u89E3\u9664",
+  "drawer.card.undateTooltip": "\u65E5\u4ED8\u3092\u30AF\u30EA\u30A2\uFF08\u65E5\u4ED8\u306A\u3057\u3078\u79FB\u52D5\uFF09",
+  "shortcuts.title": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8",
+  "shortcuts.group.navigate": "\u79FB\u52D5",
+  "shortcuts.group.switchView": "\u30D3\u30E5\u30FC\u5207\u308A\u66FF\u3048",
+  "shortcuts.group.panels": "\u30D1\u30CD\u30EB",
+  "shortcuts.group.drawerCard": "\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u306E\u30AB\u30FC\u30C9\uFF08Tab \u3067\u30D5\u30A9\u30FC\u30AB\u30B9\uFF09",
+  "shortcuts.group.dragging": "\u30C9\u30E9\u30C3\u30B0\u4E2D\uFF08\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7\uFF09",
+  "shortcuts.next": "\u6B21\u306E\u65E5 / \u671F\u9593\uFF08\u30B3\u30F3\u30D1\u30AF\u30C8\u30DC\u30FC\u30C9\uFF1A\u6B21\u306E\u5217\uFF09",
+  "shortcuts.prev": "\u524D\u306E\u65E5 / \u671F\u9593\uFF08\u30B3\u30F3\u30D1\u30AF\u30C8\u30DC\u30FC\u30C9\uFF1A\u524D\u306E\u5217\uFF09",
+  "shortcuts.today": "\u4ECA\u65E5\u3078\u79FB\u52D5",
+  "shortcuts.daily": "\u65E5\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3",
+  "shortcuts.nDay": "N\u65E5\u30D3\u30E5\u30FC",
+  "shortcuts.weekly": "\u9031\u30D3\u30E5\u30FC",
+  "shortcuts.monthly": "\u6708\u30AB\u30EC\u30F3\u30C0\u30FC",
+  "shortcuts.list": "\u30EA\u30B9\u30C8\u30D3\u30E5\u30FC",
+  "shortcuts.drawer": "\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u306E\u5207\u308A\u66FF\u3048\uFF08\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7\uFF09",
+  "shortcuts.help": "\u3053\u306E\u30D8\u30EB\u30D7\u3092\u8868\u793A",
+  "shortcuts.sync": "\u540C\u671F\uFF08\u30BF\u30B9\u30AF\u3092\u518D\u30B9\u30AD\u30E3\u30F3\u3001Google \u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u66F4\u65B0\uFF09",
+  "shortcuts.fit": "\u6700\u521D\u306E\u7A7A\u304D\u6642\u9593\u306B\u5165\u308C\u308B\uFF08\u4ECA\u5F8C 14 \u65E5\u9593\uFF09",
+  "shortcuts.edit": "\u30BF\u30B9\u30AF\u3092\u7DE8\u96C6",
+  "shortcuts.pageDates": "\u30BF\u30B9\u30AF\u3092\u6301\u3063\u305F\u307E\u307E\u65E5\u4ED8\u3092\u79FB\u52D5",
+  "shortcuts.cancelDrag": "\u30C9\u30E9\u30C3\u30B0\u3092\u30AD\u30E3\u30F3\u30BB\u30EB",
+  "shortcuts.hideButton": "\u30D8\u30C3\u30C0\u30FC\u306E\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8 (?) \u30DC\u30BF\u30F3\u3092\u96A0\u3059",
+  "shortcuts.hint": "? \u3068 h \u30AD\u30FC\u3067\u3044\u3064\u3067\u3082\u3053\u306E\u4E00\u89A7\u3092\u958B\u3051\u307E\u3059\u3002",
+  "addChoice.title": "\u65B0\u898F\u9805\u76EE\u3092\u8FFD\u52A0 \u2795",
+  "addChoice.task": "\u30ED\u30FC\u30AB\u30EB\u30BF\u30B9\u30AF\u3092\u8FFD\u52A0",
+  "addChoice.taskDesc": "Vault \u306E\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u307E\u305F\u306F\u65E2\u5B9A\u306E\u30D5\u30A1\u30A4\u30EB\u306B\u30BF\u30B9\u30AF\u3092\u4F5C\u6210\u3057\u307E\u3059\u3002",
+  "addChoice.appointment": "\u4E88\u5B9A\u3092\u8FFD\u52A0",
+  "addChoice.appointmentDesc": "Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306B\u76F4\u63A5\u65B0\u3057\u3044\u4E88\u5B9A\u3092\u4F5C\u6210\u3057\u307E\u3059\u3002",
+  "taskModal.title": "\u30BF\u30B9\u30AF\u306E\u4F5C\u6210\u30FB\u7DE8\u96C6",
+  "taskModal.descPlaceholder": "\u30BF\u30B9\u30AF\u306E\u5185\u5BB9\u3092\u5165\u529B...",
+  "taskModal.fileLocation": "\u30BF\u30B9\u30AF\u306E\u30D5\u30A1\u30A4\u30EB",
+  "taskModal.openInFile": "\u30D5\u30A1\u30A4\u30EB\u3067\u958B\u304F \u2197",
+  "taskModal.notInFile": "\u3053\u306E\u30BF\u30B9\u30AF\u306F\u307E\u3060\u30D5\u30A1\u30A4\u30EB\u306B\u4F5C\u6210\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002",
+  "taskModal.date": "\u65E5\u4ED8",
+  "taskModal.tasksCompat": "Tasks \u30D7\u30E9\u30B0\u30A4\u30F3\u4E92\u63DB \u{1F501}",
+  "taskModal.recurrence": "\u7E70\u308A\u8FD4\u3057",
+  "taskModal.recurrencePlaceholder": "\u4F8B\uFF1Aevery week",
+  "taskModal.scheduled": "\u4E88\u5B9A\u65E5",
+  "taskModal.due": "\u671F\u9650\u65E5",
+  "taskModal.completion": "\u5B8C\u4E86\u65E5",
+  "taskModal.cancelledDate": "\u30AD\u30E3\u30F3\u30BB\u30EB\u65E5",
+  "taskModal.emptyText": "\u30BF\u30B9\u30AF\u306E\u5185\u5BB9\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\uFF01",
+  "eventModal.summary": "\u4E88\u5B9A\u306E\u30BF\u30A4\u30C8\u30EB",
+  "eventModal.summaryPlaceholder": "\u4E88\u5B9A\u306E\u30BF\u30A4\u30C8\u30EB\u3092\u5165\u529B...",
+  "eventModal.targetCalendar": "\u8FFD\u52A0\u5148\u30AB\u30EC\u30F3\u30C0\u30FC",
+  "eventModal.calendar": "\u30AB\u30EC\u30F3\u30C0\u30FC",
+  "eventModal.location": "\u5834\u6240",
+  "eventModal.locationPlaceholder": "\u5834\u6240\u3092\u8FFD\u52A0...",
+  "eventModal.descPlaceholder": "\u8AAC\u660E\u3092\u8FFD\u52A0...",
+  "eventModal.duplicate": "\u8907\u88FD",
+  "eventModal.deleted": "\u{1F4C5} Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A\u3092\u524A\u9664\u3057\u307E\u3057\u305F\u3002",
+  "eventModal.duplicated": "\u{1F4C5} Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A\u3092\u8907\u88FD\u3057\u307E\u3057\u305F\u3002",
+  "eventModal.titleRequired": "\u4E88\u5B9A\u306E\u30BF\u30A4\u30C8\u30EB\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "eventModal.updated": "\u{1F4C5} Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A\u3092\u66F4\u65B0\u3057\u307E\u3057\u305F\u3002",
+  "eventModal.added": "\u{1F4C5} Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306B\u4E88\u5B9A\u3092\u8FFD\u52A0\u3057\u307E\u3057\u305F\u3002",
+  "syncModal.title": "\u30BF\u30B9\u30AF\u3092 Google \u30AB\u30EC\u30F3\u30C0\u30FC\u3068\u540C\u671F \u{1F4E4}",
+  "syncModal.desc": "Vault \u5185\u306E\u65E5\u4ED8\u3068\u6642\u523B\u3092\u6301\u3064\u30BF\u30B9\u30AF\u3092\u3059\u3079\u3066\u30B9\u30AD\u30E3\u30F3\u3057\u3001\u9078\u629E\u3057\u305F Google \u30AB\u30EC\u30F3\u30C0\u30FC\u3068\u540C\u671F\u3057\u307E\u3059\u3002gcalId \u3067\u7D10\u4ED8\u3044\u305F\u30BF\u30B9\u30AF\u306F\u66F4\u65B0\u3055\u308C\u3001\u65B0\u3057\u3044\u30BF\u30B9\u30AF\u306F\u4F5C\u6210\u3055\u308C\u307E\u3059\u3002",
+  "syncModal.chooseCalendar": "\u540C\u671F\u5148\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u9078\u629E",
+  "syncModal.noCalendars": "\u6709\u52B9\u306A Google \u30AB\u30EC\u30F3\u30C0\u30FC\u304C\u3042\u308A\u307E\u305B\u3093",
+  "syncModal.syncNow": "\u4ECA\u3059\u3050\u540C\u671F",
+  "syncModal.syncing": "\u540C\u671F\u4E2D...",
+  "syncModal.selectCalendar": "\u26A0\uFE0F \u6709\u52B9\u306A\u540C\u671F\u5148 Google \u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u9078\u629E\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "syncModal.starting": "\u{1F504} \u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u3067\u30BF\u30B9\u30AF\u306E\u540C\u671F\u3092\u958B\u59CB\u3057\u307E\u3059...",
+  "syncModal.complete": "\u2705 \u30BF\u30B9\u30AF\u306E\u540C\u671F\u304C\u5B8C\u4E86\u3057\u307E\u3057\u305F\uFF01\u4F5C\u6210\uFF1A{created}\u3001\u66F4\u65B0\uFF1A{updated}\u3001\u4FEE\u5FA9\uFF1A{repaired}\u3001\u524A\u9664\uFF1A{removed}\u3001\u30B9\u30AD\u30C3\u30D7\uFF1A{skipped}",
+  "syncModal.failed": "\u274C \u30BF\u30B9\u30AF\u306E\u540C\u671F\u306B\u5931\u6557\u3057\u307E\u3057\u305F\u3002\u8A73\u7D30\u306F\u30B3\u30F3\u30BD\u30FC\u30EB\u3092\u78BA\u8A8D\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "pathModal.title": "\u9664\u5916\u3059\u308B\u30D5\u30A1\u30A4\u30EB/\u30D5\u30A9\u30EB\u30C0\u30FC\u3092\u9078\u629E \u{1F4C2}",
+  "pathModal.folders": "\u30D5\u30A9\u30EB\u30C0\u30FC",
+  "pathModal.files": "\u30D5\u30A1\u30A4\u30EB",
+  "pathModal.search": "\u30D5\u30A9\u30EB\u30C0\u30FC\u540D\u307E\u305F\u306F\u30D5\u30A1\u30A4\u30EB\u540D\u3092\u691C\u7D22...",
+  "pathModal.noFolders": "\u30D5\u30A9\u30EB\u30C0\u30FC\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002",
+  "pathModal.noFiles": "\u30D5\u30A1\u30A4\u30EB\u304C\u898B\u3064\u304B\u308A\u307E\u305B\u3093\u3002",
+  "settings.heading": "Dayloom \u8A2D\u5B9A",
+  "settings.tab.general": "\u4E00\u822C",
+  "settings.tab.timeline": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3",
+  "settings.tab.gcal": "Google \u30AB\u30EC\u30F3\u30C0\u30FC",
+  "settings.tab.reminders": "\u901A\u77E5",
+  "settings.tab.display": "\u8868\u793A",
+  "settings.language.desc": "Dayloom \u306E\u8868\u793A\u8A00\u8A9E\u3067\u3059\u3002\u81EA\u52D5\u691C\u51FA\u306F Obsidian \u306E\u8A00\u8A9E\u8A2D\u5B9A\u306B\u5F93\u3044\u307E\u3059\u3002",
+  "settings.language.changed": "Dayloom \u306E\u8A00\u8A9E\u3092\u5909\u66F4\u3057\u307E\u3057\u305F\u3002",
+  "settings.defaultTaskFile.name": "\u65E2\u5B9A\u306E\u30BF\u30B9\u30AF\u30D5\u30A1\u30A4\u30EB",
+  "settings.defaultTaskFile.desc": "\u30D7\u30E9\u30F3\u30CA\u30FC\u3067\u30BF\u30B9\u30AF\u3092\u4F5C\u6210\u3057\u305F\u3068\u304D\u306B\u8FFD\u52A0\u3055\u308C\u308B\u65E2\u5B9A\u306E Markdown \u30D5\u30A1\u30A4\u30EB\u3067\u3059\u3002",
+  "settings.exclusion.name": "\u9664\u5916\u3059\u308B\u30D5\u30A1\u30A4\u30EB\u3068\u30D5\u30A9\u30EB\u30C0\u30FC",
+  "settings.exclusion.desc": "\u3053\u3053\u306B\u4E00\u81F4\u3059\u308B\u30CE\u30FC\u30C8\u306F\u30BF\u30B9\u30AF\u306E\u30B9\u30AD\u30E3\u30F3\u5BFE\u8C61\u5916\u306B\u306A\u308A\u307E\u3059\u3002\u5019\u88DC\u304B\u3089\u30D5\u30A9\u30EB\u30C0\u30FC\u3084\u30CE\u30FC\u30C8\u3092\u9078\u3076\u304B\u3001\u30D1\u30BF\u30FC\u30F3\u3092\u5165\u529B\u3057\u3066\u304F\u3060\u3055\u3044\uFF1A* \u306F 1 \u3064\u306E\u30D5\u30A9\u30EB\u30C0\u30FC\u5185\u3001** \u306F\u8907\u6570\u306E\u30D5\u30A9\u30EB\u30C0\u30FC\u306B\u307E\u305F\u304C\u3063\u3066\u4E00\u81F4\u3057\u307E\u3059\uFF08\u4F8B\uFF1A**/Templates\uFF09\u3002\u300C\u4FDD\u6301\u300D\u306F\u9664\u5916\u3057\u305F\u30D5\u30A9\u30EB\u30C0\u30FC\u5185\u306E\u9805\u76EE\u3092\u518D\u3073\u542B\u3081\u307E\u3059\u3002",
+  "settings.exclusion.ruleType": "\u30EB\u30FC\u30EB\u306E\u7A2E\u985E",
+  "settings.exclusion.placeholder": "\u30D5\u30A9\u30EB\u30C0\u30FC\u3001\u30CE\u30FC\u30C8\u3001\u307E\u305F\u306F\u30D1\u30BF\u30FC\u30F3\u2026",
+  "settings.exclusion.exclude": "\u9664\u5916",
+  "settings.exclusion.keep": "\u4FDD\u6301",
+  "settings.exclusion.empty": "\u30EB\u30FC\u30EB\u306A\u3057\uFF1AVault \u306E\u3059\u3079\u3066\u306E\u30CE\u30FC\u30C8\u3092\u30B9\u30AD\u30E3\u30F3\u3057\u307E\u3059\u3002",
+  "settings.exclusion.notFound": "\uFF08Vault \u306B\u898B\u3064\u304B\u308A\u307E\u305B\u3093\uFF09",
+  "settings.exclusion.clickToSwitch": "\u30AF\u30EA\u30C3\u30AF\u3067\u5207\u308A\u66FF\u3048",
+  "settings.exclusion.remove": "{path} \u3092\u524A\u9664",
+  "settings.exclusion.summary": "{total} \u4EF6\u4E2D {excluded} \u4EF6\u306E\u30CE\u30FC\u30C8\u3092\u9664\u5916\u3057\u3066\u3044\u307E\u3059\u3002",
+  "settings.dailyNotes.heading": "\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8",
+  "settings.dailyFolder.name": "\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30D5\u30A9\u30EB\u30C0\u30FC",
+  "settings.dailyFolder.desc": "\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u4FDD\u5B58\u3059\u308B Obsidian \u306E\u30D5\u30A9\u30EB\u30C0\u30FC\u3067\u3059\u3002\u7A7A\u6B04\u306B\u3059\u308B\u3068\u30EB\u30FC\u30C8\u30D5\u30A9\u30EB\u30C0\u30FC\u3092\u4F7F\u3044\u307E\u3059\u3002",
+  "settings.dailyFormat.name": "\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30D5\u30A1\u30A4\u30EB\u540D\u5F62\u5F0F",
+  "settings.dailyFormat.desc": "\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30D5\u30A1\u30A4\u30EB\u540D\u306E\u5F62\u5F0F\u3067\u3059\uFF08\u65E2\u5B9A\uFF1AYYYY-MM-DD\uFF09\u3002",
+  "settings.dailyTemplate.name": "\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8",
+  "settings.dailyTemplate.desc": "\u65B0\u3057\u3044\u30C7\u30A4\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306B\u4F7F\u3046 Vault \u5185\u306E Markdown \u30D5\u30A1\u30A4\u30EB\u3092\u9078\u629E\u3057\u307E\u3059\u3002",
+  "settings.weeklyNotes.heading": "\u30A6\u30A3\u30FC\u30AF\u30EA\u30FC\u30CE\u30FC\u30C8",
+  "settings.weeklyFolder.name": "\u30A6\u30A3\u30FC\u30AF\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30D5\u30A9\u30EB\u30C0\u30FC",
+  "settings.weeklyFolder.desc": "\u30A6\u30A3\u30FC\u30AF\u30EA\u30FC\u30CE\u30FC\u30C8\u3092\u4FDD\u5B58\u3059\u308B Obsidian \u306E\u30D5\u30A9\u30EB\u30C0\u30FC\u3067\u3059\u3002\u7A7A\u6B04\u306B\u3059\u308B\u3068\u30EB\u30FC\u30C8\u30D5\u30A9\u30EB\u30C0\u30FC\u3092\u4F7F\u3044\u307E\u3059\u3002",
+  "settings.weeklyFormat.name": "\u30A6\u30A3\u30FC\u30AF\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30D5\u30A1\u30A4\u30EB\u540D\u5F62\u5F0F",
+  "settings.weeklyFormat.desc": "\u30A6\u30A3\u30FC\u30AF\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30D5\u30A1\u30A4\u30EB\u540D\u306E\u5F62\u5F0F\u3067\u3059\uFF08\u65E2\u5B9A\uFF1Agggg-[W]ww\uFF09\u3002",
+  "settings.weeklyTemplate.name": "\u30A6\u30A3\u30FC\u30AF\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8",
+  "settings.weeklyTemplate.desc": "\u65B0\u3057\u3044\u30A6\u30A3\u30FC\u30AF\u30EA\u30FC\u30CE\u30FC\u30C8\u306E\u30C6\u30F3\u30D7\u30EC\u30FC\u30C8\u306B\u4F7F\u3046 Vault \u5185\u306E Markdown \u30D5\u30A1\u30A4\u30EB\u3092\u9078\u629E\u3057\u307E\u3059\u3002",
+  "settings.nDay.name": "N\u65E5\u30D3\u30E5\u30FC\u306E\u65E5\u6570",
+  "settings.nDay.desc": "N\u65E5\u30D3\u30E5\u30FC\u306B\u9023\u7D9A\u3057\u3066\u8868\u793A\u3059\u308B\u65E5\u6570\u3067\u3059\u3002",
+  "settings.separateHeights.name": "Dayloom \u3068 Dayloom Compact \u306E\u9AD8\u3055\u3092\u500B\u5225\u306B\u8A2D\u5B9A",
+  "settings.separateHeights.desc": "Dayloom \u3068 Dayloom Compact \u306E\u30BA\u30FC\u30E0\uFF081 \u6642\u9593\u306E\u9AD8\u3055\uFF09\u3092\u5225\u3005\u306B\u8ABF\u6574\u3057\u307E\u3059\u3002",
+  "settings.hourHeightMain.name": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E 1 \u6642\u9593\u306E\u9AD8\u3055\uFF08Dayloom\uFF09",
+  "settings.hourHeightMain.desc": "Dayloom \u306E\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u3067 1 \u6642\u9593\u5206\u306E\u7E26\u306E\u9AD8\u3055\uFF08\u30D4\u30AF\u30BB\u30EB\uFF09\u3092\u8ABF\u6574\u3057\u307E\u3059\u3002\uFF08\u65E2\u5B9A\uFF1A60px\uFF09",
+  "settings.hourHeightCompact.name": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E 1 \u6642\u9593\u306E\u9AD8\u3055\uFF08Dayloom Compact\uFF09",
+  "settings.hourHeightCompact.desc": "Dayloom Compact \u306E\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u3067 1 \u6642\u9593\u5206\u306E\u7E26\u306E\u9AD8\u3055\uFF08\u30D4\u30AF\u30BB\u30EB\uFF09\u3092\u8ABF\u6574\u3057\u307E\u3059\u3002\uFF08\u65E2\u5B9A\uFF1A60px\uFF09",
+  "settings.hourHeightSynced.name": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E 1 \u6642\u9593\u306E\u9AD8\u3055\uFF08\u5171\u901A\uFF09",
+  "settings.hourHeightSynced.desc": "\u3059\u3079\u3066\u306E\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u3067 1 \u6642\u9593\u5206\u306E\u7E26\u306E\u9AD8\u3055\uFF08\u30D4\u30AF\u30BB\u30EB\uFF09\u3092\u8ABF\u6574\u3057\u307E\u3059\u3002\uFF08\u65E2\u5B9A\uFF1A60px\uFF09",
+  "settings.startHour.name": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E\u958B\u59CB\u6642\u523B",
+  "settings.startHour.desc": "\u65E5\u30FB\u9031\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u304C\u59CB\u307E\u308B\u6642\u523B\u3067\u3059\u3002",
+  "settings.startHour.error": "\u958B\u59CB\u6642\u523B\u306F\u7D42\u4E86\u6642\u523B\u3088\u308A\u524D\u306B\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "settings.endHour.name": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E\u7D42\u4E86\u6642\u523B",
+  "settings.endHour.desc": "\u65E5\u30FB\u9031\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u304C\u7D42\u308F\u308B\u6642\u523B\u3067\u3059\u3002",
+  "settings.endHour.error": "\u7D42\u4E86\u6642\u523B\u306F\u958B\u59CB\u6642\u523B\u3088\u308A\u5F8C\u306B\u3057\u3066\u304F\u3060\u3055\u3044\u3002",
+  "settings.defaultDuration.name": "\u30BF\u30B9\u30AF\u306E\u65E2\u5B9A\u306E\u9577\u3055\uFF08\u5206\uFF09",
+  "settings.defaultDuration.desc": "\u6642\u523B\u306E\u306A\u3044\u30BF\u30B9\u30AF\u3092\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u3084\u7D42\u65E5\u884C\u304B\u3089\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u3078\u30C9\u30E9\u30C3\u30B0\u3057\u305F\u3068\u304D\u306E\u9577\u3055\u3067\u3059\uFF08\u7D42\u4E86\u6642\u523B = \u958B\u59CB\u6642\u523B + \u3053\u306E\u5024\uFF09\u30021\u301C1440 \u306E\u7BC4\u56F2\u3067\u6307\u5B9A\u3067\u304D\u307E\u3059\u3002",
+  "settings.hideMetadata.name": "\u30A4\u30F3\u30E9\u30A4\u30F3\u30E1\u30BF\u30C7\u30FC\u30BF\u3092\u96A0\u3059",
+  "settings.hideMetadata.desc": "\u30D7\u30E9\u30F3\u30CA\u30FC\u306E\u30BF\u30B9\u30AF\u540D\u304B\u3089 [gcalId:: ...] \u306A\u3069\u306E\u89D2\u62EC\u5F27\u306E\u30A4\u30F3\u30E9\u30A4\u30F3\u30D5\u30A3\u30FC\u30EB\u30C9\u3092\u96A0\u3057\u3001\u95B2\u89A7\u30D3\u30E5\u30FC\u3068\u30E9\u30A4\u30D6\u30D7\u30EC\u30D3\u30E5\u30FC\u3067\u306F [gcalId:: ...] \u540C\u671F\u30BF\u30B0\u3092\u96A0\u3057\u307E\u3059\u3002\u30D5\u30A1\u30A4\u30EB\u306E\u5185\u5BB9\u306F\u305D\u306E\u307E\u307E\u3067\u3001\u8868\u793A\u3060\u3051\u304C\u6574\u7406\u3055\u308C\u307E\u3059\u3002",
+  "settings.shortcutButton.name": "\u30D8\u30C3\u30C0\u30FC\u306B\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u30DC\u30BF\u30F3\u3092\u8868\u793A",
+  "settings.shortcutButton.desc": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E\u30D8\u30C3\u30C0\u30FC\u306B\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8 (?) \u30DC\u30BF\u30F3\u3092\u8868\u793A\u3057\u307E\u3059\u3002? \u3068 h \u30AD\u30FC\u3067\u306F\u3044\u3064\u3067\u3082\u4E00\u89A7\u3092\u958B\u3051\u307E\u3059\u3002",
+  "settings.haptics.name": "\u89E6\u899A\u30D5\u30A3\u30FC\u30C9\u30D0\u30C3\u30AF",
+  "settings.haptics.desc": "\u30BF\u30B9\u30AF\u306E\u5B8C\u4E86\u3001\u30BF\u30D6\u3084\u30E2\u30FC\u30C9\u306E\u5207\u308A\u66FF\u3048\u3001\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u9805\u76EE\u306E\u30C9\u30E9\u30C3\u30B0\u3084\u30B5\u30A4\u30BA\u5909\u66F4\u306E\u969B\u306B\u77ED\u304F\u632F\u52D5\u3057\u307E\u3059\u3002\u632F\u52D5\u306B\u5BFE\u5FDC\u3057\u305F\u30E2\u30D0\u30A4\u30EB\u7AEF\u672B\u3067\u306E\u307F\u52D5\u4F5C\u3057\u307E\u3059\u3002",
+  "settings.reminderType.name": "\u901A\u77E5\u65B9\u6CD5",
+  "settings.reminderType.desc": "\u30BF\u30B9\u30AF\u3084\u4E88\u5B9A\u306E\u958B\u59CB\u524D\u306B\u77E5\u3089\u305B\u308B\u65B9\u6CD5\u3067\u3059\u3002\u81EA\u52D5\u3067\u306F\u3001Obsidian \u304C\u30A2\u30AF\u30C6\u30A3\u30D6\u306A\u3068\u304D\u306F\u30A2\u30D7\u30EA\u5185\u901A\u77E5\u3001\u305D\u308C\u4EE5\u5916\u306F\u30B7\u30B9\u30C6\u30E0\u901A\u77E5\u3092\u8868\u793A\u3057\u307E\u3059\u3002",
+  "settings.reminderType.off": "\u30AA\u30D5",
+  "settings.reminderType.auto": "\u81EA\u52D5",
+  "settings.reminderType.notice": "\u30A2\u30D7\u30EA\u5185\u901A\u77E5",
+  "settings.reminderType.system": "\u30B7\u30B9\u30C6\u30E0\u901A\u77E5",
+  "settings.reminderTiming.name": "\u901A\u77E5\u306E\u30BF\u30A4\u30DF\u30F3\u30B0",
+  "settings.reminderTiming.desc": "\u30BF\u30B9\u30AF\u3084\u4E88\u5B9A\u306E\u958B\u59CB\u6642\u523B\u3092\u57FA\u6E96\u306B\u3001\u3044\u3064\u901A\u77E5\u3059\u308B\u304B\u3092\u6307\u5B9A\u3057\u307E\u3059\u3002",
+  "settings.reminderTiming.atStart": "\u958B\u59CB\u6642\u523B\u306B",
+  "settings.reminderTiming.before": "{n} \u5206\u524D",
+  "settings.reminderSound.name": "\u901A\u77E5\u97F3",
+  "settings.reminderSound.desc": "\u901A\u77E5\u306E\u305F\u3073\u306B\u77ED\u3044 2 \u97F3\u306E\u30C1\u30E3\u30A4\u30E0\u3092\u9CF4\u3089\u3057\u307E\u3059\u3002",
+  "settings.reminderSound.test": "\u30C1\u30E3\u30A4\u30E0\u3092\u8A66\u8074",
+  "settings.remindTasks.name": "\u30BF\u30B9\u30AF\u3092\u901A\u77E5",
+  "settings.remindTasks.desc": "\u4ECA\u65E5\u306B\u4E88\u5B9A\u3055\u308C\u3001\u958B\u59CB\u6642\u523B (\u23F0HH:mm) \u304C\u3042\u308B Vault \u306E\u30BF\u30B9\u30AF\u3092\u901A\u77E5\u3057\u307E\u3059\u3002",
+  "settings.remindGCal.name": "Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A\u3092\u901A\u77E5",
+  "settings.remindGCal.desc": "\u4ECA\u65E5\u306E\u6642\u523B\u6307\u5B9A\u306E\u3042\u308B Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A\u3092\u901A\u77E5\u3057\u307E\u3059\u3002\u7D42\u65E5\u306E\u4E88\u5B9A\u306F\u9664\u304D\u307E\u3059\u3002",
+  "settings.enableGCal.name": "Google \u30AB\u30EC\u30F3\u30C0\u30FC\u9023\u643A\u3092\u6709\u52B9\u306B\u3059\u308B",
+  "settings.enableGCal.desc": "\u6709\u52B9\u306B\u3059\u308B\u3068\u3001\u6709\u52B9\u306A Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A\u3092\u53D6\u5F97\u3057\u3066\u30BF\u30B9\u30AF\u3068\u4E00\u7DD2\u306B\u8868\u793A\u3057\u307E\u3059\u3002",
+  "settings.taskSyncCal.name": "\u30BF\u30B9\u30AF\u540C\u671F\u5148\u306E Google \u30AB\u30EC\u30F3\u30C0\u30FC",
+  "settings.taskSyncCal.desc": "\u6642\u523B\u306E\u3042\u308B Vault \u306E\u30BF\u30B9\u30AF\u3092\u540C\u671F\u3059\u308B Google \u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u9078\u629E\u3057\u307E\u3059\u3002",
+  "settings.taskSyncCal.select": "\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u9078\u629E...",
+  "settings.oauth.heading": "Google \u30AB\u30EC\u30F3\u30C0\u30FC OAuth 2.0\uFF08\u540C\u671F\u3068\u7DE8\u96C6\uFF09",
+  "settings.oauth.intro": "\u975E\u516C\u958B\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u542B\u3081\u3066\u540C\u671F\u3057\u3001\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u4E0A\u3067\u4E88\u5B9A\u3092\u76F4\u63A5\u7DE8\u96C6\u30FB\u30C9\u30E9\u30C3\u30B0\u3059\u308B\u306B\u306F\u3001\u72EC\u81EA\u306E OAuth 2.0 \u30A6\u30A7\u30D6\u30A2\u30D7\u30EA\u30B1\u30FC\u30B7\u30E7\u30F3\u306E\u8A8D\u8A3C\u60C5\u5831\u3092\u8A2D\u5B9A\u3059\u308B\u5FC5\u8981\u304C\u3042\u308A\u307E\u3059\u3002",
+  "settings.clientId.name": "Google \u30AF\u30E9\u30A4\u30A2\u30F3\u30C8 ID",
+  "settings.clientId.desc": "OAuth \u30A6\u30A7\u30D6\u30AF\u30E9\u30A4\u30A2\u30F3\u30C8\u306E\u30A2\u30D7\u30EA\u30B1\u30FC\u30B7\u30E7\u30F3 ID \u3067\u3059\u3002",
+  "settings.clientSecret.name": "Google \u30AF\u30E9\u30A4\u30A2\u30F3\u30C8\u30B7\u30FC\u30AF\u30EC\u30C3\u30C8",
+  "settings.clientSecret.desc": "OAuth \u30A6\u30A7\u30D6\u30AF\u30E9\u30A4\u30A2\u30F3\u30C8\u306E\u30B7\u30FC\u30AF\u30EC\u30C3\u30C8\u30AD\u30FC\u3067\u3059\u3002",
+  "settings.refreshToken.name": "Google \u30EA\u30D5\u30EC\u30C3\u30B7\u30E5\u30C8\u30FC\u30AF\u30F3",
+  "settings.refreshToken.desc": "\u30D0\u30C3\u30AF\u30B0\u30E9\u30A6\u30F3\u30C9\u3067\u306E\u66F8\u304D\u8FBC\u307F API \u8A8D\u53EF\u306B\u4F7F\u3046\u30AA\u30D5\u30E9\u30A4\u30F3\u306E\u30EA\u30D5\u30EC\u30C3\u30B7\u30E5\u30C8\u30FC\u30AF\u30F3\u3067\u3059\u3002",
+  "settings.calendars.heading": "Google \u30AB\u30EC\u30F3\u30C0\u30FC \u{1F4C5}",
+  "settings.calendars.add": "+ \u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u8FFD\u52A0",
+  "settings.calendars.empty": "Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306F\u307E\u3060\u767B\u9332\u3055\u308C\u3066\u3044\u307E\u305B\u3093\u3002\u300C\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u8FFD\u52A0\u300D\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u9023\u643A\u3092\u59CB\u3081\u307E\u3057\u3087\u3046\u3002",
+  "settings.calendars.namePlaceholder": "\u540D\u524D\uFF08\u4F8B\uFF1A\u4ED5\u4E8B\u3001\u500B\u4EBA\uFF09",
+  "settings.calendars.idPlaceholder": "primary \u307E\u305F\u306F Google \u306E\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9",
+  "settings.taskColor.name": "\u30ED\u30FC\u30AB\u30EB\u30BF\u30B9\u30AF\u306E\u8272",
+  "settings.taskColor.desc": "\u30ED\u30FC\u30AB\u30EB\uFF08Vault\uFF09\u306E\u30BF\u30B9\u30AF\u306E\u5F37\u8ABF\u67A0\u306E\u8272\u3067\u3059\u3002\u4E0A\u306E\u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u8272\u3068\u4E26\u3093\u3067\u8868\u793A\u3055\u308C\u307E\u3059\u3002"
+};
+var zh = {
+  "common.today": "\u4ECA\u5929",
+  "common.tomorrow": "\u660E\u5929",
+  "common.cancel": "\u53D6\u6D88",
+  "common.save": "\u4FDD\u5B58",
+  "common.create": "\u521B\u5EFA",
+  "common.delete": "\u5220\u9664",
+  "common.undo": "\u64A4\u9500",
+  "common.allDay": "\u5168\u5929",
+  "common.description": "\u63CF\u8FF0",
+  "common.priority": "\u4F18\u5148\u7EA7",
+  "common.status": "\u72B6\u6001",
+  "common.startDate": "\u5F00\u59CB\u65E5\u671F",
+  "common.endDate": "\u7ED3\u675F\u65E5\u671F",
+  "common.startTime": "\u5F00\u59CB\u65F6\u95F4",
+  "common.endTime": "\u7ED3\u675F\u65F6\u95F4",
+  "common.updated": "\u5DF2\u66F4\u65B0\u201C{title}\u201D\u3002",
+  "nav.previous": "\u4E0A\u4E00\u4E2A",
+  "nav.next": "\u4E0B\u4E00\u4E2A",
+  "nav.sync": "\u540C\u6B65",
+  "nav.filter": "\u7B5B\u9009",
+  "nav.shortcuts": "\u952E\u76D8\u5FEB\u6377\u952E (?)",
+  "nav.toggleDrawer": "\u5207\u6362\u4FA7\u8FB9\u62BD\u5C49 (S)",
+  "notice.taskAdded": "\u5DF2\u6DFB\u52A0\u65B0\u4EFB\u52A1\u3002",
+  "notice.openViewFirst": "\u8BF7\u5148\u6253\u5F00 Dayloom \u89C6\u56FE\u3002",
+  "notice.openDayloomFirst": "\u8BF7\u5148\u6253\u5F00 Dayloom\u3002",
+  "view.daily": "\u65E5",
+  "view.dailyTimeline": "\u65E5\u65F6\u95F4\u7EBF",
+  "view.twoDay": "2 \u5929\u89C6\u56FE",
+  "view.nDay": "{n} \u5929\u89C6\u56FE",
+  "view.nDaySuffix": " \u5929\u89C6\u56FE",
+  "view.weekly": "\u5468\u89C6\u56FE",
+  "view.monthly": "\u6708",
+  "view.monthlyCalendar": "\u6708\u5386",
+  "view.board": "\u770B\u677F",
+  "view.list": "\u5217\u8868",
+  "view.listView": "\u5217\u8868\u89C6\u56FE",
+  "board.kanban": "\u770B\u677F",
+  "board.kanbanTitle": "\u6807\u51C6\u770B\u677F",
+  "board.priorityTitle": "\u4F18\u5148\u7EA7\u805A\u7126",
+  "board.undated": "\u65E0\u65E5\u671F",
+  "board.overdue": "\u5DF2\u903E\u671F",
+  "board.future": "\u4EE5\u540E",
+  "board.completed": "\u5DF2\u5B8C\u6210",
+  "priority.highest": "\u6700\u9AD8",
+  "priority.high": "\u9AD8",
+  "priority.medium": "\u4E2D",
+  "priority.normal": "\u666E\u901A",
+  "priority.low": "\u4F4E",
+  "priority.lowest": "\u6700\u4F4E",
+  "status.todo": "\u5F85\u529E",
+  "status.inProgress": "\u8FDB\u884C\u4E2D",
+  "status.done": "\u5B8C\u6210",
+  "status.cancelled": "\u5DF2\u53D6\u6D88",
+  "drawer.tasks": "\u4EFB\u52A1",
+  "drawer.overdueTasks": "\u903E\u671F\u4EFB\u52A1",
+  "drawer.undatedTasks": "\u65E0\u65E5\u671F\u4EFB\u52A1",
+  "drawer.allCaughtUp": "\u5168\u90E8\u5B8C\u6210\uFF01\u{1F389}",
+  "drawer.rollToToday": "\u79FB\u5230\u4ECA\u5929",
+  "drawer.rollToTodayTooltip": "\u5C06\u6240\u6709\u903E\u671F\u4EFB\u52A1\u79FB\u5230\u4ECA\u5929\uFF08\u4FDD\u7559\u65F6\u95F4\uFF09",
+  "drawer.noUndated": "\u6CA1\u6709\u65E0\u65E5\u671F\u4EFB\u52A1\u3002\u5C06\u5DF2\u5B89\u6392\u7684\u4EFB\u52A1\u62D6\u5230\u8FD9\u91CC\u5373\u53EF\u53D6\u6D88\u5176\u65E5\u671F\u3002",
+  "drawer.capturePlaceholder": "+ \u6DFB\u52A0\u65E0\u65E5\u671F\u4EFB\u52A1\uFF08\u{1F53A} \u23EB \u8BBE\u7F6E\u4F18\u5148\u7EA7\uFF09",
+  "drawer.captureAria": "\u5FEB\u901F\u8BB0\u5F55\uFF1A\u6DFB\u52A0\u65E0\u65E5\u671F\u4EFB\u52A1",
+  "drawer.close": "\u5173\u95ED\u4FA7\u8FB9\u62BD\u5C49 (S)",
+  "drawer.card.moveToday": "\u79FB\u5230\u4ECA\u5929 ({date})",
+  "drawer.card.tomorrow": "\u660E\u5929",
+  "drawer.card.moveTomorrow": "\u79FB\u5230\u660E\u5929 ({date})",
+  "drawer.card.nextWeek": "+1 \u5468",
+  "drawer.card.moveNextWeek": "\u79FB\u5230\u4E0B\u5468 ({date})",
+  "drawer.card.undate": "\u53D6\u6D88\u65E5\u671F",
+  "drawer.card.undateTooltip": "\u6E05\u9664\u65E5\u671F\uFF08\u79FB\u5230\u65E0\u65E5\u671F\uFF09",
+  "shortcuts.title": "\u952E\u76D8\u5FEB\u6377\u952E",
+  "shortcuts.group.navigate": "\u5BFC\u822A",
+  "shortcuts.group.switchView": "\u5207\u6362\u89C6\u56FE",
+  "shortcuts.group.panels": "\u9762\u677F",
+  "shortcuts.group.drawerCard": "\u4FA7\u8FB9\u62BD\u5C49\u5361\u7247\uFF08\u6309 Tab \u805A\u7126\uFF09",
+  "shortcuts.group.dragging": "\u62D6\u52A8\u65F6\uFF08\u684C\u9762\u7AEF\uFF09",
+  "shortcuts.next": "\u4E0B\u4E00\u5929 / \u65F6\u6BB5\uFF08\u7D27\u51D1\u770B\u677F\uFF1A\u4E0B\u4E00\u5217\uFF09",
+  "shortcuts.prev": "\u4E0A\u4E00\u5929 / \u65F6\u6BB5\uFF08\u7D27\u51D1\u770B\u677F\uFF1A\u4E0A\u4E00\u5217\uFF09",
+  "shortcuts.today": "\u8DF3\u5230\u4ECA\u5929",
+  "shortcuts.daily": "\u65E5\u65F6\u95F4\u7EBF",
+  "shortcuts.nDay": "N \u5929\u89C6\u56FE",
+  "shortcuts.weekly": "\u5468\u89C6\u56FE",
+  "shortcuts.monthly": "\u6708\u5386",
+  "shortcuts.list": "\u5217\u8868\u89C6\u56FE",
+  "shortcuts.drawer": "\u5207\u6362\u4FA7\u8FB9\u62BD\u5C49\uFF08\u684C\u9762\u7AEF\uFF09",
+  "shortcuts.help": "\u663E\u793A\u6B64\u5E2E\u52A9",
+  "shortcuts.sync": "\u540C\u6B65\uFF08\u91CD\u65B0\u626B\u63CF\u4EFB\u52A1\uFF0C\u5237\u65B0 Google \u65E5\u5386\uFF09",
+  "shortcuts.fit": "\u653E\u5165\u7B2C\u4E00\u4E2A\u7A7A\u95F2\u65F6\u6BB5\uFF08\u672A\u6765 14 \u5929\uFF09",
+  "shortcuts.edit": "\u7F16\u8F91\u4EFB\u52A1",
+  "shortcuts.pageDates": "\u4E0D\u653E\u4E0B\u4EFB\u52A1\u76F4\u63A5\u7FFB\u9875\u65E5\u671F",
+  "shortcuts.cancelDrag": "\u53D6\u6D88\u62D6\u52A8",
+  "shortcuts.hideButton": "\u9690\u85CF\u6807\u9898\u680F\u4E2D\u7684\u5FEB\u6377\u952E (?) \u6309\u94AE",
+  "shortcuts.hint": "\u6309 ? \u6216 h \u968F\u65F6\u53EF\u6253\u5F00\u6B64\u5217\u8868\u3002",
+  "addChoice.title": "\u6DFB\u52A0\u65B0\u9879\u76EE \u2795",
+  "addChoice.task": "\u6DFB\u52A0\u672C\u5730\u4EFB\u52A1",
+  "addChoice.taskDesc": "\u5728\u4ED3\u5E93\u7684\u65E5\u8BB0\u6216\u9ED8\u8BA4\u6587\u4EF6\u4E2D\u521B\u5EFA\u672C\u5730\u4EFB\u52A1\u3002",
+  "addChoice.appointment": "\u6DFB\u52A0\u65E5\u7A0B",
+  "addChoice.appointmentDesc": "\u76F4\u63A5\u5728 Google \u65E5\u5386\u4E0A\u521B\u5EFA\u65B0\u65E5\u7A0B\u3002",
+  "taskModal.title": "\u521B\u5EFA\u6216\u7F16\u8F91\u4EFB\u52A1",
+  "taskModal.descPlaceholder": "\u8F93\u5165\u4EFB\u52A1\u5185\u5BB9...",
+  "taskModal.fileLocation": "\u4EFB\u52A1\u6587\u4EF6\u4F4D\u7F6E",
+  "taskModal.openInFile": "\u5728\u6587\u4EF6\u4E2D\u6253\u5F00 \u2197",
+  "taskModal.notInFile": "\u6B64\u4EFB\u52A1\u5C1A\u672A\u5199\u5165\u6587\u4EF6\u3002",
+  "taskModal.date": "\u65E5\u671F",
+  "taskModal.tasksCompat": "Tasks \u63D2\u4EF6\u517C\u5BB9 \u{1F501}",
+  "taskModal.recurrence": "\u91CD\u590D",
+  "taskModal.recurrencePlaceholder": "\u4F8B\u5982\uFF1Aevery week",
+  "taskModal.scheduled": "\u8BA1\u5212\u65E5\u671F",
+  "taskModal.due": "\u622A\u6B62\u65E5\u671F",
+  "taskModal.completion": "\u5B8C\u6210\u65E5\u671F",
+  "taskModal.cancelledDate": "\u53D6\u6D88\u65E5\u671F",
+  "taskModal.emptyText": "\u8BF7\u8F93\u5165\u4EFB\u52A1\u5185\u5BB9\uFF01",
+  "eventModal.summary": "\u65E5\u7A0B\u6807\u9898",
+  "eventModal.summaryPlaceholder": "\u8F93\u5165\u65E5\u7A0B\u6807\u9898...",
+  "eventModal.targetCalendar": "\u76EE\u6807\u65E5\u5386",
+  "eventModal.calendar": "\u65E5\u5386",
+  "eventModal.location": "\u5730\u70B9",
+  "eventModal.locationPlaceholder": "\u6DFB\u52A0\u5730\u70B9...",
+  "eventModal.descPlaceholder": "\u6DFB\u52A0\u63CF\u8FF0...",
+  "eventModal.duplicate": "\u590D\u5236",
+  "eventModal.deleted": "\u{1F4C5} \u5DF2\u5220\u9664 Google \u65E5\u5386\u65E5\u7A0B\u3002",
+  "eventModal.duplicated": "\u{1F4C5} \u5DF2\u590D\u5236 Google \u65E5\u5386\u65E5\u7A0B\u3002",
+  "eventModal.titleRequired": "\u8BF7\u8F93\u5165\u65E5\u7A0B\u6807\u9898\u3002",
+  "eventModal.updated": "\u{1F4C5} \u5DF2\u66F4\u65B0 Google \u65E5\u5386\u65E5\u7A0B\u3002",
+  "eventModal.added": "\u{1F4C5} \u5DF2\u5C06\u65E5\u7A0B\u6DFB\u52A0\u5230 Google \u65E5\u5386\u3002",
+  "syncModal.title": "\u5C06\u4EFB\u52A1\u4E0E Google \u65E5\u5386\u540C\u6B65 \u{1F4E4}",
+  "syncModal.desc": "\u5C06\u626B\u63CF\u4ED3\u5E93\u4E2D\u6240\u6709\u5E26\u65E5\u671F\u548C\u65F6\u95F4\u7684\u4EFB\u52A1\uFF0C\u5E76\u540C\u6B65\u5230\u6240\u9009\u7684 Google \u65E5\u5386\u3002\u5DF2\u901A\u8FC7 gcalId \u5173\u8054\u7684\u4EFB\u52A1\u4F1A\u88AB\u66F4\u65B0\uFF0C\u65B0\u4EFB\u52A1\u4F1A\u88AB\u521B\u5EFA\u3002",
+  "syncModal.chooseCalendar": "\u9009\u62E9\u76EE\u6807\u65E5\u5386",
+  "syncModal.noCalendars": "\u6CA1\u6709\u5DF2\u542F\u7528\u7684 Google \u65E5\u5386",
+  "syncModal.syncNow": "\u7ACB\u5373\u540C\u6B65",
+  "syncModal.syncing": "\u540C\u6B65\u4E2D...",
+  "syncModal.selectCalendar": "\u26A0\uFE0F \u8BF7\u9009\u62E9\u6709\u6548\u7684\u76EE\u6807 Google \u65E5\u5386\u3002",
+  "syncModal.starting": "\u{1F504} \u6B63\u5728\u540E\u53F0\u5F00\u59CB\u540C\u6B65\u4EFB\u52A1...",
+  "syncModal.complete": "\u2705 \u4EFB\u52A1\u540C\u6B65\u5B8C\u6210\uFF01\u521B\u5EFA\uFF1A{created}\uFF0C\u66F4\u65B0\uFF1A{updated}\uFF0C\u4FEE\u590D\uFF1A{repaired}\uFF0C\u79FB\u9664\uFF1A{removed}\uFF0C\u8DF3\u8FC7\uFF1A{skipped}",
+  "syncModal.failed": "\u274C \u4EFB\u52A1\u540C\u6B65\u5931\u8D25\u3002\u8BE6\u60C5\u8BF7\u67E5\u770B\u63A7\u5236\u53F0\u3002",
+  "pathModal.title": "\u9009\u62E9\u8981\u6392\u9664\u7684\u6587\u4EF6/\u6587\u4EF6\u5939 \u{1F4C2}",
+  "pathModal.folders": "\u6587\u4EF6\u5939",
+  "pathModal.files": "\u6587\u4EF6",
+  "pathModal.search": "\u641C\u7D22\u6587\u4EF6\u5939\u6216\u6587\u4EF6\u540D...",
+  "pathModal.noFolders": "\u672A\u627E\u5230\u6587\u4EF6\u5939\u3002",
+  "pathModal.noFiles": "\u672A\u627E\u5230\u6587\u4EF6\u3002",
+  "settings.heading": "Dayloom \u8BBE\u7F6E",
+  "settings.tab.general": "\u5E38\u89C4",
+  "settings.tab.timeline": "\u65F6\u95F4\u7EBF",
+  "settings.tab.gcal": "Google \u65E5\u5386",
+  "settings.tab.reminders": "\u901A\u77E5",
+  "settings.tab.display": "\u89C6\u56FE/\u663E\u793A",
+  "settings.language.desc": "Dayloom \u7684\u663E\u793A\u8BED\u8A00\u3002\u81EA\u52A8\u68C0\u6D4B\u5C06\u8DDF\u968F Obsidian \u7684\u8BED\u8A00\u8BBE\u7F6E\u3002",
+  "settings.language.changed": "Dayloom \u8BED\u8A00\u5DF2\u66F4\u6539\u3002",
+  "settings.defaultTaskFile.name": "\u9ED8\u8BA4\u4EFB\u52A1\u6587\u4EF6\u8DEF\u5F84",
+  "settings.defaultTaskFile.desc": "\u5728\u89C4\u5212\u5668\u4E2D\u521B\u5EFA\u4EFB\u52A1\u65F6\u6DFB\u52A0\u5230\u7684\u9ED8\u8BA4 Markdown \u6587\u4EF6\u3002",
+  "settings.exclusion.name": "\u6392\u9664\u7684\u6587\u4EF6\u548C\u6587\u4EF6\u5939",
+  "settings.exclusion.desc": "\u5339\u914D\u6B64\u5904\u89C4\u5219\u7684\u7B14\u8BB0\u4E0D\u4F1A\u88AB\u626B\u63CF\u4EFB\u52A1\u3002\u53EF\u4ECE\u5EFA\u8BAE\u4E2D\u9009\u62E9\u6587\u4EF6\u5939\u6216\u7B14\u8BB0\uFF0C\u6216\u8F93\u5165\u6A21\u5F0F\uFF1A* \u4EC5\u5728\u5355\u4E2A\u6587\u4EF6\u5939\u5185\u5339\u914D\uFF0C** \u53EF\u8DE8\u6587\u4EF6\u5939\u5339\u914D\uFF08\u4F8B\u5982 **/Templates\uFF09\u3002\u201C\u4FDD\u7559\u201D\u4F1A\u91CD\u65B0\u5305\u542B\u5DF2\u6392\u9664\u6587\u4EF6\u5939\u4E2D\u7684\u5185\u5BB9\u3002",
+  "settings.exclusion.ruleType": "\u89C4\u5219\u7C7B\u578B",
+  "settings.exclusion.placeholder": "\u6587\u4EF6\u5939\u3001\u7B14\u8BB0\u6216\u6A21\u5F0F\u2026",
+  "settings.exclusion.exclude": "\u6392\u9664",
+  "settings.exclusion.keep": "\u4FDD\u7559",
+  "settings.exclusion.empty": "\u65E0\u89C4\u5219\uFF1A\u5C06\u626B\u63CF\u4ED3\u5E93\u4E2D\u7684\u6240\u6709\u7B14\u8BB0\u3002",
+  "settings.exclusion.notFound": "\uFF08\u4ED3\u5E93\u4E2D\u672A\u627E\u5230\uFF09",
+  "settings.exclusion.clickToSwitch": "\u70B9\u51FB\u5207\u6362",
+  "settings.exclusion.remove": "\u79FB\u9664 {path}",
+  "settings.exclusion.summary": "\u5DF2\u6392\u9664 {total} \u7BC7\u7B14\u8BB0\u4E2D\u7684 {excluded} \u7BC7\u3002",
+  "settings.dailyNotes.heading": "\u65E5\u8BB0",
+  "settings.dailyFolder.name": "\u65E5\u8BB0\u6587\u4EF6\u5939\u8DEF\u5F84",
+  "settings.dailyFolder.desc": "\u5B58\u653E\u65E5\u8BB0\u7684 Obsidian \u6587\u4EF6\u5939\u8DEF\u5F84\u3002\u7559\u7A7A\u5219\u4F7F\u7528\u6839\u6587\u4EF6\u5939\u3002",
+  "settings.dailyFormat.name": "\u65E5\u8BB0\u6587\u4EF6\u540D\u683C\u5F0F",
+  "settings.dailyFormat.desc": "\u65E5\u8BB0\u7684\u6587\u4EF6\u540D\u683C\u5F0F\uFF08\u9ED8\u8BA4\uFF1AYYYY-MM-DD\uFF09\u3002",
+  "settings.dailyTemplate.name": "\u65E5\u8BB0\u6A21\u677F",
+  "settings.dailyTemplate.desc": "\u9009\u62E9\u4ED3\u5E93\u4E2D\u7528\u4F5C\u65B0\u65E5\u8BB0\u6A21\u677F\u7684 Markdown \u6587\u4EF6\u3002",
+  "settings.weeklyNotes.heading": "\u5468\u8BB0",
+  "settings.weeklyFolder.name": "\u5468\u8BB0\u6587\u4EF6\u5939\u8DEF\u5F84",
+  "settings.weeklyFolder.desc": "\u5B58\u653E\u5468\u8BB0\u7684 Obsidian \u6587\u4EF6\u5939\u8DEF\u5F84\u3002\u7559\u7A7A\u5219\u4F7F\u7528\u6839\u6587\u4EF6\u5939\u3002",
+  "settings.weeklyFormat.name": "\u5468\u8BB0\u6587\u4EF6\u540D\u683C\u5F0F",
+  "settings.weeklyFormat.desc": "\u5468\u8BB0\u7684\u6587\u4EF6\u540D\u683C\u5F0F\uFF08\u9ED8\u8BA4\uFF1Agggg-[W]ww\uFF09\u3002",
+  "settings.weeklyTemplate.name": "\u5468\u8BB0\u6A21\u677F",
+  "settings.weeklyTemplate.desc": "\u9009\u62E9\u4ED3\u5E93\u4E2D\u7528\u4F5C\u65B0\u5468\u8BB0\u6A21\u677F\u7684 Markdown \u6587\u4EF6\u3002",
+  "settings.nDay.name": "N \u5929\u89C6\u56FE\u5929\u6570",
+  "settings.nDay.desc": "N \u5929\u89C6\u56FE\u4E2D\u8FDE\u7EED\u663E\u793A\u7684\u5929\u6570\u3002",
+  "settings.separateHeights.name": "\u5206\u522B\u8BBE\u7F6E Dayloom \u4E0E Dayloom Compact \u7684\u9AD8\u5EA6",
+  "settings.separateHeights.desc": "\u542F\u7528\u540E\u53EF\u5206\u522B\u8C03\u6574 Dayloom \u4E0E Dayloom Compact \u7684\u7F29\u653E\uFF08\u6BCF\u5C0F\u65F6\u9AD8\u5EA6\uFF09\u3002",
+  "settings.hourHeightMain.name": "\u65F6\u95F4\u7EBF\u6BCF\u5C0F\u65F6\u9AD8\u5EA6\uFF08Dayloom\uFF09",
+  "settings.hourHeightMain.desc": "\u8C03\u6574 Dayloom \u65F6\u95F4\u7EBF\u4E2D 1 \u5C0F\u65F6\u7684\u5782\u76F4\u9AD8\u5EA6\uFF08\u50CF\u7D20\uFF09\u3002\uFF08\u9ED8\u8BA4\uFF1A60px\uFF09",
+  "settings.hourHeightCompact.name": "\u65F6\u95F4\u7EBF\u6BCF\u5C0F\u65F6\u9AD8\u5EA6\uFF08Dayloom Compact\uFF09",
+  "settings.hourHeightCompact.desc": "\u8C03\u6574 Dayloom Compact \u65F6\u95F4\u7EBF\u4E2D 1 \u5C0F\u65F6\u7684\u5782\u76F4\u9AD8\u5EA6\uFF08\u50CF\u7D20\uFF09\u3002\uFF08\u9ED8\u8BA4\uFF1A60px\uFF09",
+  "settings.hourHeightSynced.name": "\u65F6\u95F4\u7EBF\u6BCF\u5C0F\u65F6\u9AD8\u5EA6\uFF08\u7EDF\u4E00\uFF09",
+  "settings.hourHeightSynced.desc": "\u8C03\u6574\u6240\u6709\u65F6\u95F4\u7EBF\u4E2D 1 \u5C0F\u65F6\u7684\u5782\u76F4\u9AD8\u5EA6\uFF08\u50CF\u7D20\uFF09\u3002\uFF08\u9ED8\u8BA4\uFF1A60px\uFF09",
+  "settings.startHour.name": "\u65F6\u95F4\u7EBF\u5F00\u59CB\u65F6\u95F4",
+  "settings.startHour.desc": "\u65E5\u548C\u5468\u65F6\u95F4\u7EBF\u5F00\u59CB\u7684\u6574\u70B9\u3002",
+  "settings.startHour.error": "\u5F00\u59CB\u65F6\u95F4\u5FC5\u987B\u65E9\u4E8E\u7ED3\u675F\u65F6\u95F4\u3002",
+  "settings.endHour.name": "\u65F6\u95F4\u7EBF\u7ED3\u675F\u65F6\u95F4",
+  "settings.endHour.desc": "\u65E5\u548C\u5468\u65F6\u95F4\u7EBF\u7ED3\u675F\u7684\u6574\u70B9\u3002",
+  "settings.endHour.error": "\u7ED3\u675F\u65F6\u95F4\u5FC5\u987B\u665A\u4E8E\u5F00\u59CB\u65F6\u95F4\u3002",
+  "settings.defaultDuration.name": "\u9ED8\u8BA4\u4EFB\u52A1\u65F6\u957F\uFF08\u5206\u949F\uFF09",
+  "settings.defaultDuration.desc": "\u5C06\u6CA1\u6709\u65F6\u95F4\u7684\u4EFB\u52A1\u4ECE\u4FA7\u8FB9\u62BD\u5C49\u6216\u5168\u5929\u884C\u62D6\u5230\u65F6\u95F4\u7EBF\u4E0A\u65F6\u83B7\u5F97\u7684\u65F6\u957F\uFF08\u7ED3\u675F\u65F6\u95F4 = \u5F00\u59CB\u65F6\u95F4 + \u6B64\u503C\uFF09\u3002\u53EF\u8BBE\u4E3A 1 \u5230 1440 \u4E4B\u95F4\u7684\u4EFB\u610F\u503C\u3002",
+  "settings.hideMetadata.name": "\u9690\u85CF\u884C\u5185\u5143\u6570\u636E\u5B57\u6BB5",
+  "settings.hideMetadata.desc": "\u5728\u89C4\u5212\u5668\u7684\u4EFB\u52A1\u6807\u9898\u4E2D\u9690\u85CF [gcalId:: ...] \u7B49\u65B9\u62EC\u53F7\u884C\u5185\u5B57\u6BB5\uFF0C\u5E76\u5728\u9605\u8BFB\u89C6\u56FE\u548C\u5B9E\u65F6\u9884\u89C8\u4E2D\u9690\u85CF [gcalId:: ...] \u540C\u6B65\u6807\u7B7E\u3002\u6587\u4EF6\u5185\u5BB9\u4FDD\u6301\u4E0D\u53D8\uFF0C\u4EC5\u6E05\u7406\u663E\u793A\u3002",
+  "settings.shortcutButton.name": "\u5728\u6807\u9898\u680F\u663E\u793A\u5FEB\u6377\u952E\u6309\u94AE",
+  "settings.shortcutButton.desc": "\u5728\u65F6\u95F4\u7EBF\u6807\u9898\u680F\u4E2D\u663E\u793A\u952E\u76D8\u5FEB\u6377\u952E (?) \u6309\u94AE\u3002\u6309 ? \u6216 h \u952E\u968F\u65F6\u90FD\u80FD\u6253\u5F00\u5FEB\u6377\u952E\u5217\u8868\u3002",
+  "settings.haptics.name": "\u89E6\u611F\u53CD\u9988",
+  "settings.haptics.desc": "\u5B8C\u6210\u4EFB\u52A1\u3001\u5207\u6362\u6807\u7B7E\u6216\u6A21\u5F0F\u3001\u62D6\u52A8\u6216\u8C03\u6574\u65F6\u95F4\u7EBF\u9879\u76EE\u5927\u5C0F\u65F6\u77ED\u6682\u632F\u52A8\u3002\u4EC5\u9002\u7528\u4E8E\u652F\u6301\u632F\u52A8\u7684\u79FB\u52A8\u8BBE\u5907\u3002",
+  "settings.reminderType.name": "\u63D0\u9192\u65B9\u5F0F",
+  "settings.reminderType.desc": "\u4EFB\u52A1\u6216\u65E5\u7A0B\u5F00\u59CB\u524D\u63D0\u9192\u4F60\u7684\u65B9\u5F0F\u3002\u81EA\u52A8\uFF1AObsidian \u5904\u4E8E\u7126\u70B9\u65F6\u663E\u793A\u5E94\u7528\u5185\u901A\u77E5\uFF0C\u5426\u5219\u663E\u793A\u7CFB\u7EDF\u901A\u77E5\u3002",
+  "settings.reminderType.off": "\u5173\u95ED",
+  "settings.reminderType.auto": "\u81EA\u52A8",
+  "settings.reminderType.notice": "\u5E94\u7528\u5185\u901A\u77E5",
+  "settings.reminderType.system": "\u7CFB\u7EDF\u901A\u77E5",
+  "settings.reminderTiming.name": "\u63D0\u9192\u65F6\u95F4",
+  "settings.reminderTiming.desc": "\u76F8\u5BF9\u4E8E\u4EFB\u52A1\u6216\u65E5\u7A0B\u5F00\u59CB\u65F6\u95F4\u7684\u63D0\u9192\u65F6\u673A\u3002",
+  "settings.reminderTiming.atStart": "\u5F00\u59CB\u65F6",
+  "settings.reminderTiming.before": "\u63D0\u524D {n} \u5206\u949F",
+  "settings.reminderSound.name": "\u63D0\u9192\u58F0\u97F3",
+  "settings.reminderSound.desc": "\u6BCF\u6B21\u63D0\u9192\u65F6\u64AD\u653E\u7B80\u77ED\u7684\u53CC\u97F3\u63D0\u793A\u97F3\u3002",
+  "settings.reminderSound.test": "\u8BD5\u542C\u63D0\u793A\u97F3",
+  "settings.remindTasks.name": "\u63D0\u9192\u4EFB\u52A1",
+  "settings.remindTasks.desc": "\u4E3A\u4ECA\u5929\u5B89\u6392\u4E14\u5E26\u6709\u5F00\u59CB\u65F6\u95F4 (\u23F0HH:mm) \u7684\u4ED3\u5E93\u4EFB\u52A1\u53D1\u9001\u63D0\u9192\u3002",
+  "settings.remindGCal.name": "\u63D0\u9192 Google \u65E5\u5386\u65E5\u7A0B",
+  "settings.remindGCal.desc": "\u4E3A\u4ECA\u5929\u6709\u5177\u4F53\u65F6\u95F4\u7684 Google \u65E5\u5386\u65E5\u7A0B\u53D1\u9001\u63D0\u9192\u3002\u5168\u5929\u65E5\u7A0B\u5C06\u88AB\u8DF3\u8FC7\u3002",
+  "settings.enableGCal.name": "\u542F\u7528 Google \u65E5\u5386\u96C6\u6210",
+  "settings.enableGCal.desc": "\u542F\u7528\u540E\uFF0C\u5C06\u83B7\u53D6\u5DF2\u542F\u7528\u7684 Google \u65E5\u5386\u65E5\u7A0B\u5E76\u4E0E\u4EFB\u52A1\u4E00\u8D77\u663E\u793A\u3002",
+  "settings.taskSyncCal.name": "\u4EFB\u52A1\u540C\u6B65\u7684 Google \u65E5\u5386",
+  "settings.taskSyncCal.desc": "\u9009\u62E9\u7528\u4E8E\u540C\u6B65\u5E26\u65F6\u95F4\u7684\u4ED3\u5E93\u4EFB\u52A1\u7684 Google \u65E5\u5386\u3002",
+  "settings.taskSyncCal.select": "\u9009\u62E9\u65E5\u5386...",
+  "settings.oauth.heading": "Google \u65E5\u5386 OAuth 2.0\uFF08\u540C\u6B65\u4E0E\u7F16\u8F91\uFF09",
+  "settings.oauth.intro": "\u8981\u540C\u6B65\u65E5\u5386\uFF08\u5305\u62EC\u79C1\u4EBA\u65E5\u5386\uFF09\u5E76\u5728\u65F6\u95F4\u7EBF\u4E2D\u76F4\u63A5\u7F16\u8F91\u6216\u62D6\u52A8\u65E5\u7A0B\uFF0C\u9700\u8981\u914D\u7F6E\u4F60\u81EA\u5DF1\u7684 OAuth 2.0 \u7F51\u9875\u5E94\u7528\u51ED\u636E\u3002",
+  "settings.clientId.name": "Google \u5BA2\u6237\u7AEF ID",
+  "settings.clientId.desc": "OAuth \u7F51\u9875\u5BA2\u6237\u7AEF\u5E94\u7528 ID\u3002",
+  "settings.clientSecret.name": "Google \u5BA2\u6237\u7AEF\u5BC6\u94A5",
+  "settings.clientSecret.desc": "OAuth \u7F51\u9875\u5BA2\u6237\u7AEF\u5BC6\u94A5\u3002",
+  "settings.refreshToken.name": "Google \u5237\u65B0\u4EE4\u724C",
+  "settings.refreshToken.desc": "\u7528\u4E8E\u540E\u53F0\u5199\u5165 API \u6388\u6743\u7684\u79BB\u7EBF\u6301\u4E45\u5237\u65B0\u4EE4\u724C\u3002",
+  "settings.calendars.heading": "Google \u65E5\u5386 \u{1F4C5}",
+  "settings.calendars.add": "+ \u6DFB\u52A0\u65E5\u5386",
+  "settings.calendars.empty": "\u5C1A\u672A\u914D\u7F6E Google \u65E5\u5386\u3002\u70B9\u51FB\u201C\u6DFB\u52A0\u65E5\u5386\u201D\u5F00\u59CB\u96C6\u6210\u3002",
+  "settings.calendars.namePlaceholder": "\u540D\u79F0\uFF08\u4F8B\u5982\uFF1A\u5DE5\u4F5C\u3001\u4E2A\u4EBA\uFF09",
+  "settings.calendars.idPlaceholder": "primary \u6216 Google \u90AE\u7BB1\u5730\u5740",
+  "settings.taskColor.name": "\u672C\u5730\u4EFB\u52A1\u989C\u8272",
+  "settings.taskColor.desc": "\u672C\u5730\uFF08\u4ED3\u5E93\uFF09\u4EFB\u52A1\u9AD8\u4EAE\u8FB9\u6846\u7684\u989C\u8272\uFF0C\u4E0E\u4E0A\u65B9\u7684\u65E5\u5386\u989C\u8272\u4E00\u8D77\u663E\u793A\u3002"
+};
+var DICTIONARIES = { en, ko, ja, zh };
+var languageSetting = "auto";
+function setLanguage(language) {
+  languageSetting = language ?? "auto";
+}
+function normalizeLocale(code) {
+  const lang = (code ?? "").trim().toLowerCase();
+  if (lang.startsWith("ko"))
+    return "ko";
+  if (lang.startsWith("ja"))
+    return "ja";
+  if (lang.startsWith("zh"))
+    return "zh";
+  return "en";
+}
+function detectObsidianLocale() {
+  let code = null;
+  try {
+    code = window.localStorage.getItem("language");
+  } catch {
+  }
+  if (!code)
+    code = window.moment?.locale?.() ?? null;
+  return normalizeLocale(code);
+}
+function getLocale() {
+  return languageSetting === "auto" ? detectObsidianLocale() : languageSetting;
+}
+function t(key, vars) {
+  const text = DICTIONARIES[getLocale()][key] ?? en[key] ?? key;
+  if (!vars)
+    return text;
+  return text.replace(/\{(\w+)\}/g, (match, name) => name in vars ? String(vars[name]) : match);
+}
+
+// modals.ts
 var TaskEditModal = class extends import_obsidian4.Modal {
   constructor(app, task, defaultDate, onSave, defaultStartTime = null, defaultEndTime = null) {
     super(app);
@@ -4715,7 +5710,7 @@ var TaskEditModal = class extends import_obsidian4.Modal {
     contentEl.empty();
     contentEl.addClass("dp-task-modal");
     const modalHeader = contentEl.createDiv({ cls: "dp-modal-header" });
-    modalHeader.createEl("h2", { text: "Create or edit Task" });
+    modalHeader.createEl("h2", { text: t("taskModal.title") });
     const formState = {
       text: this.task ? this.task.text : "",
       statusChar: this.task ? this.task.statusChar : " ",
@@ -4733,17 +5728,17 @@ var TaskEditModal = class extends import_obsidian4.Modal {
     };
     const form = contentEl.createDiv({ cls: "dp-modal-form" });
     const descRow = form.createDiv({ cls: "dp-modal-row" });
-    descRow.createEl("label", { text: "Description", cls: "dp-modal-row-label" });
+    descRow.createEl("label", { text: t("common.description"), cls: "dp-modal-row-label" });
     const textarea = descRow.createEl("textarea", {
       cls: "dp-modal-textarea",
-      placeholder: "Enter task details..."
+      placeholder: t("taskModal.descPlaceholder")
     });
     textarea.value = formState.text;
     textarea.addEventListener("input", () => {
       formState.text = textarea.value;
     });
     const fileRow = form.createDiv({ cls: "dp-modal-row" });
-    fileRow.createEl("label", { text: "Task File Location", cls: "dp-modal-row-label" });
+    fileRow.createEl("label", { text: t("taskModal.fileLocation"), cls: "dp-modal-row-label" });
     const fileFlex = fileRow.createDiv({ cls: "dp-modal-file-row" });
     const fileInput = fileFlex.createEl("input", {
       type: "text",
@@ -4752,7 +5747,7 @@ var TaskEditModal = class extends import_obsidian4.Modal {
     });
     fileInput.disabled = true;
     const openBtn = fileFlex.createEl("button", {
-      text: "Open in File \u2197",
+      text: t("taskModal.openInFile"),
       cls: "mod-cta"
     });
     openBtn.addEventListener("click", async (e) => {
@@ -4761,19 +5756,19 @@ var TaskEditModal = class extends import_obsidian4.Modal {
         await openTaskInEditor(this.app, this.task);
         this.close();
       } else {
-        new import_obsidian4.Notice("This task hasn't been created in a file yet.");
+        new import_obsidian4.Notice(t("taskModal.notInFile"));
       }
     });
     const priorityRow = form.createDiv({ cls: "dp-modal-row" });
-    priorityRow.createEl("label", { text: "Priority", cls: "dp-modal-row-label" });
+    priorityRow.createEl("label", { text: t("common.priority"), cls: "dp-modal-row-label" });
     const prioritySelect = priorityRow.createEl("select", { cls: "dp-modal-select" });
     const priorityOptions = [
-      { value: "lowest", label: "Lowest \u23EC" },
-      { value: "low", label: "Low \u{1F53D}" },
-      { value: "normal", label: "Normal \u{1F7E2}" },
-      { value: "medium", label: "Medium \u{1F53C}" },
-      { value: "high", label: "High \u23EB" },
-      { value: "highest", label: "Highest \u{1F53A}" }
+      { value: "lowest", label: `${t("priority.lowest")} \u23EC` },
+      { value: "low", label: `${t("priority.low")} \u{1F53D}` },
+      { value: "normal", label: `${t("priority.normal")} \u{1F7E2}` },
+      { value: "medium", label: `${t("priority.medium")} \u{1F53C}` },
+      { value: "high", label: `${t("priority.high")} \u23EB` },
+      { value: "highest", label: `${t("priority.highest")} \u{1F53A}` }
     ];
     priorityOptions.forEach((opt) => {
       const op = prioritySelect.createEl("option", { value: opt.value, text: opt.label });
@@ -4785,13 +5780,13 @@ var TaskEditModal = class extends import_obsidian4.Modal {
     });
     const statusDateGrid = form.createDiv({ cls: "dp-modal-grid" });
     const statusRow = statusDateGrid.createDiv({ cls: "dp-modal-row" });
-    statusRow.createEl("label", { text: "Status", cls: "dp-modal-row-label" });
+    statusRow.createEl("label", { text: t("common.status"), cls: "dp-modal-row-label" });
     const statusSelect = statusRow.createEl("select", { cls: "dp-modal-select" });
     const statusOptions = [
-      { value: " ", label: "Todo [ ]" },
-      { value: "/", label: "In Progress [/]" },
-      { value: "x", label: "Done [x]" },
-      { value: "-", label: "Cancelled [-]" }
+      { value: " ", label: `${t("status.todo")} [ ]` },
+      { value: "/", label: `${t("status.inProgress")} [/]` },
+      { value: "x", label: `${t("status.done")} [x]` },
+      { value: "-", label: `${t("status.cancelled")} [-]` }
     ];
     statusOptions.forEach((opt) => {
       const op = statusSelect.createEl("option", { value: opt.value, text: opt.label });
@@ -4802,7 +5797,7 @@ var TaskEditModal = class extends import_obsidian4.Modal {
       formState.statusChar = statusSelect.value;
     });
     const dateRow = statusDateGrid.createDiv({ cls: "dp-modal-row" });
-    dateRow.createEl("label", { text: "\u23F3 Date", cls: "dp-modal-row-label" });
+    dateRow.createEl("label", { text: `\u23F3 ${t("taskModal.date")}`, cls: "dp-modal-row-label" });
     const dateInput = dateRow.createEl("input", { type: "date", cls: "dp-modal-input" });
     dateInput.value = formState.date || "";
     dateInput.addEventListener("change", () => {
@@ -4810,79 +5805,79 @@ var TaskEditModal = class extends import_obsidian4.Modal {
     });
     const timesGrid = form.createDiv({ cls: "dp-modal-grid" });
     const startTimeRow = timesGrid.createDiv({ cls: "dp-modal-row" });
-    startTimeRow.createEl("label", { text: "\u23F0 Start Time", cls: "dp-modal-row-label" });
+    startTimeRow.createEl("label", { text: `\u23F0 ${t("common.startTime")}`, cls: "dp-modal-row-label" });
     const startTimeInput = startTimeRow.createEl("input", { type: "time", cls: "dp-modal-input" });
     startTimeInput.value = formState.startTime || "";
     startTimeInput.addEventListener("change", () => {
       formState.startTime = startTimeInput.value || null;
     });
     const endTimeRow = timesGrid.createDiv({ cls: "dp-modal-row" });
-    endTimeRow.createEl("label", { text: "\u{1F552} End Time", cls: "dp-modal-row-label" });
+    endTimeRow.createEl("label", { text: `\u{1F552} ${t("common.endTime")}`, cls: "dp-modal-row-label" });
     const endTimeInput = endTimeRow.createEl("input", { type: "time", cls: "dp-modal-input" });
     endTimeInput.value = formState.endTime || "";
     endTimeInput.addEventListener("change", () => {
       formState.endTime = endTimeInput.value || null;
     });
     const tasksSection = form.createEl("details", { cls: "dp-modal-tasks-section" });
-    tasksSection.createEl("summary", { text: "Tasks Plugin Compatibility \u{1F501}" });
+    tasksSection.createEl("summary", { text: t("taskModal.tasksCompat") });
     const datesGrid = tasksSection.createDiv({ cls: "dp-modal-grid" });
     const recurRow = datesGrid.createDiv({ cls: "dp-modal-row" });
-    recurRow.createEl("label", { text: "\u{1F501} Recurrence", cls: "dp-modal-row-label" });
+    recurRow.createEl("label", { text: `\u{1F501} ${t("taskModal.recurrence")}`, cls: "dp-modal-row-label" });
     const recurInput = recurRow.createEl("input", {
       type: "text",
       cls: "dp-modal-input",
-      placeholder: "e.g., every week"
+      placeholder: t("taskModal.recurrencePlaceholder")
     });
     recurInput.value = formState.recurrence || "";
     recurInput.addEventListener("input", () => {
       formState.recurrence = recurInput.value || null;
     });
     const schedRow = datesGrid.createDiv({ cls: "dp-modal-row" });
-    schedRow.createEl("label", { text: "\u23F3 Scheduled Date", cls: "dp-modal-row-label" });
+    schedRow.createEl("label", { text: `\u23F3 ${t("taskModal.scheduled")}`, cls: "dp-modal-row-label" });
     const schedInput = schedRow.createEl("input", { type: "date", cls: "dp-modal-input" });
     schedInput.value = formState.scheduledDate || "";
     schedInput.addEventListener("change", () => {
       formState.scheduledDate = schedInput.value || null;
     });
     const dueRow = datesGrid.createDiv({ cls: "dp-modal-row" });
-    dueRow.createEl("label", { text: "\u{1F4C5} Due Date", cls: "dp-modal-row-label" });
+    dueRow.createEl("label", { text: `\u{1F4C5} ${t("taskModal.due")}`, cls: "dp-modal-row-label" });
     const dueInput = dueRow.createEl("input", { type: "date", cls: "dp-modal-input" });
     dueInput.value = formState.dueDate || "";
     dueInput.addEventListener("change", () => {
       formState.dueDate = dueInput.value || null;
     });
     const startDRow = datesGrid.createDiv({ cls: "dp-modal-row" });
-    startDRow.createEl("label", { text: "\u{1F6EB} Start Date", cls: "dp-modal-row-label" });
+    startDRow.createEl("label", { text: `\u{1F6EB} ${t("common.startDate")}`, cls: "dp-modal-row-label" });
     const startDInput = startDRow.createEl("input", { type: "date", cls: "dp-modal-input" });
     startDInput.value = formState.startDate || "";
     startDInput.addEventListener("change", () => {
       formState.startDate = startDInput.value || null;
     });
     const compDRow = datesGrid.createDiv({ cls: "dp-modal-row" });
-    compDRow.createEl("label", { text: "\u2705 Completion Date", cls: "dp-modal-row-label" });
+    compDRow.createEl("label", { text: `\u2705 ${t("taskModal.completion")}`, cls: "dp-modal-row-label" });
     const compDInput = compDRow.createEl("input", { type: "date", cls: "dp-modal-input" });
     compDInput.value = formState.completionDate || "";
     compDInput.addEventListener("change", () => {
       formState.completionDate = compDInput.value || null;
     });
     const cancelDRow = datesGrid.createDiv({ cls: "dp-modal-row" });
-    cancelDRow.createEl("label", { text: "\u274C Cancelled Date", cls: "dp-modal-row-label" });
+    cancelDRow.createEl("label", { text: `\u274C ${t("taskModal.cancelledDate")}`, cls: "dp-modal-row-label" });
     const cancelDInput = cancelDRow.createEl("input", { type: "date", cls: "dp-modal-input" });
     cancelDInput.value = formState.cancelledDate || "";
     cancelDInput.addEventListener("change", () => {
       formState.cancelledDate = cancelDInput.value || null;
     });
     const buttonRow = form.createDiv({ cls: "dp-modal-buttons" });
-    const cancelBtn = buttonRow.createEl("button", { text: "Cancel" });
+    const cancelBtn = buttonRow.createEl("button", { text: t("common.cancel") });
     cancelBtn.addEventListener("click", (e) => {
       e.preventDefault();
       this.close();
     });
-    const saveBtn = buttonRow.createEl("button", { text: "Save", cls: "mod-cta" });
+    const saveBtn = buttonRow.createEl("button", { text: t("common.save"), cls: "mod-cta" });
     saveBtn.addEventListener("click", (e) => {
       e.preventDefault();
       if (!formState.text.trim()) {
-        new import_obsidian4.Notice("Please enter task content!");
+        new import_obsidian4.Notice(t("taskModal.emptyText"));
         return;
       }
       this.onSave(formState);
@@ -4934,8 +5929,8 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
     };
     const form = contentEl.createDiv({ cls: "dp-modal-form" });
     const summaryRow = form.createDiv({ cls: "dp-modal-row" });
-    summaryRow.createEl("label", { text: "Event Title", cls: "dp-modal-row-label" });
-    const summaryInput = summaryRow.createEl("input", { type: "text", cls: "dp-modal-input", placeholder: "Enter event summary..." });
+    summaryRow.createEl("label", { text: t("eventModal.summary"), cls: "dp-modal-row-label" });
+    const summaryInput = summaryRow.createEl("input", { type: "text", cls: "dp-modal-input", placeholder: t("eventModal.summaryPlaceholder") });
     summaryInput.value = formState.summary;
     summaryInput.addEventListener("input", () => {
       formState.summary = summaryInput.value;
@@ -4943,7 +5938,7 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
     const optionsRow = form.createDiv({ cls: "dp-modal-options-row" });
     const calRow = optionsRow.createDiv({ cls: "dp-modal-row" });
     if (!this.event) {
-      calRow.createEl("label", { text: "Target Calendar", cls: "dp-modal-row-label" });
+      calRow.createEl("label", { text: t("eventModal.targetCalendar"), cls: "dp-modal-row-label" });
       const calSelect = calRow.createEl("select", { cls: "dp-modal-select" });
       this.plugin.settings.googleCalendars.filter((c) => c.enabled).forEach((cal) => {
         const opt = calSelect.createEl("option", { value: cal.id, text: cal.name });
@@ -4954,21 +5949,21 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
         formState.calendarId = calSelect.value;
       });
     } else {
-      calRow.createEl("label", { text: "Calendar", cls: "dp-modal-row-label" });
+      calRow.createEl("label", { text: t("eventModal.calendar"), cls: "dp-modal-row-label" });
       const calName = this.plugin.settings.googleCalendars.find((c) => c.id === formState.calendarId)?.name || "Google Calendar";
       calRow.createDiv({ text: calName, cls: "dp-modal-static-value" });
     }
     const allDayLabel = optionsRow.createEl("label", { cls: "dp-modal-checkbox" });
     const allDayCheckbox = allDayLabel.createEl("input", { type: "checkbox" });
     allDayCheckbox.checked = formState.isAllDay;
-    allDayLabel.createSpan({ text: "All Day" });
+    allDayLabel.createSpan({ text: t("common.allDay") });
     const dateRow = form.createDiv({ cls: "dp-modal-grid" });
     const startDtRow = dateRow.createDiv({ cls: "dp-modal-row" });
-    startDtRow.createEl("label", { text: "Start Date", cls: "dp-modal-row-label" });
+    startDtRow.createEl("label", { text: t("common.startDate"), cls: "dp-modal-row-label" });
     const startDtInput = startDtRow.createEl("input", { type: "date", cls: "dp-modal-input" });
     startDtInput.value = formState.dateStr;
     const endDtRow = dateRow.createDiv({ cls: "dp-modal-row" });
-    endDtRow.createEl("label", { text: "End Date", cls: "dp-modal-row-label" });
+    endDtRow.createEl("label", { text: t("common.endDate"), cls: "dp-modal-row-label" });
     const endDtInput = endDtRow.createEl("input", { type: "date", cls: "dp-modal-input" });
     endDtInput.value = formState.endDateStr;
     startDtInput.addEventListener("change", () => {
@@ -4989,14 +5984,14 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
     timesCollapse.toggleClass("is-collapsed", formState.isAllDay);
     const timesRow = timesCollapse.createDiv({ cls: "dp-modal-grid" });
     const startRow = timesRow.createDiv({ cls: "dp-modal-row" });
-    startRow.createEl("label", { text: "Start Time", cls: "dp-modal-row-label" });
+    startRow.createEl("label", { text: t("common.startTime"), cls: "dp-modal-row-label" });
     const startInput = startRow.createEl("input", { type: "time", cls: "dp-modal-input" });
     startInput.value = formState.startTimeStr || "09:00";
     startInput.addEventListener("change", () => {
       formState.startTimeStr = startInput.value;
     });
     const endRow = timesRow.createDiv({ cls: "dp-modal-row" });
-    endRow.createEl("label", { text: "End Time", cls: "dp-modal-row-label" });
+    endRow.createEl("label", { text: t("common.endTime"), cls: "dp-modal-row-label" });
     const endInput = endRow.createEl("input", { type: "time", cls: "dp-modal-input" });
     endInput.value = formState.endTimeStr || "10:00";
     endInput.addEventListener("change", () => {
@@ -5007,15 +6002,15 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
       timesCollapse.toggleClass("is-collapsed", formState.isAllDay);
     });
     const locRow = form.createDiv({ cls: "dp-modal-row" });
-    locRow.createEl("label", { text: "Location", cls: "dp-modal-row-label" });
-    const locInput = locRow.createEl("input", { type: "text", cls: "dp-modal-input", placeholder: "Add location..." });
+    locRow.createEl("label", { text: t("eventModal.location"), cls: "dp-modal-row-label" });
+    const locInput = locRow.createEl("input", { type: "text", cls: "dp-modal-input", placeholder: t("eventModal.locationPlaceholder") });
     locInput.value = formState.location;
     locInput.addEventListener("input", () => {
       formState.location = locInput.value;
     });
     const descRow = form.createDiv({ cls: "dp-modal-row" });
-    descRow.createEl("label", { text: "Description", cls: "dp-modal-row-label" });
-    const descTextarea = descRow.createEl("textarea", { cls: "dp-modal-textarea", placeholder: "Add description..." });
+    descRow.createEl("label", { text: t("common.description"), cls: "dp-modal-row-label" });
+    const descTextarea = descRow.createEl("textarea", { cls: "dp-modal-textarea", placeholder: t("eventModal.descPlaceholder") });
     descTextarea.value = formState.description;
     descTextarea.addEventListener("input", () => {
       formState.description = descTextarea.value;
@@ -5023,16 +6018,16 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
     const buttonRow = form.createDiv({ cls: "dp-modal-buttons" });
     const leftActions = buttonRow.createDiv();
     if (this.event) {
-      const deleteBtn = leftActions.createEl("button", { text: "Delete \u{1F5D1}", cls: "mod-warning" });
+      const deleteBtn = leftActions.createEl("button", { text: `${t("common.delete")} \u{1F5D1}`, cls: "mod-warning" });
       deleteBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         if (await deleteGoogleCalendarEvent(this.plugin, formState.calendarId, this.event.id)) {
-          new import_obsidian4.Notice("\u{1F4C5} Google Calendar \uC77C\uC815\uC774 \uC131\uACF5\uC801\uC73C\uB85C \uC0AD\uC81C\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+          new import_obsidian4.Notice(t("eventModal.deleted"));
           this.onSave();
           this.close();
         }
       });
-      const duplicateBtn = leftActions.createEl("button", { text: "Duplicate \u{1F4D1}" });
+      const duplicateBtn = leftActions.createEl("button", { text: `${t("eventModal.duplicate")} \u{1F4D1}` });
       duplicateBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         if (await createGoogleCalendarEvent(this.plugin, formState.calendarId, {
@@ -5045,23 +6040,23 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
           endTimeStr: formState.endTimeStr,
           isAllDay: formState.isAllDay
         })) {
-          new import_obsidian4.Notice("\u{1F4C5} Google Calendar \uC77C\uC815\uC774 \uBCF5\uC0AC \uBC0F \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+          new import_obsidian4.Notice(t("eventModal.duplicated"));
           this.onSave();
           this.close();
         }
       });
     }
     const rightActions = buttonRow.createDiv();
-    const cancelBtn = rightActions.createEl("button", { text: "Cancel" });
+    const cancelBtn = rightActions.createEl("button", { text: t("common.cancel") });
     cancelBtn.addEventListener("click", (e) => {
       e.preventDefault();
       this.close();
     });
-    const saveBtn = rightActions.createEl("button", { text: this.event ? "Save" : "Create", cls: "mod-cta" });
+    const saveBtn = rightActions.createEl("button", { text: this.event ? t("common.save") : t("common.create"), cls: "mod-cta" });
     saveBtn.addEventListener("click", async (e) => {
       e.preventDefault();
       if (!formState.summary.trim()) {
-        new import_obsidian4.Notice("\uC77C\uC815 \uC81C\uBAA9\uC744 \uC815\uD655\uD558\uAC8C \uC785\uB825\uD558\uC138\uC694.");
+        new import_obsidian4.Notice(t("eventModal.titleRequired"));
         return;
       }
       let success = false;
@@ -5087,7 +6082,7 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
           isAllDay: formState.isAllDay
         });
         if (success) {
-          new import_obsidian4.Notice("\u{1F4C5} \uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815\uC774 \uC5C5\uB370\uC774\uD2B8\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+          new import_obsidian4.Notice(t("eventModal.updated"));
           showGCalEventUndoNotice(this.plugin, formState.calendarId, this.event.id, previousState);
         }
       } else {
@@ -5102,7 +6097,7 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
           isAllDay: formState.isAllDay
         }) !== null;
         if (success)
-          new import_obsidian4.Notice("\u{1F4C5} \uAD6C\uAE00 \uCE98\uB9B0\uB354\uC5D0 \uC77C\uC815\uC774 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+          new import_obsidian4.Notice(t("eventModal.added"));
       }
       if (success) {
         this.onSave();
@@ -5126,21 +6121,21 @@ var AddChoiceModal = class extends import_obsidian4.Modal {
     contentEl.style.maxWidth = "500px";
     const modalHeader = contentEl.createDiv();
     modalHeader.createEl("h2", {
-      text: "Add New Item \u2795"
+      text: t("addChoice.title")
     });
     const choiceGrid = contentEl.createDiv({ cls: "dp-modal-choice-grid" });
     const taskCard = choiceGrid.createDiv({ cls: "dp-modal-choice-card" });
     taskCard.createDiv({ text: "\u{1F4DD}", cls: "dp-modal-choice-icon" });
-    taskCard.createDiv({ text: "Add Local Task", cls: "dp-modal-choice-title" });
-    taskCard.createDiv({ text: "Create a local task inside your vault's daily note or default file.", cls: "dp-modal-choice-desc" });
+    taskCard.createDiv({ text: t("addChoice.task"), cls: "dp-modal-choice-title" });
+    taskCard.createDiv({ text: t("addChoice.taskDesc"), cls: "dp-modal-choice-desc" });
     taskCard.addEventListener("click", () => {
       this.onChoose("task");
       this.close();
     });
     const apptCard = choiceGrid.createDiv({ cls: "dp-modal-choice-card" });
     apptCard.createDiv({ text: "\u{1F4C5}", cls: "dp-modal-choice-icon" });
-    apptCard.createDiv({ text: "Add Appointment", cls: "dp-modal-choice-title" });
-    apptCard.createDiv({ text: "Create a new event and schedule it directly on Google Calendar.", cls: "dp-modal-choice-desc" });
+    apptCard.createDiv({ text: t("addChoice.appointment"), cls: "dp-modal-choice-title" });
+    apptCard.createDiv({ text: t("addChoice.appointmentDesc"), cls: "dp-modal-choice-desc" });
     apptCard.addEventListener("click", () => {
       this.onChoose("appointment");
       this.close();
@@ -5148,7 +6143,7 @@ var AddChoiceModal = class extends import_obsidian4.Modal {
     const buttonRow = contentEl.createDiv({
       cls: "dp-modal-buttons"
     });
-    const cancelBtn = buttonRow.createEl("button", { text: "Cancel" });
+    const cancelBtn = buttonRow.createEl("button", { text: t("common.cancel") });
     cancelBtn.addEventListener("click", () => {
       this.close();
     });
@@ -5174,33 +6169,33 @@ var _ShortcutHelpModal = class extends import_obsidian4.Modal {
     const { contentEl, modalEl } = this;
     modalEl.addClass("dp-shortcut-modal");
     contentEl.empty();
-    contentEl.createEl("h2", { text: "Keyboard Shortcuts" });
+    contentEl.createEl("h2", { text: t("shortcuts.title") });
     const groups = [
-      ["Navigate", [
-        [["j"], "Next day / period (compact Board: next column)"],
-        [["k"], "Previous day / period (compact Board: previous column)"],
-        [["t"], "Jump to today"]
+      [t("shortcuts.group.navigate"), [
+        [["j"], t("shortcuts.next")],
+        [["k"], t("shortcuts.prev")],
+        [["t"], t("shortcuts.today")]
       ]],
-      ["Switch view", [
-        [["d"], "Daily timeline"],
-        [["x"], "N-day view"],
-        [["w"], "Weekly view"],
-        [["m"], "Monthly calendar"],
-        [["b"], "Board"],
-        [["l"], "List view"]
+      [t("shortcuts.group.switchView"), [
+        [["d"], t("shortcuts.daily")],
+        [["x"], t("shortcuts.nDay")],
+        [["w"], t("shortcuts.weekly")],
+        [["m"], t("shortcuts.monthly")],
+        [["b"], t("view.board")],
+        [["l"], t("shortcuts.list")]
       ]],
-      ["Panels", [
-        [["s"], "Toggle the sidebar drawer (desktop)"],
-        [["?", "h"], "Show this help"],
-        [["F5", "Ctrl/Cmd+R"], "Sync (rescan tasks, refresh Google Calendar)"]
+      [t("shortcuts.group.panels"), [
+        [["s"], t("shortcuts.drawer")],
+        [["?", "h"], t("shortcuts.help")],
+        [["F5", "Ctrl/Cmd+R"], t("shortcuts.sync")]
       ]],
-      ["Side drawer card (Tab to focus)", [
-        [["f"], "Fit it into the first free slot (next 14 days)"],
-        [["Enter"], "Edit the task"]
+      [t("shortcuts.group.drawerCard"), [
+        [["f"], t("shortcuts.fit")],
+        [["Enter"], t("shortcuts.edit")]
       ]],
-      ["While dragging (desktop)", [
-        [["j", "k"], "Page dates without dropping the task"],
-        [["Esc"], "Cancel the drag"]
+      [t("shortcuts.group.dragging"), [
+        [["j", "k"], t("shortcuts.pageDates")],
+        [["Esc"], t("shortcuts.cancelDrag")]
       ]]
     ];
     groups.forEach(([title, rows]) => {
@@ -5217,13 +6212,13 @@ var _ShortcutHelpModal = class extends import_obsidian4.Modal {
     const label = footer.createEl("label", { cls: "dp-shortcut-footer-option" });
     const checkbox = label.createEl("input", { type: "checkbox" });
     checkbox.checked = this.plugin.settings.showShortcutButton === false;
-    label.createSpan({ text: "Hide the shortcut (?) button in the header" });
+    label.createSpan({ text: t("shortcuts.hideButton") });
     checkbox.addEventListener("change", async () => {
       this.plugin.settings.showShortcutButton = !checkbox.checked;
       await this.plugin.saveSettings();
       this.plugin.refreshActiveViews();
     });
-    footer.createDiv({ cls: "dp-shortcut-footer-hint", text: "? and h open this list either way." });
+    footer.createDiv({ cls: "dp-shortcut-footer-hint", text: t("shortcuts.hint") });
   }
   onClose() {
     if (_ShortcutHelpModal.current === this)
@@ -5245,18 +6240,18 @@ var TaskSyncModal = class extends import_obsidian4.Modal {
     contentEl.style.padding = "24px";
     contentEl.style.maxWidth = "450px";
     contentEl.createEl("h2", {
-      text: "Synchronize Tasks with Google Calendar \u{1F4E4}"
+      text: t("syncModal.title")
     });
     contentEl.createEl("p", {
-      text: "This will scan all timed tasks in your vault (containing dates and times) and synchronize them to your selected Google Calendar. Existing tasks linked via gcalId will be updated, and new ones will be created."
+      text: t("syncModal.desc")
     });
     const form = contentEl.createDiv({ cls: "dp-modal-form" });
     const calRow = form.createDiv({ cls: "dp-modal-row" });
-    calRow.createEl("label", { text: "Choose Target Calendar", cls: "dp-modal-row-label" });
+    calRow.createEl("label", { text: t("syncModal.chooseCalendar"), cls: "dp-modal-row-label" });
     const calSelect = calRow.createEl("select", { cls: "dp-modal-select" });
     const enabledCalendars = this.plugin.settings.googleCalendars.filter((c) => c.enabled && c.id);
     if (enabledCalendars.length === 0) {
-      const opt = calSelect.createEl("option", { value: "", text: "No enabled Google Calendars" });
+      const opt = calSelect.createEl("option", { value: "", text: t("syncModal.noCalendars") });
       opt.disabled = true;
     } else {
       enabledCalendars.forEach((cal) => {
@@ -5269,10 +6264,10 @@ var TaskSyncModal = class extends import_obsidian4.Modal {
     const buttonsRow = contentEl.createDiv({
       cls: "dp-modal-buttons"
     });
-    const cancelBtn = buttonsRow.createEl("button", { text: "Cancel" });
+    const cancelBtn = buttonsRow.createEl("button", { text: t("common.cancel") });
     cancelBtn.addEventListener("click", () => this.close());
     const syncBtn = buttonsRow.createEl("button", {
-      text: "Sync Tasks Now",
+      text: t("syncModal.syncNow"),
       cls: "mod-cta"
     });
     if (enabledCalendars.length === 0) {
@@ -5281,24 +6276,24 @@ var TaskSyncModal = class extends import_obsidian4.Modal {
     syncBtn.addEventListener("click", async () => {
       const calendarId = calSelect.value;
       if (!calendarId) {
-        new import_obsidian4.Notice("\u26A0\uFE0F Please select a valid target Google Calendar.");
+        new import_obsidian4.Notice(t("syncModal.selectCalendar"));
         return;
       }
       this.plugin.settings.taskSyncCalendarId = calendarId;
       await this.plugin.saveSettings();
       syncBtn.disabled = true;
-      syncBtn.setText("Syncing...");
-      new import_obsidian4.Notice("\u{1F504} Starting background task synchronization...");
+      syncBtn.setText(t("syncModal.syncing"));
+      new import_obsidian4.Notice(t("syncModal.starting"));
       try {
         const result = await syncAllTasksToGCal(this.plugin, calendarId);
-        new import_obsidian4.Notice(`\u2705 Task synchronization complete! Created: ${result.created}, Updated: ${result.updated}, Repaired: ${result.repaired}, Removed: ${result.removed}, Skipped: ${result.skipped}`);
+        new import_obsidian4.Notice(t("syncModal.complete", { created: result.created, updated: result.updated, repaired: result.repaired, removed: result.removed, skipped: result.skipped }));
         this.onSyncComplete();
         this.close();
       } catch (e) {
         console.error("Task synchronization failed:", e);
-        new import_obsidian4.Notice("\u274C Task synchronization failed. Check console for details.");
+        new import_obsidian4.Notice(t("syncModal.failed"));
         syncBtn.disabled = false;
-        syncBtn.setText("Sync Tasks Now");
+        syncBtn.setText(t("syncModal.syncNow"));
       }
     });
   }
@@ -5309,12 +6304,12 @@ var TaskSyncModal = class extends import_obsidian4.Modal {
 
 // drawer.ts
 var import_obsidian5 = require("obsidian");
-var isOpen = (t) => t.statusChar !== "x" && t.statusChar !== "-";
-var isUndatedTask = (t) => t.date === null && isOpen(t);
-var isOverdueTask = (t, todayStr) => t.date !== null && t.date < todayStr && isOpen(t);
+var isOpen = (t2) => t2.statusChar !== "x" && t2.statusChar !== "-";
+var isUndatedTask = (t2) => t2.date === null && isOpen(t2);
+var isOverdueTask = (t2, todayStr) => t2.date !== null && t2.date < todayStr && isOpen(t2);
 var PRIORITY_RANK = { highest: 0, high: 1, medium: 2, normal: 3, low: 4, lowest: 5 };
 function sortByPriorityThenTitle(tasks, byDate = false) {
-  const titles = new Map(tasks.map((t) => [t, cleanTaskTextForDisplay(t.text)]));
+  const titles = new Map(tasks.map((t2) => [t2, cleanTaskTextForDisplay(t2.text)]));
   return tasks.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3) || (byDate ? (a.date ?? "").localeCompare(b.date ?? "") : 0) || titles.get(a).localeCompare(titles.get(b)));
 }
 function renderDrawerSection(body, view, id, title, tasks, empty, action) {
@@ -5355,7 +6350,7 @@ function renderDrawerSection(body, view, id, title, tasks, empty, action) {
 function renderQuickCapture(body, view) {
   const input = body.createEl("input", {
     cls: "dp-drawer-capture",
-    attr: { type: "text", placeholder: "+ Add an undated task (\u{1F53A} \u23EB for priority)", "aria-label": "Quick capture: add an undated task" }
+    attr: { type: "text", placeholder: t("drawer.capturePlaceholder"), "aria-label": t("drawer.captureAria") }
   });
   input.value = view.drawerCaptureDraft;
   input.addEventListener("input", () => {
@@ -5387,18 +6382,18 @@ function renderQuickCapture(body, view) {
 }
 var tasksPanel = {
   id: "tasks",
-  title: "Tasks",
+  title: () => t("drawer.tasks"),
   icon: "list-checks",
   render(body, view) {
     const todayStr = window.moment().format("YYYY-MM-DD");
     renderQuickCapture(body, view);
-    const overdue = sortByPriorityThenTitle(view.tasks.filter((t) => isOverdueTask(t, todayStr)), true);
-    renderDrawerSection(body, view, "overdue", "\u{1F6A8} Overdue Tasks", overdue, "All caught up! \u{1F389}", {
-      label: "Roll to today",
-      tooltip: "Roll all overdue tasks to today (times are kept)",
+    const overdue = sortByPriorityThenTitle(view.tasks.filter((t2) => isOverdueTask(t2, todayStr)), true);
+    renderDrawerSection(body, view, "overdue", `\u{1F6A8} ${t("drawer.overdueTasks")}`, overdue, t("drawer.allCaughtUp"), {
+      label: t("drawer.rollToToday"),
+      tooltip: t("drawer.rollToTodayTooltip"),
       run: () => void view.moveTasksToDate(overdue, todayStr)
     });
-    renderDrawerSection(body, view, "undated", "\u{1F4C2} Undated Tasks", sortByPriorityThenTitle(view.tasks.filter(isUndatedTask)), "No undated tasks. Drag a scheduled task here to unschedule it.");
+    renderDrawerSection(body, view, "undated", `\u{1F4C2} ${t("drawer.undatedTasks")}`, sortByPriorityThenTitle(view.tasks.filter(isUndatedTask)), t("drawer.noUndated"));
   }
 };
 var SIDE_DRAWER_PANELS = [tasksPanel];
@@ -5415,12 +6410,12 @@ function renderSideDrawer(rootEl, view) {
   const panel = SIDE_DRAWER_PANELS.find((p) => p.id === settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0];
   const drawer = rootEl.createDiv({ cls: "dp-side-drawer" });
   drawer.toggleClass("is-open", view.isSideDrawerOpen());
-  drawer.setAttr("aria-label", panel.title);
+  drawer.setAttr("aria-label", panel.title());
   const header = drawer.createDiv({ cls: "dp-drawer-header" });
   if (SIDE_DRAWER_PANELS.length > 1) {
     const tabs = header.createDiv({ cls: "dp-drawer-tabs" });
     SIDE_DRAWER_PANELS.forEach((p) => {
-      const tab = tabs.createEl("button", { cls: `dp-drawer-tab${p === panel ? " is-active" : ""}`, attr: { "aria-label": p.title } });
+      const tab = tabs.createEl("button", { cls: `dp-drawer-tab${p === panel ? " is-active" : ""}`, attr: { "aria-label": p.title() } });
       (0, import_obsidian5.setIcon)(tab, p.icon);
       const count2 = p.count?.(view);
       if (count2)
@@ -5437,11 +6432,11 @@ function renderSideDrawer(rootEl, view) {
   }
   const title = header.createDiv({ cls: "dp-drawer-title" });
   (0, import_obsidian5.setIcon)(title.createSpan({ cls: "dp-drawer-title-icon" }), panel.icon);
-  title.createSpan({ text: panel.title });
+  title.createSpan({ text: panel.title() });
   const count = panel.count?.(view);
   if (count)
     title.createSpan({ cls: "dp-drawer-count", text: String(count) });
-  const closeBtn = header.createEl("button", { cls: "clickable-icon dp-drawer-close", attr: { "aria-label": "Close side drawer (S)" } });
+  const closeBtn = header.createEl("button", { cls: "clickable-icon dp-drawer-close", attr: { "aria-label": t("drawer.close") } });
   setFirstIcon(closeBtn, ["panel-right-close", "sidebar-close", "x"]);
   closeBtn.addEventListener("click", () => void view.toggleSideDrawer(false));
   const body = drawer.createDiv({ cls: "dp-drawer-body" });
@@ -5558,8 +6553,8 @@ function showTaskUndoNotice(app, task, previous) {
   messageEl.empty();
   const cleanText = cleanTaskTextForDisplay(task.text);
   const displayText = cleanText.length > 20 ? cleanText.substring(0, 17) + "..." : cleanText;
-  messageEl.createSpan({ text: `Updated "${displayText}". ` });
-  const undoBtn = messageEl.createEl("button", { text: "Undo" });
+  messageEl.createSpan({ text: t("common.updated", { title: displayText }) });
+  const undoBtn = messageEl.createEl("button", { text: t("common.undo") });
   undoBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -5586,8 +6581,8 @@ function showGCalEventUndoNotice(plugin, calendarId, eventId, previous) {
     return;
   messageEl.empty();
   const displayText = previous.summary.length > 20 ? previous.summary.substring(0, 17) + "..." : previous.summary;
-  messageEl.createSpan({ text: `Updated "${displayText}". ` });
-  const undoBtn = messageEl.createEl("button", { text: "Undo" });
+  messageEl.createSpan({ text: t("common.updated", { title: displayText }) });
+  const undoBtn = messageEl.createEl("button", { text: t("common.undo") });
   undoBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -5649,7 +6644,7 @@ async function updateTasksInFile(app, tasks, updates, summary) {
     return done.length;
   messageEl.empty();
   messageEl.createSpan({ text: `${summary(done.length)} ` });
-  const undoBtn = messageEl.createEl("button", { text: "Undo" });
+  const undoBtn = messageEl.createEl("button", { text: t("common.undo") });
   undoBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -5726,7 +6721,7 @@ var FILTER_OP_LABEL = {
   isNotEmpty: "is set"
 };
 function describeFilterRule(rule) {
-  const type = FILTER_TYPES.find((t) => t.type === rule.type)?.label ?? rule.type;
+  const type = FILTER_TYPES.find((t2) => t2.type === rule.type)?.label ?? rule.type;
   let op = FILTER_OP_LABEL[rule.operator] ?? rule.operator;
   if (rule.type === "folder")
     op = rule.operator === "notContains" ? "not in" : "in";
@@ -6235,10 +7230,10 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
   }
   getAutoScrollY(dateStrs, startHour, hourHeight) {
     const moment = window.moment;
-    const toMin = (t) => {
-      if (!t)
+    const toMin = (t2) => {
+      if (!t2)
         return NaN;
-      const [h, m] = t.split(":").map(Number);
+      const [h, m] = t2.split(":").map(Number);
       return h * 60 + m;
     };
     let targetMin = NaN;
@@ -6247,7 +7242,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       targetMin = now.hour() * 60 + now.minute();
     } else {
       const starts = [
-        ...this.tasks.filter((t) => t.date && dateStrs.includes(t.date)).map((t) => toMin(t.startTime)),
+        ...this.tasks.filter((t2) => t2.date && dateStrs.includes(t2.date)).map((t2) => toMin(t2.startTime)),
         ...(this.plugin.settings.enableGoogleCalendar ? dateStrs.flatMap((d) => this.getCalendarEventsForDate(d)) : []).map((e) => toMin(e.startTimeStr))
       ].filter((m) => !isNaN(m));
       if (starts.length > 0)
@@ -6337,7 +7332,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     const ratio = hourHeight / 60;
     let primaryStartMin = 0;
     let primaryDateStr = "";
-    const primaryTask = this.tasks.find((t) => t.id === primaryTaskId);
+    const primaryTask = this.tasks.find((t2) => t2.id === primaryTaskId);
     if (primaryTask && primaryTask.startTime) {
       const [sh, sm] = primaryTask.startTime.split(":").map(Number);
       primaryStartMin = sh * 60 + sm;
@@ -6362,7 +7357,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       let itemDateStr = primaryDateStr;
       let title = "";
       let priorityBadge = "";
-      const task = this.tasks.find((t) => t.id === id);
+      const task = this.tasks.find((t2) => t2.id === id);
       if (isLockedTask(task))
         return;
       if (task) {
@@ -6568,9 +7563,9 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         source.previewRoot.querySelectorAll(".dp-timeline-event.selected").forEach((el) => el.removeClass("selected"));
         card.addClass("selected");
       }
-      this.tasks.forEach((t) => {
-        if (isLockedTask(t) && this.selectedTaskIds.has(t.id))
-          this.selectedTaskIds.delete(t.id);
+      this.tasks.forEach((t2) => {
+        if (isLockedTask(t2) && this.selectedTaskIds.has(t2.id))
+          this.selectedTaskIds.delete(t2.id);
       });
       grabOffset = this.timelineGrabOffset(card, startY);
       previewRoot = source.previewRoot;
@@ -6717,7 +7712,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       };
       doc.addEventListener("click", swallow, { capture: true, once: true });
       win.setTimeout(() => doc.removeEventListener("click", swallow, { capture: true }), 0);
-      const draggedTasks = source.kind === "task" ? [source.task] : this.tasks.filter((t) => this.selectedTaskIds.has(t.id));
+      const draggedTasks = source.kind === "task" ? [source.task] : this.tasks.filter((t2) => this.selectedTaskIds.has(t2.id));
       if (source.kind === "task")
         this.selectedTaskIds.delete(source.task.id);
       if (!landing)
@@ -6774,7 +7769,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       await this.refreshTasks();
   }
   async unscheduleTasks(tasks) {
-    const movable = tasks.filter((t) => !fileNameTaskDate(t.filePath));
+    const movable = tasks.filter((t2) => !fileNameTaskDate(t2.filePath));
     const pinned = tasks.length - movable.length;
     const changed = await updateTasksInFile(this.app, movable, { date: null, scheduledDate: null, dueDate: null, startTime: null, endTime: null }, (n) => `Moved ${n} tasks to Undated.`);
     if (pinned > 0) {
@@ -6793,15 +7788,15 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
   findFreeSlot(dateStr, exclude) {
     const settings = this.plugin.settings;
     const duration = settings.defaultTaskDuration || 60;
-    const toMin = (t) => {
-      const [h, m] = t.split(":").map(Number);
+    const toMin = (t2) => {
+      const [h, m] = t2.split(":").map(Number);
       return h * 60 + m;
     };
     const busy = [];
-    this.tasks.forEach((t) => {
-      if (t === exclude || t.date !== dateStr || !t.startTime || !t.endTime || t.statusChar === "-")
+    this.tasks.forEach((t2) => {
+      if (t2 === exclude || t2.date !== dateStr || !t2.startTime || !t2.endTime || t2.statusChar === "-")
         return;
-      busy.push([toMin(t.startTime), toMin(t.endTime)]);
+      busy.push([toMin(t2.startTime), toMin(t2.endTime)]);
     });
     if (settings.enableGoogleCalendar) {
       this.getCalendarEventsForDate(dateStr).forEach((e) => {
@@ -7195,7 +8190,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
             fileTasks.push(parsed);
           }
         }
-        plugin.tasksCache = plugin.tasksCache.filter((t) => t.filePath !== targetFile.path).concat(fileTasks);
+        plugin.tasksCache = plugin.tasksCache.filter((t2) => t2.filePath !== targetFile.path).concat(fileTasks);
       } else if (targetFile === "force") {
         plugin.tasksCache = await scanVaultTasks(this.app);
         plugin.lastScanTime = Date.now();
@@ -7204,12 +8199,12 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       const self = this;
       if (self.parentNoteType === "daily" && self.parentNoteDate) {
         const targetDate = self.parentNoteDate;
-        this.tasks = this.tasks.filter((t) => t.date === targetDate);
+        this.tasks = this.tasks.filter((t2) => t2.date === targetDate);
       } else if (self.parentNoteType === "weekly" && self.parentNoteDate) {
         const moment = window.moment;
         const startOfWeek = moment(self.parentNoteDate, "YYYY-MM-DD").startOf("week").format("YYYY-MM-DD");
         const endOfWeek = moment(self.parentNoteDate, "YYYY-MM-DD").endOf("week").format("YYYY-MM-DD");
-        this.tasks = this.tasks.filter((t) => !!t.date && t.date >= startOfWeek && t.date <= endOfWeek);
+        this.tasks = this.tasks.filter((t2) => !!t2.date && t2.date >= startOfWeek && t2.date <= endOfWeek);
       }
       const filters = this.filters;
       if (filters) {
@@ -7471,21 +8466,21 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     if (this.getViewTabType() !== "board") {
       const navHost = compact ? headerActions : headerActions.createDiv({ cls: "dp-nav-buttons-group" });
       if (!compact) {
-        const prevBtn = navHost.createEl("button", { text: "<", cls: "dp-nav-arrow", attr: { "aria-label": "Previous" } });
+        const prevBtn = navHost.createEl("button", { text: "<", cls: "dp-nav-arrow", attr: { "aria-label": t("nav.previous") } });
         prevBtn.addEventListener("click", async () => {
           triggerHaptic("selection");
           await this.navigateWithSlide(-1);
         });
       }
-      const todayBtn = navHost.createEl("button", { attr: { "aria-label": "Today" } });
+      const todayBtn = navHost.createEl("button", { attr: { "aria-label": t("common.today") } });
       todayBtn.createSpan({ cls: "dp-btn-icon", text: "\u{1F4C5}" });
-      todayBtn.createSpan({ cls: "dp-btn-label", text: " Today" });
+      todayBtn.createSpan({ cls: "dp-btn-label", text: ` ${t("common.today")}` });
       todayBtn.addEventListener("click", () => {
         triggerHaptic("selection");
         void this.goToToday();
       });
       if (!compact) {
-        const nextBtn = navHost.createEl("button", { text: ">", cls: "dp-nav-arrow", attr: { "aria-label": "Next" } });
+        const nextBtn = navHost.createEl("button", { text: ">", cls: "dp-nav-arrow", attr: { "aria-label": t("nav.next") } });
         nextBtn.addEventListener("click", async () => {
           triggerHaptic("selection");
           await this.navigateWithSlide(1);
@@ -7493,9 +8488,9 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       }
     }
     if (this.plugin.settings.enableGoogleCalendar) {
-      const syncBtn = headerActions.createEl("button", { attr: { "aria-label": "Sync" } });
+      const syncBtn = headerActions.createEl("button", { attr: { "aria-label": t("nav.sync") } });
       syncBtn.createSpan({ cls: "dp-btn-icon", text: "\u{1F504}" });
-      syncBtn.createSpan({ cls: "dp-btn-label", text: " Sync" });
+      syncBtn.createSpan({ cls: "dp-btn-label", text: ` ${t("nav.sync")}` });
       syncBtn.addEventListener("click", () => void this.runSync());
       syncBtn.addEventListener("contextmenu", (e) => {
         e.preventDefault();
@@ -7509,7 +8504,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       const countRules = (g) => (g.children ?? []).reduce((n, c) => n + (isFilterGroup(c) ? countRules(c) : 1), 0);
       const ruleCount = countRules(this.filters);
       const filterBtn = headerActions.createEl("button", {
-        text: ruleCount > 0 ? `\u{1F50D} Filter \xB7 ${ruleCount}` : "\u{1F50D} Filter"
+        text: ruleCount > 0 ? `\u{1F50D} ${t("nav.filter")} \xB7 ${ruleCount}` : `\u{1F50D} ${t("nav.filter")}`
       });
       if (this.showFilterPanel) {
         filterBtn.style.backgroundColor = "var(--background-modifier-border-hover)";
@@ -7545,7 +8540,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         const modal = new TaskEditModal(this.app, null, defaultDateStr, async (data) => {
           const targetFilePath = getTargetTaskFilePath(this.app, this.plugin.settings, data.date || defaultDateStr);
           await createNewTaskInFile2(this.app, targetFilePath, data.text, data.date, data.startTime, data.endTime, data.statusChar, data.priority);
-          new import_obsidian6.Notice("New task added successfully.");
+          new import_obsidian6.Notice(t("notice.taskAdded"));
           await this.refreshTasks();
         });
         modal.open();
@@ -7569,7 +8564,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     if (this instanceof DayPlannerBaseView && !this.useCompactLayout() && this.plugin.settings.showShortcutButton !== false) {
       const helpBtn = headerActions.createEl("button", {
         cls: "dp-help-btn",
-        attr: { "aria-label": "Keyboard Shortcuts (?)" }
+        attr: { "aria-label": t("nav.shortcuts") }
       });
       setFirstIcon(helpBtn, ["circle-help", "help-circle"]);
       if (!helpBtn.querySelector("svg"))
@@ -7580,7 +8575,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       const view = this;
       const drawerBtn = headerActions.createEl("button", {
         cls: `dp-drawer-toggle${view.isSideDrawerOpen() ? " is-active" : ""}`,
-        attr: { "aria-label": "Toggle side drawer (S)" }
+        attr: { "aria-label": t("nav.toggleDrawer") }
       });
       setFirstIcon(drawerBtn, ["panel-right", "sidebar-right", "layout-sidebar-right"]);
       drawerBtn.addEventListener("click", () => void view.toggleSideDrawer());
@@ -7649,7 +8644,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     const now = window.moment();
     const todayStr = now.format("YYYY-MM-DD");
     const currentMinutes = now.hour() * 60 + now.minute();
-    const todayTasks = this.tasks.filter((t) => t.date === todayStr && t.startTime && t.endTime);
+    const todayTasks = this.tasks.filter((t2) => t2.date === todayStr && t2.startTime && t2.endTime);
     let activeTask = null;
     let progressPercent = 0;
     let minsRemaining = 0;
@@ -7910,7 +8905,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           primaryDateStr = gcalEvent.dateStr;
       }
     } else {
-      const primaryItem = this.tasks.find((t) => t.id === primaryTaskId);
+      const primaryItem = this.tasks.find((t2) => t2.id === primaryTaskId);
       if (primaryItem && primaryItem.startTime) {
         const [sh, sm] = primaryItem.startTime.split(":").map(Number);
         primaryItemStartMin = sh * 60 + sm;
@@ -7926,7 +8921,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     let taskUpdateCount = 0;
     let gcalUpdateCount = 0;
     for (const taskId of this.selectedTaskIds) {
-      const task = this.tasks.find((t) => t.id === taskId);
+      const task = this.tasks.find((t2) => t2.id === taskId);
       if (isLockedTask(task))
         continue;
       if (task && task.startTime && task.endTime) {
@@ -8120,7 +9115,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
   }
   renderDailyTimeline(parent) {
     const dateStr = this.currentDate.format("YYYY-MM-DD");
-    const dayTasks = this.tasks.filter((t) => t.date === dateStr);
+    const dayTasks = this.tasks.filter((t2) => t2.date === dateStr);
     const dayGCal = this.plugin.settings.enableGoogleCalendar ? this.getCalendarEventsForDate(dateStr) : [];
     const hourHeight = this.getHourHeight();
     const ratio = hourHeight / 60;
@@ -8174,7 +9169,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         const targetFilePath = activeFile && activeFile.extension === "md" ? activeFile.path : this.plugin.settings.defaultTaskFile;
         const modal = new TaskEditModal(this.app, null, dateStr, async (data) => {
           await createNewTaskInFile2(this.app, targetFilePath, data.text, data.date, data.startTime, data.endTime, data.statusChar, data.priority);
-          new import_obsidian6.Notice("New task added successfully.");
+          new import_obsidian6.Notice(t("notice.taskAdded"));
           await this.refreshTasks();
         }, startTimeStr, endTimeStr);
         modal.open();
@@ -8214,19 +9209,19 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       this.registerInterval(intervalId);
     }
     const timedItems = [];
-    dayTasks.filter((t) => t.startTime && t.endTime).forEach((t) => {
-      const [sh, sm] = t.startTime.split(":").map(Number);
-      const [eh, em] = t.endTime.split(":").map(Number);
+    dayTasks.filter((t2) => t2.startTime && t2.endTime).forEach((t2) => {
+      const [sh, sm] = t2.startTime.split(":").map(Number);
+      const [eh, em] = t2.endTime.split(":").map(Number);
       timedItems.push({
         type: "task",
-        refId: t.id,
-        text: t.text,
+        refId: t2.id,
+        text: t2.text,
         startMin: sh * 60 + sm,
         endMin: eh * 60 + em,
-        completed: t.completed,
-        taskRef: t,
-        startTime: t.startTime,
-        endTime: t.endTime
+        completed: t2.completed,
+        taskRef: t2,
+        startTime: t2.startTime,
+        endTime: t2.endTime
       });
     });
     dayGCal.filter((e) => !e.isAllDay && e.startTimeStr && e.endTimeStr).forEach((e) => {
@@ -8452,12 +9447,12 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         console.error("Daily drop error:", err);
       }
     });
-    const untimedTasks = dayTasks.filter((t) => !t.startTime || !t.endTime);
+    const untimedTasks = dayTasks.filter((t2) => !t2.startTime || !t2.endTime);
     const untimedAllDayGCal = dayGCal.filter((e) => e.isAllDay);
     if (untimedTasks.length > 0 || untimedAllDayGCal.length > 0) {
       const allDaySection = parent.createDiv({ cls: "dp-daily-allday" });
       parent.insertBefore(allDaySection, timelineWrapper);
-      allDaySection.createDiv({ cls: "dp-allday-label", text: "All Day" });
+      allDaySection.createDiv({ cls: "dp-allday-label", text: t("common.allDay") });
       const listEl = allDaySection.createDiv({ cls: "dp-allday-cell" });
       untimedAllDayGCal.forEach((e) => this.renderAllDayEventChip(e, dateStr, listEl));
       untimedTasks.sort((a, b) => a.text.localeCompare(b.text));
@@ -8497,12 +9492,12 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     const hoursCount = endHour - startHour;
     const ratio = hourHeight / 60;
     const tasksByDate = /* @__PURE__ */ new Map();
-    this.tasks.forEach((t) => {
-      if (t.date) {
-        if (!tasksByDate.has(t.date)) {
-          tasksByDate.set(t.date, []);
+    this.tasks.forEach((t2) => {
+      if (t2.date) {
+        if (!tasksByDate.has(t2.date)) {
+          tasksByDate.set(t2.date, []);
         }
-        tasksByDate.get(t.date).push(t);
+        tasksByDate.get(t2.date).push(t2);
       }
     });
     const gcalByDate = /* @__PURE__ */ new Map();
@@ -8531,13 +9526,13 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     }
     const allDayGrid = container.createDiv({ cls: "dp-weekly-allday-grid" });
     allDayGrid.style.gridTemplateColumns = dayColumnTemplate;
-    allDayGrid.createDiv({ cls: "dp-allday-label", text: "All Day" });
+    allDayGrid.createDiv({ cls: "dp-allday-label", text: t("common.allDay") });
     for (let i = 0; i < daysCount; i++) {
       const loopDay = startOfWeek.clone().add(i, "days");
       const loopDayStr = loopDay.format("YYYY-MM-DD");
       const dayTasks = tasksByDate.get(loopDayStr) || [];
       const dayGCal = gcalByDate.get(loopDayStr) || [];
-      const untimedTasks = dayTasks.filter((t) => !t.startTime || !t.endTime);
+      const untimedTasks = dayTasks.filter((t2) => !t2.startTime || !t2.endTime);
       const untimedAllDayGCal = dayGCal.filter((e) => e.isAllDay);
       const cell = allDayGrid.createDiv({ cls: `dp-allday-cell${weekendCls(loopDay)}` });
       untimedAllDayGCal.forEach((e) => this.renderAllDayEventChip(e, loopDayStr, cell));
@@ -8599,7 +9594,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           const modal = new TaskEditModal(this.app, null, loopDayStr, async (data) => {
             const targetFilePath = getTargetTaskFilePath(this.app, this.plugin.settings, data.date || loopDayStr);
             await createNewTaskInFile2(this.app, targetFilePath, data.text, data.date, data.startTime, data.endTime, data.statusChar, data.priority);
-            new import_obsidian6.Notice("New task added successfully.");
+            new import_obsidian6.Notice(t("notice.taskAdded"));
             await this.refreshTasks();
           }, startTimeStr, endTimeStr);
           modal.open();
@@ -8656,19 +9651,19 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         this.registerInterval(intervalId);
       }
       const timedItems = [];
-      dayTasks.filter((t) => t.startTime && t.endTime).forEach((t) => {
-        const [sh, sm] = t.startTime.split(":").map(Number);
-        const [eh, em] = t.endTime.split(":").map(Number);
+      dayTasks.filter((t2) => t2.startTime && t2.endTime).forEach((t2) => {
+        const [sh, sm] = t2.startTime.split(":").map(Number);
+        const [eh, em] = t2.endTime.split(":").map(Number);
         timedItems.push({
           type: "task",
-          refId: t.id,
-          text: t.text,
+          refId: t2.id,
+          text: t2.text,
           startMin: sh * 60 + sm,
           endMin: eh * 60 + em,
-          completed: t.completed,
-          taskRef: t,
-          startTime: t.startTime,
-          endTime: t.endTime
+          completed: t2.completed,
+          taskRef: t2,
+          startTime: t2.startTime,
+          endTime: t2.endTime
         });
       });
       dayGCal.filter((e) => !e.isAllDay && e.startTimeStr && e.endTimeStr).forEach((e) => {
@@ -8915,12 +9910,12 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     const gridStartDate = startOfMonth.clone().subtract(startDayOfWeek, "days");
     grid.style.setProperty("--dp-week-count", String(totalWeeks));
     const tasksByDate = /* @__PURE__ */ new Map();
-    this.tasks.forEach((t) => {
-      if (t.date) {
-        if (!tasksByDate.has(t.date)) {
-          tasksByDate.set(t.date, []);
+    this.tasks.forEach((t2) => {
+      if (t2.date) {
+        if (!tasksByDate.has(t2.date)) {
+          tasksByDate.set(t2.date, []);
         }
-        tasksByDate.get(t.date).push(t);
+        tasksByDate.get(t2.date).push(t2);
       }
     });
     const gcalByDate = /* @__PURE__ */ new Map();
@@ -9123,16 +10118,16 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     headerActions.prepend(toggleRow);
     const kanbanToggle = toggleRow.createEl("button", {
       cls: `dp-board-toggle-btn ${this.kanbanViewMode === "kanban" ? "active" : ""}`,
-      attr: { title: "Standard Kanban", "aria-label": "Kanban" }
+      attr: { title: t("board.kanbanTitle"), "aria-label": t("board.kanban") }
     });
     kanbanToggle.createSpan({ cls: "dp-btn-icon", text: "\u{1F5C2}\uFE0F" });
-    kanbanToggle.createSpan({ cls: "dp-btn-label", text: " Kanban" });
+    kanbanToggle.createSpan({ cls: "dp-btn-label", text: ` ${t("board.kanban")}` });
     const priorityToggle = toggleRow.createEl("button", {
       cls: `dp-board-toggle-btn ${this.kanbanViewMode === "priority" ? "active" : ""}`,
-      attr: { title: "Priority Focus", "aria-label": "Priority" }
+      attr: { title: t("board.priorityTitle"), "aria-label": t("common.priority") }
     });
     priorityToggle.createSpan({ cls: "dp-btn-icon", text: "\u{1F3AF}" });
-    priorityToggle.createSpan({ cls: "dp-btn-label", text: " Priority" });
+    priorityToggle.createSpan({ cls: "dp-btn-label", text: ` ${t("common.priority")}` });
     const switchMode = (mode) => {
       if (this.kanbanViewMode === mode)
         return;
@@ -9208,33 +10203,33 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     const columns = [
       {
         id: "undated",
-        title: "Undated",
-        filter: (t) => t.statusChar !== "x" && t.statusChar !== "-" && t.date === null
+        title: t("board.undated"),
+        filter: (t2) => t2.statusChar !== "x" && t2.statusChar !== "-" && t2.date === null
       },
       {
         id: "overdue",
-        title: "Overdue",
-        filter: (t) => t.statusChar !== "x" && t.statusChar !== "-" && t.date !== null && t.date < todayStr
+        title: t("board.overdue"),
+        filter: (t2) => t2.statusChar !== "x" && t2.statusChar !== "-" && t2.date !== null && t2.date < todayStr
       },
       {
         id: "today",
-        title: "Today",
-        filter: (t) => t.statusChar !== "x" && t.statusChar !== "-" && t.date === todayStr
+        title: t("common.today"),
+        filter: (t2) => t2.statusChar !== "x" && t2.statusChar !== "-" && t2.date === todayStr
       },
       {
         id: "tomorrow",
-        title: "Tomorrow",
-        filter: (t) => t.statusChar !== "x" && t.statusChar !== "-" && t.date === tomorrowStr
+        title: t("common.tomorrow"),
+        filter: (t2) => t2.statusChar !== "x" && t2.statusChar !== "-" && t2.date === tomorrowStr
       },
       {
         id: "future",
-        title: "Future",
-        filter: (t) => t.statusChar !== "x" && t.statusChar !== "-" && t.date !== null && t.date > tomorrowStr
+        title: t("board.future"),
+        filter: (t2) => t2.statusChar !== "x" && t2.statusChar !== "-" && t2.date !== null && t2.date > tomorrowStr
       },
       {
         id: "completed",
-        title: "Completed",
-        filter: (t) => t.statusChar === "x" || t.statusChar === "-"
+        title: t("board.completed"),
+        filter: (t2) => t2.statusChar === "x" || t2.statusChar === "-"
       }
     ];
     if (!this.collapsedColumns) {
@@ -9401,7 +10396,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         const taskId = e.dataTransfer?.getData("text/plain");
         if (!taskId)
           return;
-        const targetTask = this.tasks.find((t) => t.id === taskId);
+        const targetTask = this.tasks.find((t2) => t2.id === taskId);
         if (!targetTask)
           return;
         let dateUpdate = targetTask.date;
@@ -9454,15 +10449,15 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
   }
   renderPriorityFocusBoard(board) {
     const columns = [
-      { id: "highest", title: "Highest \u{1F53A}", priority: "highest" },
-      { id: "high", title: "High \u23EB", priority: "high" },
-      { id: "medium", title: "Medium \u{1F53C}", priority: "medium" },
-      { id: "normal", title: "Normal \u{1F7E2}", priority: "normal" },
-      { id: "low", title: "Low \u{1F53D}", priority: "low" },
-      { id: "lowest", title: "Lowest \u23EC", priority: "lowest" }
+      { id: "highest", title: `${t("priority.highest")} \u{1F53A}`, priority: "highest" },
+      { id: "high", title: `${t("priority.high")} \u23EB`, priority: "high" },
+      { id: "medium", title: `${t("priority.medium")} \u{1F53C}`, priority: "medium" },
+      { id: "normal", title: `${t("priority.normal")} \u{1F7E2}`, priority: "normal" },
+      { id: "low", title: `${t("priority.low")} \u{1F53D}`, priority: "low" },
+      { id: "lowest", title: `${t("priority.lowest")} \u23EC`, priority: "lowest" }
     ];
     const phone = this.useCompactLayout();
-    const openTasksOf = (col) => this.tasks.filter((t) => (t.statusChar === " " || t.statusChar === "/") && t.priority === col.priority);
+    const openTasksOf = (col) => this.tasks.filter((t2) => (t2.statusChar === " " || t2.statusChar === "/") && t2.priority === col.priority);
     this.pickPhoneBoardColumns(board, columns, (col) => openTasksOf(col).length).forEach((col) => {
       const colTasks = openTasksOf(col);
       colTasks.sort(compareTasks);
@@ -9564,7 +10559,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
           if (task.statusChar === "/") {
             meta.createDiv({
               cls: "dp-badge",
-              text: "In Progress \u26A1"
+              text: `${t("status.inProgress")} \u26A1`
             });
           }
           card.addEventListener("click", (e) => {
@@ -9613,7 +10608,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
         const taskId = e.dataTransfer?.getData("text/plain");
         if (!taskId)
           return;
-        const targetTask = this.tasks.find((t) => t.id === taskId);
+        const targetTask = this.tasks.find((t2) => t2.id === taskId);
         if (!targetTask)
           return;
         const updated = await updateTaskInFile3(this.app, targetTask, {
@@ -9667,7 +10662,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       filteredTasks = filteredTasks.filter((task) => matchFilterGroup(task, self.filters));
     }
     if (self.listSearchQuery) {
-      filteredTasks = filteredTasks.filter((t) => t.text.toLowerCase().includes(self.listSearchQuery) || t.filePath.toLowerCase().includes(self.listSearchQuery));
+      filteredTasks = filteredTasks.filter((t2) => t2.text.toLowerCase().includes(self.listSearchQuery) || t2.filePath.toLowerCase().includes(self.listSearchQuery));
     }
     let filteredEvents = this.getCalendarEvents();
     if (self.listSearchQuery) {
@@ -9970,18 +10965,18 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       this.renderPhoneDateStrip(header);
     const tabsContainer = phone ? rootEl.createDiv({ cls: "dp-tabs dp-bottom-nav" }) : header.createDiv({ cls: "dp-tabs" });
     const tabs = phone ? [
-      { key: "daily", label: "Daily", icon: "calendar-clock" },
-      { key: "multiDay", label: "2-Day View", icon: "calendar-range" },
-      { key: "monthly", label: "Monthly", icon: "calendar-days" },
-      { key: "board", label: "Board", icon: "layout-dashboard" },
-      { key: "list", label: "List", icon: "list" }
+      { key: "daily", label: t("view.daily"), icon: "calendar-clock" },
+      { key: "multiDay", label: t("view.twoDay"), icon: "calendar-range" },
+      { key: "monthly", label: t("view.monthly"), icon: "calendar-days" },
+      { key: "board", label: t("view.board"), icon: "layout-dashboard" },
+      { key: "list", label: t("view.list"), icon: "list" }
     ] : [
-      { key: "daily", label: "Daily Timeline" },
-      { key: "multiDay", label: `${this.plugin.settings.nDayViewDays || 4}-day View` },
-      { key: "weekly", label: "Weekly View" },
-      { key: "monthly", label: "Monthly Calendar" },
-      { key: "board", label: "Board" },
-      { key: "list", label: "List View" }
+      { key: "daily", label: t("view.dailyTimeline") },
+      { key: "multiDay", label: t("view.nDay", { n: this.plugin.settings.nDayViewDays || 4 }) },
+      { key: "weekly", label: t("view.weekly") },
+      { key: "monthly", label: t("view.monthlyCalendar") },
+      { key: "board", label: t("view.board") },
+      { key: "list", label: t("view.listView") }
     ];
     tabs.forEach((tab) => {
       if (tab.key === "multiDay" && !phone) {
@@ -10004,7 +10999,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
             opt.selected = true;
           }
         }
-        tabEl.createSpan({ text: "-day View" });
+        tabEl.createSpan({ text: t("view.nDaySuffix") });
         select.addEventListener("change", async (e) => {
           const val = parseInt(select.value, 10);
           this.plugin.settings.nDayViewDays = val;
@@ -10110,10 +11105,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       };
       const day = (offset) => moment().add(offset, "days").format("YYYY-MM-DD");
       const label = (offset) => moment().add(offset, "days").format("ddd, MMM D");
-      addAction("Today", `Move to today (${label(0)})`, () => this.moveTasksToDate([task], day(0)));
-      addAction("Tmrw", `Move to tomorrow (${label(1)})`, () => this.moveTasksToDate([task], day(1)));
-      addAction("+1 wk", `Move to next week (${label(7)})`, () => this.moveTasksToDate([task], day(7)));
-      addAction("Undate", "Clear the date (move to Undated)", () => this.unscheduleTasks([task]));
+      addAction(t("common.today"), t("drawer.card.moveToday", { date: label(0) }), () => this.moveTasksToDate([task], day(0)));
+      addAction(t("drawer.card.tomorrow"), t("drawer.card.moveTomorrow", { date: label(1) }), () => this.moveTasksToDate([task], day(1)));
+      addAction(t("drawer.card.nextWeek"), t("drawer.card.moveNextWeek", { date: label(7) }), () => this.moveTasksToDate([task], day(7)));
+      addAction(t("drawer.card.undate"), t("drawer.card.undateTooltip"), () => this.unscheduleTasks([task]));
     }
     this.registerMouseDrag(card, { kind: "task", task, origin: section });
   }
@@ -10526,8 +11521,8 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
     if (this.filterDismissCleanup)
       return;
     const doc = this.containerEl.ownerDocument;
-    const inPopup = (t) => t instanceof Element && !!t.closest(".modal-container, .menu, .suggestion-container");
-    const inBlock = (t) => t instanceof Node && this.containerEl.contains(t);
+    const inPopup = (t2) => t2 instanceof Element && !!t2.closest(".modal-container, .menu, .suggestion-container");
+    const inBlock = (t2) => t2 instanceof Node && this.containerEl.contains(t2);
     const onPointerDown = (e) => {
       if (!inBlock(e.target) && !inPopup(e.target))
         this.closeFilterPanel();
@@ -10736,7 +11731,7 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
       cls: `dp-filter-chip${this.filterEditingId === rule.id ? " is-editing" : ""}`,
       attr: { "data-rule-id": rule.id, role: "button", tabindex: "0", "aria-label": `${describeFilterRule(rule)} (click to edit)` }
     });
-    setFirstIcon(chip.createSpan({ cls: "dp-filter-chip-icon" }), FILTER_TYPES.find((t) => t.type === rule.type)?.icons ?? ["filter"]);
+    setFirstIcon(chip.createSpan({ cls: "dp-filter-chip-icon" }), FILTER_TYPES.find((t2) => t2.type === rule.type)?.icons ?? ["filter"]);
     chip.createSpan({ cls: "dp-filter-chip-label", text: describeFilterRule(rule) });
     const toggleEditor = () => {
       this.filterEditingId = this.filterEditingId === rule.id ? null : rule.id;
@@ -10770,7 +11765,7 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
         this.filterEditingId = node.id;
       this.onFilterChanged(true);
     };
-    FILTER_TYPES.forEach((t) => menu.addItem((item) => item.setTitle(t.label).setIcon(t.icons[0]).onClick(() => add(newFilterRule(t.type)))));
+    FILTER_TYPES.forEach((t2) => menu.addItem((item) => item.setTitle(t2.label).setIcon(t2.icons[0]).onClick(() => add(newFilterRule(t2.type)))));
     menu.addSeparator();
     menu.addItem((item) => item.setTitle("Group (match any of\u2026)").setIcon("list").onClick(() => add({ kind: "group", id: randomFilterId(), mode: "any", children: [] })));
     menu.showAtMouseEvent(e);
@@ -10783,7 +11778,7 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
     const icon = chip.querySelector(".dp-filter-chip-icon");
     if (icon) {
       icon.empty();
-      setFirstIcon(icon, FILTER_TYPES.find((t) => t.type === rule.type)?.icons ?? ["filter"]);
+      setFirstIcon(icon, FILTER_TYPES.find((t2) => t2.type === rule.type)?.icons ?? ["filter"]);
     }
     chip.setAttr("aria-label", `${describeFilterRule(rule)} (click to edit)`);
   }
@@ -10794,9 +11789,9 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
       this.onFilterChanged();
     };
     const typeSelect = row.createEl("select", { cls: "dropdown", attr: { "aria-label": "Filter by" } });
-    FILTER_TYPES.forEach((t) => {
-      const opt = typeSelect.createEl("option", { value: t.type, text: t.label });
-      if (t.type === rule.type)
+    FILTER_TYPES.forEach((t2) => {
+      const opt = typeSelect.createEl("option", { value: t2.type, text: t2.label });
+      if (t2.type === rule.type)
         opt.selected = true;
     });
     const opSelect = row.createEl("select", { cls: "dropdown", attr: { "aria-label": "Condition" } });
@@ -10965,12 +11960,12 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
     this.renderNavHeader(header, false);
     const tabsContainer = header.createDiv({ cls: "dp-tabs" });
     const tabs = [
-      { key: "daily", label: "Daily Timeline" },
-      { key: "multiDay", label: `${this.plugin.settings.nDayViewDays || 4}-day View` },
-      { key: "weekly", label: "Weekly View" },
-      { key: "monthly", label: "Monthly Calendar" },
-      { key: "board", label: "Board" },
-      { key: "list", label: "List View" }
+      { key: "daily", label: t("view.dailyTimeline") },
+      { key: "multiDay", label: t("view.nDay", { n: this.plugin.settings.nDayViewDays || 4 }) },
+      { key: "weekly", label: t("view.weekly") },
+      { key: "monthly", label: t("view.monthlyCalendar") },
+      { key: "board", label: t("view.board") },
+      { key: "list", label: t("view.listView") }
     ];
     tabs.forEach((tab) => {
       if (tab.key === "multiDay") {
@@ -10995,7 +11990,7 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
             opt.selected = true;
           }
         }
-        tabEl.createSpan({ text: "-day View" });
+        tabEl.createSpan({ text: t("view.nDaySuffix") });
         select.addEventListener("change", async (e) => {
           const val = parseInt(select.value, 10);
           this.plugin.settings.nDayViewDays = val;
@@ -11064,11 +12059,11 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
   }
   createSettingsTabs(container) {
     const tabs = [
-      { id: "general", label: "\u2699\uFE0F General" },
-      { id: "timeline", label: "\u23F1\uFE0F Timeline" },
-      { id: "gcal", label: "\u2601\uFE0F Google Calendar" },
-      { id: "reminders", label: "\u{1F514} Reminders" },
-      { id: "display", label: "\u{1F4F1} Display" }
+      { id: "general", label: `\u2699\uFE0F ${t("settings.tab.general")}` },
+      { id: "timeline", label: `\u23F1\uFE0F ${t("settings.tab.timeline")}` },
+      { id: "gcal", label: `\u2601\uFE0F ${t("settings.tab.gcal")}` },
+      { id: "reminders", label: `\u{1F514} ${t("settings.tab.reminders")}` },
+      { id: "display", label: `\u{1F4F1} ${t("settings.tab.display")}` }
     ];
     const bar = container.createDiv({ cls: "dp-settings-tabs", attr: { role: "tablist" } });
     const panels = {};
@@ -11090,7 +12085,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
     tabs.forEach((tab) => {
       panels[tab.id] = container.createDiv({ cls: "dp-settings-panel", attr: { role: "tabpanel" } });
     });
-    activate(tabs.some((t) => t.id === this.activeSettingsTab) ? this.activeSettingsTab : "general");
+    activate(tabs.some((t2) => t2.id === this.activeSettingsTab) ? this.activeSettingsTab : "general");
     return panels;
   }
   addPathSetting(container, name, desc, placeholder, kind, value, save) {
@@ -11100,13 +12095,13 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
     });
   }
   renderExclusionFilter(container) {
-    new import_obsidian7.Setting(container).setName("Excluded Files & Folders").setDesc('Notes matched here are not scanned for tasks. Pick a folder or note from the suggestions, or type a pattern: * stays within one folder, ** crosses folders (e.g. **/Templates). "Keep" re-includes something inside an excluded folder.').setClass("dp-path-filter-setting");
+    new import_obsidian7.Setting(container).setName(t("settings.exclusion.name")).setDesc(t("settings.exclusion.desc")).setClass("dp-path-filter-setting");
     const box = container.createDiv({ cls: "dp-path-filter" });
     const inputRow = box.createDiv({ cls: "dp-path-filter-input-row" });
-    const modeToggle = inputRow.createDiv({ cls: "dp-path-filter-mode", attr: { role: "group", "aria-label": "Rule type" } });
+    const modeToggle = inputRow.createDiv({ cls: "dp-path-filter-mode", attr: { role: "group", "aria-label": t("settings.exclusion.ruleType") } });
     const input = inputRow.createEl("input", {
       cls: "dp-path-filter-input",
-      attr: { type: "text", placeholder: "Folder, note or pattern\u2026", spellcheck: "false" }
+      attr: { type: "text", placeholder: t("settings.exclusion.placeholder"), spellcheck: "false" }
     });
     const chips = box.createDiv({ cls: "dp-path-chips" });
     const summary = box.createDiv({ cls: "dp-path-filter-summary" });
@@ -11136,7 +12131,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
       ["exclude", "keep"].forEach((mode) => {
         const btn = modeToggle.createEl("button", {
           cls: `dp-path-filter-mode-btn${this.exclusionInputMode === mode ? " is-active" : ""}`,
-          text: mode === "exclude" ? "Exclude" : "Keep"
+          text: mode === "exclude" ? t("settings.exclusion.exclude") : t("settings.exclusion.keep")
         });
         btn.addEventListener("click", () => {
           this.exclusionInputMode = mode;
@@ -11149,7 +12144,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
       chips.empty();
       const list = rules();
       if (list.length === 0) {
-        chips.createSpan({ cls: "dp-path-chips-empty", text: "No rules: every note in the vault is scanned." });
+        chips.createSpan({ cls: "dp-path-chips-empty", text: t("settings.exclusion.empty") });
       }
       list.forEach((rule, index) => {
         const keep = rule.startsWith("!");
@@ -11158,16 +12153,16 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
         const icon = path.includes("*") ? "asterisk" : target instanceof import_obsidian7.TFolder || path.endsWith("/") ? "folder" : target instanceof import_obsidian7.TFile ? "file-text" : "help-circle";
         const chip = chips.createDiv({
           cls: `dp-path-chip${keep ? " is-keep" : ""}${!target && !path.includes("*") ? " is-missing" : ""}`,
-          attr: { "aria-label": `${keep ? "Keep" : "Exclude"}: ${path}${!target && !path.includes("*") ? " (not found in the vault)" : ""} \xB7 click to switch` }
+          attr: { "aria-label": `${keep ? t("settings.exclusion.keep") : t("settings.exclusion.exclude")}: ${path}${!target && !path.includes("*") ? t("settings.exclusion.notFound") : ""} \xB7 ${t("settings.exclusion.clickToSwitch")}` }
         });
-        chip.createSpan({ cls: "dp-path-chip-mode", text: keep ? "Keep" : "Exclude" });
+        chip.createSpan({ cls: "dp-path-chip-mode", text: keep ? t("settings.exclusion.keep") : t("settings.exclusion.exclude") });
         (0, import_obsidian7.setIcon)(chip.createSpan({ cls: "dp-path-chip-icon" }), icon);
         chip.createSpan({ cls: "dp-path-chip-label", text: path });
         chip.addEventListener("click", async () => {
           list[index] = keep ? path : `!${path}`;
           await save();
         });
-        const remove = chip.createEl("button", { cls: "dp-path-chip-remove", attr: { "aria-label": `Remove ${path}` } });
+        const remove = chip.createEl("button", { cls: "dp-path-chip-remove", attr: { "aria-label": t("settings.exclusion.remove", { path }) } });
         (0, import_obsidian7.setIcon)(remove, "x");
         remove.addEventListener("click", async (e) => {
           e.stopPropagation();
@@ -11177,7 +12172,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
       });
       const notes = this.app.vault.getMarkdownFiles().filter((f) => !isSyncConflictPath(f.path));
       const excluded = notes.filter((f) => isExcludedPath(f.path)).length;
-      summary.setText(list.length === 0 ? "" : `Leaving out ${excluded} of ${notes.length} notes.`);
+      summary.setText(list.length === 0 ? "" : t("settings.exclusion.summary", { excluded, total: notes.length }));
     };
     attachPathSuggest(this.app, input, "any", (path) => void addRule(path));
     onEnterSubmit(input, () => void addRule(input.value));
@@ -11188,45 +12183,53 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass("dp-settings");
-    new import_obsidian7.Setting(containerEl).setName("Dayloom Settings").setHeading();
+    new import_obsidian7.Setting(containerEl).setName(t("settings.heading")).setHeading();
     const { general, timeline, gcal, reminders, display: mobileDisplay } = this.createSettingsTabs(containerEl);
-    this.addPathSetting(general, "Default Task File Path", "The default markdown file where tasks will be added when creating them in the planner.", "Day Planner.md", "file", this.plugin.settings.defaultTaskFile, async (value) => {
+    new import_obsidian7.Setting(general).setName("Language / \uC5B8\uC5B4").setDesc(t("settings.language.desc")).addDropdown((dropdown) => dropdown.addOption("auto", "Auto (Obsidian Default) / \uC790\uB3D9 \uAC10\uC9C0").addOption("en", "English").addOption("ko", "\uD55C\uAD6D\uC5B4").addOption("ja", "\u65E5\u672C\u8A9E").addOption("zh", "\u7B80\u4F53\u4E2D\u6587").setValue(this.plugin.settings.language ?? "auto").onChange(async (value) => {
+      this.plugin.settings.language = value;
+      await this.plugin.saveSettings();
+      this.plugin.refreshActiveViews();
+      this.plugin.updateStatusBar();
+      this.display();
+      new import_obsidian7.Notice(t("settings.language.changed"));
+    }));
+    this.addPathSetting(general, t("settings.defaultTaskFile.name"), t("settings.defaultTaskFile.desc"), "Day Planner.md", "file", this.plugin.settings.defaultTaskFile, async (value) => {
       this.plugin.settings.defaultTaskFile = value || "Day Planner.md";
       await this.plugin.saveSettings();
     });
     this.renderExclusionFilter(general);
-    new import_obsidian7.Setting(general).setName("Daily notes").setHeading();
-    this.addPathSetting(general, "Daily Notes Folder Path", "Obsidian folder path for your daily notes. Leave empty for root folder.", "Daily/Journal", "folder", this.plugin.settings.dailyNotesFolder, async (value) => {
+    new import_obsidian7.Setting(general).setName(t("settings.dailyNotes.heading")).setHeading();
+    this.addPathSetting(general, t("settings.dailyFolder.name"), t("settings.dailyFolder.desc"), "Daily/Journal", "folder", this.plugin.settings.dailyNotesFolder, async (value) => {
       this.plugin.settings.dailyNotesFolder = value.trim() || "";
       await this.plugin.saveSettings();
     });
-    new import_obsidian7.Setting(general).setName("Daily Notes File Format").setDesc("File name format for daily notes (Default: YYYY-MM-DD).").addText((text) => text.setPlaceholder("YYYY-MM-DD").setValue(this.plugin.settings.dailyNotesFormat).onChange(async (value) => {
+    new import_obsidian7.Setting(general).setName(t("settings.dailyFormat.name")).setDesc(t("settings.dailyFormat.desc")).addText((text) => text.setPlaceholder("YYYY-MM-DD").setValue(this.plugin.settings.dailyNotesFormat).onChange(async (value) => {
       this.plugin.settings.dailyNotesFormat = value.trim() || "YYYY-MM-DD";
       await this.plugin.saveSettings();
     }));
-    this.addPathSetting(general, "Daily Note Template", "Choose the markdown file in your vault to use as a template for new Daily Notes.", "Templates/Daily.md", "file", this.plugin.settings.dailyNoteTemplate || "", async (value) => {
+    this.addPathSetting(general, t("settings.dailyTemplate.name"), t("settings.dailyTemplate.desc"), "Templates/Daily.md", "file", this.plugin.settings.dailyNoteTemplate || "", async (value) => {
       this.plugin.settings.dailyNoteTemplate = value.trim();
       await this.plugin.saveSettings();
     });
-    new import_obsidian7.Setting(general).setName("Weekly notes").setHeading();
-    this.addPathSetting(general, "Weekly Notes Folder Path", "Obsidian folder path for your weekly notes. Leave empty for root folder.", "Weekly/Plans", "folder", this.plugin.settings.weeklyNotesFolder || "", async (value) => {
+    new import_obsidian7.Setting(general).setName(t("settings.weeklyNotes.heading")).setHeading();
+    this.addPathSetting(general, t("settings.weeklyFolder.name"), t("settings.weeklyFolder.desc"), "Weekly/Plans", "folder", this.plugin.settings.weeklyNotesFolder || "", async (value) => {
       this.plugin.settings.weeklyNotesFolder = value.trim() || "";
       await this.plugin.saveSettings();
     });
-    new import_obsidian7.Setting(general).setName("Weekly Notes File Format").setDesc("File name format for weekly notes (Default: gggg-[W]ww).").addText((text) => text.setPlaceholder("gggg-[W]ww").setValue(this.plugin.settings.weeklyNotesFormat || "gggg-[W]ww").onChange(async (value) => {
+    new import_obsidian7.Setting(general).setName(t("settings.weeklyFormat.name")).setDesc(t("settings.weeklyFormat.desc")).addText((text) => text.setPlaceholder("gggg-[W]ww").setValue(this.plugin.settings.weeklyNotesFormat || "gggg-[W]ww").onChange(async (value) => {
       this.plugin.settings.weeklyNotesFormat = value.trim() || "gggg-[W]ww";
       await this.plugin.saveSettings();
     }));
-    this.addPathSetting(general, "Weekly Note Template", "Choose the markdown file in your vault to use as a template for new Weekly Notes.", "Templates/Weekly.md", "file", this.plugin.settings.weeklyNoteTemplate || "", async (value) => {
+    this.addPathSetting(general, t("settings.weeklyTemplate.name"), t("settings.weeklyTemplate.desc"), "Templates/Weekly.md", "file", this.plugin.settings.weeklyNoteTemplate || "", async (value) => {
       this.plugin.settings.weeklyNoteTemplate = value.trim();
       await this.plugin.saveSettings();
     });
-    new import_obsidian7.Setting(timeline).setName("N-day view length").setDesc("Number of consecutive days to show in the N-day calendar view.").addSlider((slider) => slider.setLimits(2, 14, 1).setDynamicTooltip().setValue(this.plugin.settings.nDayViewDays || 4).onChange(async (value) => {
+    new import_obsidian7.Setting(timeline).setName(t("settings.nDay.name")).setDesc(t("settings.nDay.desc")).addSlider((slider) => slider.setLimits(2, 14, 1).setDynamicTooltip().setValue(this.plugin.settings.nDayViewDays || 4).onChange(async (value) => {
       this.plugin.settings.nDayViewDays = value;
       await this.plugin.saveSettings();
       this.plugin.refreshActiveViews();
     }));
-    new import_obsidian7.Setting(mobileDisplay).setName("Hide Inline Metadata Fields").setDesc("Hide bracketed inline fields such as [gcalId:: ...] from task titles in the planner, and the [gcalId:: ...] sync tag in Reading View and Live Preview. Files keep them; only the display is cleaned.").addToggle((toggle) => toggle.setValue(this.plugin.settings.hideBracketMetadata ?? true).onChange(async (value) => {
+    new import_obsidian7.Setting(mobileDisplay).setName(t("settings.hideMetadata.name")).setDesc(t("settings.hideMetadata.desc")).addToggle((toggle) => toggle.setValue(this.plugin.settings.hideBracketMetadata ?? true).onChange(async (value) => {
       this.plugin.settings.hideBracketMetadata = value;
       await this.plugin.saveSettings();
       this.plugin.refreshActiveViews();
@@ -11234,62 +12237,62 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
       document.body.toggleClass("dp-hide-gcal-id", value);
       this.app.workspace.updateOptions();
     }));
-    new import_obsidian7.Setting(mobileDisplay).setName("Show shortcut button in header").setDesc("Show the keyboard shortcut (?) button in the timeline header. The ? and h keys open the shortcut list either way.").addToggle((toggle) => toggle.setValue(this.plugin.settings.showShortcutButton ?? true).onChange(async (value) => {
+    new import_obsidian7.Setting(mobileDisplay).setName(t("settings.shortcutButton.name")).setDesc(t("settings.shortcutButton.desc")).addToggle((toggle) => toggle.setValue(this.plugin.settings.showShortcutButton ?? true).onChange(async (value) => {
       this.plugin.settings.showShortcutButton = value;
       await this.plugin.saveSettings();
       this.plugin.refreshActiveViews();
     }));
-    new import_obsidian7.Setting(reminders).setName("Reminder Type").setDesc("How to alert you before a task or event starts. Auto shows an in-app notice while Obsidian is focused and a system notification otherwise.").addDropdown((dropdown) => dropdown.addOption("off", "Off").addOption("auto", "Auto").addOption("notice", "In-app notice").addOption("system", "System notification").setValue(this.plugin.settings.reminderType ?? "auto").onChange(async (value) => {
+    new import_obsidian7.Setting(reminders).setName(t("settings.reminderType.name")).setDesc(t("settings.reminderType.desc")).addDropdown((dropdown) => dropdown.addOption("off", t("settings.reminderType.off")).addOption("auto", t("settings.reminderType.auto")).addOption("notice", t("settings.reminderType.notice")).addOption("system", t("settings.reminderType.system")).setValue(this.plugin.settings.reminderType ?? "auto").onChange(async (value) => {
       this.plugin.settings.reminderType = value;
       await this.plugin.saveSettings();
       if (value === "system" || value === "auto")
         this.plugin.requestNotificationPermission();
     }));
-    new import_obsidian7.Setting(reminders).setName("Reminder Timing").setDesc("When to alert you relative to the start time of a task or event.").addDropdown((dropdown) => dropdown.addOption("0", "At event start time").addOption("5", "5 minutes before").addOption("10", "10 minutes before").addOption("15", "15 minutes before").addOption("30", "30 minutes before").setValue(String(this.plugin.settings.reminderOffsetMinutes ?? 0)).onChange(async (value) => {
+    new import_obsidian7.Setting(reminders).setName(t("settings.reminderTiming.name")).setDesc(t("settings.reminderTiming.desc")).addDropdown((dropdown) => dropdown.addOption("0", t("settings.reminderTiming.atStart")).addOption("5", t("settings.reminderTiming.before", { n: 5 })).addOption("10", t("settings.reminderTiming.before", { n: 10 })).addOption("15", t("settings.reminderTiming.before", { n: 15 })).addOption("30", t("settings.reminderTiming.before", { n: 30 })).setValue(String(this.plugin.settings.reminderOffsetMinutes ?? 0)).onChange(async (value) => {
       this.plugin.settings.reminderOffsetMinutes = Number(value);
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(reminders).setName("Reminder Sound").setDesc("Play a short two-tone chime with each reminder.").addExtraButton((button) => button.setIcon("volume-2").setTooltip("Play test chime").onClick(() => this.plugin.playReminderChime())).addToggle((toggle) => toggle.setValue(this.plugin.settings.enableReminderSound ?? true).onChange(async (value) => {
+    new import_obsidian7.Setting(reminders).setName(t("settings.reminderSound.name")).setDesc(t("settings.reminderSound.desc")).addExtraButton((button) => button.setIcon("volume-2").setTooltip(t("settings.reminderSound.test")).onClick(() => this.plugin.playReminderChime())).addToggle((toggle) => toggle.setValue(this.plugin.settings.enableReminderSound ?? true).onChange(async (value) => {
       this.plugin.settings.enableReminderSound = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(reminders).setName("Remind for Tasks").setDesc("Send reminders for vault tasks with a start time (\u23F0HH:mm) scheduled for today.").addToggle((toggle) => toggle.setValue(this.plugin.settings.reminderForTasks ?? true).onChange(async (value) => {
+    new import_obsidian7.Setting(reminders).setName(t("settings.remindTasks.name")).setDesc(t("settings.remindTasks.desc")).addToggle((toggle) => toggle.setValue(this.plugin.settings.reminderForTasks ?? true).onChange(async (value) => {
       this.plugin.settings.reminderForTasks = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(reminders).setName("Remind for Google Calendar Events").setDesc("Send reminders for timed Google Calendar events today. All-day events are skipped.").addToggle((toggle) => toggle.setValue(this.plugin.settings.reminderForGCal ?? true).onChange(async (value) => {
+    new import_obsidian7.Setting(reminders).setName(t("settings.remindGCal.name")).setDesc(t("settings.remindGCal.desc")).addToggle((toggle) => toggle.setValue(this.plugin.settings.reminderForGCal ?? true).onChange(async (value) => {
       this.plugin.settings.reminderForGCal = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(mobileDisplay).setName("Haptic Feedback").setDesc("Vibrate briefly when completing tasks, switching tabs or modes, and dragging or resizing timeline items. Only on mobile devices that support vibration.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableMobileHaptics ?? true).onChange(async (value) => {
+    new import_obsidian7.Setting(mobileDisplay).setName(t("settings.haptics.name")).setDesc(t("settings.haptics.desc")).addToggle((toggle) => toggle.setValue(this.plugin.settings.enableMobileHaptics ?? true).onChange(async (value) => {
       this.plugin.settings.enableMobileHaptics = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(timeline).setName("Separate Dayloom and Dayloom Compact Heights").setDesc("Enable this to adjust the zoom (hour height) of Dayloom and Dayloom Compact independently.").addToggle((toggle) => toggle.setValue(this.plugin.settings.separateViewHeights || false).onChange(async (value) => {
+    new import_obsidian7.Setting(timeline).setName(t("settings.separateHeights.name")).setDesc(t("settings.separateHeights.desc")).addToggle((toggle) => toggle.setValue(this.plugin.settings.separateViewHeights || false).onChange(async (value) => {
       this.plugin.settings.separateViewHeights = value;
       await this.plugin.saveSettings();
       this.display();
     }));
     if (this.plugin.settings.separateViewHeights) {
-      new import_obsidian7.Setting(timeline).setName("Timeline Hour Height (Dayloom)").setDesc("Adjust the vertical spacing height (in pixels) for 1 hour on Dayloom timelines. (Default: 60px)").addSlider((slider) => slider.setLimits(30, 180, 5).setValue(this.plugin.settings.timelineHourHeight || 60).setDynamicTooltip().onChange(async (value) => {
+      new import_obsidian7.Setting(timeline).setName(t("settings.hourHeightMain.name")).setDesc(t("settings.hourHeightMain.desc")).addSlider((slider) => slider.setLimits(30, 180, 5).setValue(this.plugin.settings.timelineHourHeight || 60).setDynamicTooltip().onChange(async (value) => {
         this.plugin.settings.timelineHourHeight = value;
         await this.plugin.saveSettings();
         this.plugin.refreshActiveViews();
       }));
-      new import_obsidian7.Setting(timeline).setName("Timeline Hour Height (Dayloom Compact)").setDesc("Adjust the vertical spacing height (in pixels) for 1 hour on Dayloom Compact timelines. (Default: 60px)").addSlider((slider) => slider.setLimits(30, 180, 5).setValue(this.plugin.settings.timelineHourHeightDaily || 60).setDynamicTooltip().onChange(async (value) => {
+      new import_obsidian7.Setting(timeline).setName(t("settings.hourHeightCompact.name")).setDesc(t("settings.hourHeightCompact.desc")).addSlider((slider) => slider.setLimits(30, 180, 5).setValue(this.plugin.settings.timelineHourHeightDaily || 60).setDynamicTooltip().onChange(async (value) => {
         this.plugin.settings.timelineHourHeightDaily = value;
         await this.plugin.saveSettings();
         this.plugin.refreshActiveViews();
       }));
     } else {
-      new import_obsidian7.Setting(timeline).setName("Timeline Hour Height (Synced)").setDesc("Adjust the vertical spacing height (in pixels) for 1 hour on all timelines. (Default: 60px)").addSlider((slider) => slider.setLimits(30, 180, 5).setValue(this.plugin.settings.timelineHourHeight || 60).setDynamicTooltip().onChange(async (value) => {
+      new import_obsidian7.Setting(timeline).setName(t("settings.hourHeightSynced.name")).setDesc(t("settings.hourHeightSynced.desc")).addSlider((slider) => slider.setLimits(30, 180, 5).setValue(this.plugin.settings.timelineHourHeight || 60).setDynamicTooltip().onChange(async (value) => {
         this.plugin.settings.timelineHourHeight = value;
         this.plugin.settings.timelineHourHeightDaily = value;
         await this.plugin.saveSettings();
         this.plugin.refreshActiveViews();
       }));
     }
-    new import_obsidian7.Setting(timeline).setName("Timeline Start Hour").setDesc("The hour at which the daily and weekly timeline starts.").addDropdown((dropdown) => {
+    new import_obsidian7.Setting(timeline).setName(t("settings.startHour.name")).setDesc(t("settings.startHour.desc")).addDropdown((dropdown) => {
       for (let i = 0; i < 24; i++) {
         dropdown.addOption(String(i), `${String(i).padStart(2, "0")}:00`);
       }
@@ -11300,12 +12303,12 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
           await this.plugin.saveSettings();
           this.plugin.refreshActiveViews();
         } else {
-          new import_obsidian7.Notice("Start hour must be before end hour.");
+          new import_obsidian7.Notice(t("settings.startHour.error"));
           dropdown.setValue(String(this.plugin.settings.timelineStartHour));
         }
       });
     });
-    new import_obsidian7.Setting(timeline).setName("Timeline End Hour").setDesc("The hour at which the daily and weekly timeline ends.").addDropdown((dropdown) => {
+    new import_obsidian7.Setting(timeline).setName(t("settings.endHour.name")).setDesc(t("settings.endHour.desc")).addDropdown((dropdown) => {
       for (let i = 1; i <= 24; i++) {
         dropdown.addOption(String(i), `${String(i).padStart(2, "0")}:00`);
       }
@@ -11316,12 +12319,12 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
           await this.plugin.saveSettings();
           this.plugin.refreshActiveViews();
         } else {
-          new import_obsidian7.Notice("End hour must be after start hour.");
+          new import_obsidian7.Notice(t("settings.endHour.error"));
           dropdown.setValue(String(this.plugin.settings.timelineEndHour));
         }
       });
     });
-    new import_obsidian7.Setting(timeline).setName("Default Task Duration (minutes)").setDesc("Length of the time block an untimed task gets when you drag it onto the timeline from the side drawer or an all-day row (end time = start time + this). Any value from 1 to 1440.").addText((text) => {
+    new import_obsidian7.Setting(timeline).setName(t("settings.defaultDuration.name")).setDesc(t("settings.defaultDuration.desc")).addText((text) => {
       text.inputEl.type = "number";
       text.inputEl.min = "1";
       text.inputEl.max = "1440";
@@ -11334,14 +12337,14 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
       });
       text.inputEl.addEventListener("blur", () => text.setValue(String(this.plugin.settings.defaultTaskDuration ?? 60)));
     });
-    new import_obsidian7.Setting(gcal).setName("Enable Google Calendar Integration").setDesc("When enabled, your active Google Calendar events will be fetched and shown alongside tasks.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableGoogleCalendar).onChange(async (value) => {
+    new import_obsidian7.Setting(gcal).setName(t("settings.enableGCal.name")).setDesc(t("settings.enableGCal.desc")).addToggle((toggle) => toggle.setValue(this.plugin.settings.enableGoogleCalendar).onChange(async (value) => {
       this.plugin.settings.enableGoogleCalendar = value;
       await this.plugin.saveSettings();
       this.display();
     }));
     if (this.plugin.settings.enableGoogleCalendar) {
-      new import_obsidian7.Setting(gcal).setName("Task Sync Google Calendar").setDesc("Choose the Google Calendar to synchronize your timed vault tasks with.").addDropdown((dropdown) => {
-        dropdown.addOption("", "Select a calendar...");
+      new import_obsidian7.Setting(gcal).setName(t("settings.taskSyncCal.name")).setDesc(t("settings.taskSyncCal.desc")).addDropdown((dropdown) => {
+        dropdown.addOption("", t("settings.taskSyncCal.select"));
         const enabledCalendars = this.plugin.settings.googleCalendars.filter((c) => c.enabled && c.id);
         enabledCalendars.forEach((cal) => {
           dropdown.addOption(cal.id, cal.name || cal.id);
@@ -11352,27 +12355,27 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
         });
       });
     }
-    new import_obsidian7.Setting(gcal).setName("Google Calendar OAuth 2.0 (sync & editing)").setHeading();
+    new import_obsidian7.Setting(gcal).setName(t("settings.oauth.heading")).setHeading();
     gcal.createEl("p", {
-      text: "To sync calendars (including private ones) and edit/drag events directly in the timeline, you need to configure your custom OAuth 2.0 web application credentials."
+      text: t("settings.oauth.intro")
     });
-    new import_obsidian7.Setting(gcal).setName("Google Client ID").setDesc("OAuth Web Client Application ID.").addText((text) => text.setPlaceholder("xxxx.apps.googleusercontent.com").setValue(this.plugin.settings.googleClientId || "").onChange(async (value) => {
+    new import_obsidian7.Setting(gcal).setName(t("settings.clientId.name")).setDesc(t("settings.clientId.desc")).addText((text) => text.setPlaceholder("xxxx.apps.googleusercontent.com").setValue(this.plugin.settings.googleClientId || "").onChange(async (value) => {
       this.plugin.settings.googleClientId = value.trim();
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(gcal).setName("Google Client Secret").setDesc("OAuth Web Client Secret Key.").addText((text) => text.setPlaceholder("GOCSPX-xxxx").setValue(this.plugin.settings.googleClientSecret || "").onChange(async (value) => {
+    new import_obsidian7.Setting(gcal).setName(t("settings.clientSecret.name")).setDesc(t("settings.clientSecret.desc")).addText((text) => text.setPlaceholder("GOCSPX-xxxx").setValue(this.plugin.settings.googleClientSecret || "").onChange(async (value) => {
       this.plugin.settings.googleClientSecret = value.trim();
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(gcal).setName("Google Refresh Token").setDesc("Offline persistent refresh token for background writing API authorization.").addText((text) => text.setPlaceholder("1//0xxxx").setValue(this.plugin.settings.googleRefreshToken || "").onChange(async (value) => {
+    new import_obsidian7.Setting(gcal).setName(t("settings.refreshToken.name")).setDesc(t("settings.refreshToken.desc")).addText((text) => text.setPlaceholder("1//0xxxx").setValue(this.plugin.settings.googleRefreshToken || "").onChange(async (value) => {
       this.plugin.settings.googleRefreshToken = value.trim();
       await this.plugin.saveSettings();
     }));
     const calHeader = gcal.createDiv();
     calHeader.style.cssText = "margin-top: 24px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;";
-    const h4El = calHeader.createEl("h4", { text: "Google Calendars \u{1F4C5}" });
+    const h4El = calHeader.createEl("h4", { text: t("settings.calendars.heading") });
     h4El.style.cssText = "margin: 0;";
-    const addCalBtn = calHeader.createEl("button", { text: "+ Add Calendar", cls: "mod-cta" });
+    const addCalBtn = calHeader.createEl("button", { text: t("settings.calendars.add"), cls: "mod-cta" });
     addCalBtn.addEventListener("click", async () => {
       this.plugin.settings.googleCalendars.push({
         id: "",
@@ -11387,7 +12390,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
     calsContainer.style.cssText = "display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--background-modifier-border); padding: 12px; border-radius: 6px; background-color: var(--background-secondary-alt);";
     if (this.plugin.settings.googleCalendars.length === 0) {
       calsContainer.createEl("span", {
-        text: 'No Google Calendars configured yet. Click "Add Calendar" to start integrating.'
+        text: t("settings.calendars.empty")
       });
     } else {
       this.plugin.settings.googleCalendars.forEach((cal, index) => {
@@ -11404,7 +12407,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
           cal.enabled = enabledToggle.checked;
           await this.plugin.saveSettings();
         });
-        const nameInput = row.createEl("input", { type: "text", placeholder: "Name (e.g., Work, Personal)" });
+        const nameInput = row.createEl("input", { type: "text", placeholder: t("settings.calendars.namePlaceholder") });
         nameInput.value = cal.name;
         nameInput.style.flex = "1";
         nameInput.style.minWidth = "100px";
@@ -11412,7 +12415,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
           cal.name = nameInput.value;
           await this.plugin.saveSettings();
         });
-        const idInput = row.createEl("input", { type: "text", placeholder: "primary or Google email address" });
+        const idInput = row.createEl("input", { type: "text", placeholder: t("settings.calendars.idPlaceholder") });
         idInput.value = cal.id;
         idInput.style.flex = "2";
         idInput.style.minWidth = "200px";
@@ -11431,7 +12434,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
           cal.color = colorInput.value;
           await this.plugin.saveSettings();
         });
-        const delBtn = row.createEl("button", { text: "Delete", cls: "mod-warning" });
+        const delBtn = row.createEl("button", { text: t("common.delete"), cls: "mod-warning" });
         delBtn.addEventListener("click", async () => {
           this.plugin.settings.googleCalendars.splice(index, 1);
           await this.plugin.saveSettings();
@@ -11439,7 +12442,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
         });
       });
     }
-    new import_obsidian7.Setting(gcal).setName("Local Task Color").setDesc("Color for the highlight borders of your local (vault) tasks, shown alongside the calendar colors above.").addColorPicker((color) => color.setValue(this.plugin.settings.taskColor || "#ff9f1c").onChange(async (value) => {
+    new import_obsidian7.Setting(gcal).setName(t("settings.taskColor.name")).setDesc(t("settings.taskColor.desc")).addColorPicker((color) => color.setValue(this.plugin.settings.taskColor || "#ff9f1c").onChange(async (value) => {
       this.plugin.settings.taskColor = value;
       await this.plugin.saveSettings();
       this.plugin.refreshActiveViews();
@@ -11453,7 +12456,7 @@ function gcalIdHider(isEnabled) {
       this.decorations = this.build(view);
     }
     update(u) {
-      if (u.docChanged || u.viewportChanged || u.selectionSet || u.transactions.some((t) => t.reconfigured)) {
+      if (u.docChanged || u.viewportChanged || u.selectionSet || u.transactions.some((t2) => t2.reconfigured)) {
         this.decorations = this.build(u.view);
       }
     }
@@ -11599,11 +12602,11 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
       name: "Go to Today",
       callback: async () => {
         const active = this.app.workspace.getActiveViewOfType(DayPlannerCombinedView) ?? this.app.workspace.getActiveViewOfType(DayPlannerDailyView);
-        const view = active ?? [VIEW_TYPES.COMBINED, VIEW_TYPES.DAILY].flatMap((t) => this.app.workspace.getLeavesOfType(t)).map((leaf) => leaf.view).find((v) => v instanceof DayPlannerCombinedView || v instanceof DayPlannerDailyView);
+        const view = active ?? [VIEW_TYPES.COMBINED, VIEW_TYPES.DAILY].flatMap((t2) => this.app.workspace.getLeavesOfType(t2)).map((leaf) => leaf.view).find((v) => v instanceof DayPlannerCombinedView || v instanceof DayPlannerDailyView);
         if (view)
           await view.goToToday();
         else
-          new import_obsidian7.Notice("Open a Dayloom view first.");
+          new import_obsidian7.Notice(t("notice.openViewFirst"));
       }
     });
     this.addCommand({
@@ -11622,7 +12625,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
         if (view)
           void view.toggleSideDrawer();
         else
-          new import_obsidian7.Notice("Open Dayloom first.");
+          new import_obsidian7.Notice(t("notice.openDayloomFirst"));
       }
     });
     this.addCommand({
@@ -11681,10 +12684,10 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       if (file instanceof import_obsidian7.TFile && this.tasksCache) {
-        this.tasksCache.forEach((t) => {
-          if (t.filePath === oldPath) {
-            t.filePath = file.path;
-            t.id = `${file.path}:${t.lineNumber}`;
+        this.tasksCache.forEach((t2) => {
+          if (t2.filePath === oldPath) {
+            t2.filePath = file.path;
+            t2.id = `${file.path}:${t2.lineNumber}`;
           }
         });
       }
@@ -11692,7 +12695,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.registerEvent(this.app.vault.on("delete", (file) => {
       if (file instanceof import_obsidian7.TFile && file.extension === "md" && !isSyncConflictPath(file.path)) {
         if (this.tasksCache)
-          this.tasksCache = this.tasksCache.filter((t) => t.filePath !== file.path);
+          this.tasksCache = this.tasksCache.filter((t2) => t2.filePath !== file.path);
         this.requestViewRefresh();
       }
     }));
@@ -11784,7 +12787,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
       await this.ensureTasksCache();
     } else {
       const cache = this.app.metadataCache.getFileCache(file);
-      if (cache && !cache.listItems?.some((item) => item.task !== void 0) && !this.tasksCache.some((t) => t.filePath === file.path))
+      if (cache && !cache.listItems?.some((item) => item.task !== void 0) && !this.tasksCache.some((t2) => t2.filePath === file.path))
         return;
       const fileTasks = [];
       if (!isExcludedPath(file.path)) {
@@ -11795,7 +12798,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
             fileTasks.push(parsed);
         }
       }
-      this.tasksCache = this.tasksCache.filter((t) => t.filePath !== file.path).concat(fileTasks);
+      this.tasksCache = this.tasksCache.filter((t2) => t2.filePath !== file.path).concat(fileTasks);
     }
     this.requestViewRefresh();
   }
@@ -11824,13 +12827,13 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     const due = [];
     if (this.settings.reminderForTasks) {
       try {
-        for (const t of await this.ensureTasksCache()) {
-          if (t.date !== todayStr || !t.startTime || t.statusChar === "x" || t.statusChar === "-")
+        for (const t2 of await this.ensureTasksCache()) {
+          if (t2.date !== todayStr || !t2.startTime || t2.statusChar === "x" || t2.statusChar === "-")
             continue;
           due.push({
-            key: `task:${t.filePath}:${t.text}:${t.startTime}`,
-            title: cleanTaskTextForDisplay(t.text),
-            start: moment(`${todayStr} ${t.startTime}`, "YYYY-MM-DD HH:mm")
+            key: `task:${t2.filePath}:${t2.text}:${t2.startTime}`,
+            title: cleanTaskTextForDisplay(t2.text),
+            start: moment(`${todayStr} ${t2.startTime}`, "YYYY-MM-DD HH:mm")
           });
         }
       } catch (err) {
@@ -11880,31 +12883,31 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
       vibrato.connect(vibratoDepth);
       let end = t0;
       [[659.25, 0, 0.5], [783.99, 0.11, 0.5], [1046.5, 0.22, 1.1]].forEach(([freq, at, len]) => {
-        const t = t0 + at;
-        end = Math.max(end, t + len);
+        const t2 = t0 + at;
+        end = Math.max(end, t2 + len);
         const env = ctx.createGain();
-        env.gain.setValueAtTime(1e-4, t);
-        env.gain.exponentialRampToValueAtTime(1, t + 8e-3);
-        env.gain.exponentialRampToValueAtTime(1e-4, t + len);
+        env.gain.setValueAtTime(1e-4, t2);
+        env.gain.exponentialRampToValueAtTime(1, t2 + 8e-3);
+        env.gain.exponentialRampToValueAtTime(1e-4, t2 + len);
         env.connect(master);
         const body = ctx.createOscillator();
         body.type = "sine";
-        body.frequency.setValueAtTime(freq * 1.02, t);
-        body.frequency.exponentialRampToValueAtTime(freq, t + 0.04);
+        body.frequency.setValueAtTime(freq * 1.02, t2);
+        body.frequency.exponentialRampToValueAtTime(freq, t2 + 0.04);
         vibratoDepth.connect(body.frequency);
         body.connect(env);
         const tick = ctx.createOscillator();
         const tickEnv = ctx.createGain();
         tick.type = "sine";
         tick.frequency.value = freq * 3.9;
-        tickEnv.gain.setValueAtTime(1e-4, t);
-        tickEnv.gain.exponentialRampToValueAtTime(0.18, t + 4e-3);
-        tickEnv.gain.exponentialRampToValueAtTime(1e-4, t + 0.12);
+        tickEnv.gain.setValueAtTime(1e-4, t2);
+        tickEnv.gain.exponentialRampToValueAtTime(0.18, t2 + 4e-3);
+        tickEnv.gain.exponentialRampToValueAtTime(1e-4, t2 + 0.12);
         tick.connect(tickEnv).connect(env);
-        body.start(t);
-        body.stop(t + len + 0.05);
-        tick.start(t);
-        tick.stop(t + 0.15);
+        body.start(t2);
+        body.stop(t2 + len + 0.05);
+        tick.start(t2);
+        tick.stop(t2 + 0.15);
       });
       vibrato.start(t0);
       vibrato.stop(end + 0.1);
@@ -11958,7 +12961,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     const now = window.moment();
     const todayStr = now.format("YYYY-MM-DD");
     const currentMinutes = now.hour() * 60 + now.minute();
-    const todayTasks = (await this.ensureTasksCache()).filter((t) => t.date === todayStr && t.startTime && t.endTime);
+    const todayTasks = (await this.ensureTasksCache()).filter((t2) => t2.date === todayStr && t2.startTime && t2.endTime);
     let activeTask = null;
     let nextTask = null;
     let minNextDiff = Infinity;
@@ -11986,11 +12989,11 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
       }
       let hue = 210;
       if (percent <= 50) {
-        const t = percent / 50;
-        hue = 210 - t * (210 - 55);
+        const t2 = percent / 50;
+        hue = 210 - t2 * (210 - 55);
       } else {
-        const t = (percent - 50) / 50;
-        hue = 55 - t * (55 - 25);
+        const t2 = (percent - 50) / 50;
+        hue = 55 - t2 * (55 - 25);
       }
       return `hsl(${Math.round(hue)}, 95%, 50%)`;
     };
@@ -12040,11 +13043,13 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     }
     setHapticsEnabled(this.settings.enableMobileHaptics);
     setScanSettings(this.settings);
+    setLanguage(this.settings.language);
     this.exclusionKey = JSON.stringify([this.settings.excludePaths, this.settings.excludeMatchMode]);
   }
   async saveSettings() {
     setHapticsEnabled(this.settings.enableMobileHaptics);
     setScanSettings(this.settings);
+    setLanguage(this.settings.language);
     await this.saveData(this.settings);
     const exclusionKey = JSON.stringify([this.settings.excludePaths, this.settings.excludeMatchMode]);
     if (exclusionKey !== this.exclusionKey) {
