@@ -68,6 +68,7 @@ var DEFAULT_SETTINGS = {
   reminderForGCal: true,
   sideDrawerOpen: true,
   sideDrawerPanel: "tasks",
+  miniCalendarCollapsed: false,
   defaultTaskDuration: 60,
   showShortcutButton: true,
   language: "auto"
@@ -2729,38 +2730,291 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     visibility: visible;
     transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
 }
+/* Drawer tier 1: mini calendar. Its month bar is the drawer header (label folds the grid, \u2039 Today \u203A, close) */
 .dp-drawer-header {
     display: flex;
     align-items: center;
-    gap: var(--size-4-2, 8px);
-    padding: var(--size-4-2, 8px) var(--size-4-2, 8px) var(--size-4-2, 8px) var(--size-4-3, 12px);
-    border-bottom: 1px solid var(--background-modifier-border);
+    gap: 4px;
+    padding: var(--size-4-2, 8px) var(--size-4-2, 8px) 2px var(--size-4-2, 8px);
 }
-.dp-drawer-tabs {
-    display: flex;
-    gap: 2px;
-}
-.dp-drawer-tab.is-active {
-    color: var(--text-accent);
-    background-color: var(--background-modifier-hover);
-}
-.dp-drawer-title {
+.dp-side-drawer button.dp-mc-label {
     flex: 1;
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
+    height: 28px;
+    padding: 0 6px;
     font-size: var(--font-ui-small, 0.9em);
     font-weight: var(--font-semibold, 600);
-    white-space: nowrap;
+    color: var(--text-normal);
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: var(--radius-s, 4px);
+    cursor: pointer;
 }
-.dp-drawer-title-icon {
+.dp-side-drawer button.dp-mc-label:hover {
+    background-color: var(--background-modifier-hover);
+}
+.dp-mc-label-text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.dp-mc-label-chevron {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+.dp-mc-label[aria-expanded="false"] .dp-mc-label-chevron {
+    transform: rotate(-90deg); /* \u25BE \u2192 \u25B8 */
+}
+.dp-mc-nav {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding: 2px;
+    background-color: var(--dp-segment-track);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 999px;
+}
+.dp-side-drawer button.dp-mc-nav-btn,
+.dp-side-drawer button.dp-mc-today {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 22px;
+    margin: 0;
+    padding: 0 8px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-medium, 500);
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease;
+}
+.dp-side-drawer button.dp-mc-nav-btn {
+    width: 22px;
+    padding: 0;
+}
+.dp-mc-nav-btn svg {
+    width: 14px;
+    height: 14px;
+}
+.dp-side-drawer button.dp-mc-nav-btn:hover,
+.dp-side-drawer button.dp-mc-today:hover {
+    color: var(--text-normal);
+    background-color: var(--dp-segment-active);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1), inset 0 0 0 1px var(--dp-glass-border);
+}
+.dp-mini-cal {
+    flex-shrink: 0;
+    padding: 2px var(--size-4-2, 8px) 6px;
+    overflow: hidden; /* the paging slide stays inside the grid's box */
+}
+.dp-mc-weekdays,
+.dp-mc-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.dp-mc-weekdays {
+    padding: 2px 0 4px;
+    font-size: 0.68em;
+    font-weight: var(--font-semibold, 600);
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.dp-mc-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.dp-side-drawer button.dp-mc-day {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    height: 30px;
+    margin: 0;
+    padding: 0 0 5px; /* room for the dots under the number */
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-normal);
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.12s ease, transform 0.12s ease;
+}
+.dp-side-drawer button.dp-mc-day:hover {
+    background-color: var(--background-modifier-hover);
+}
+.dp-side-drawer button.dp-mc-day:active {
+    transform: scale(0.92);
+}
+.dp-mc-day.is-weekend {
     color: var(--text-muted);
 }
-.dp-drawer-title-icon svg {
-    width: 15px;
-    height: 15px;
+.dp-mc-day.is-other-month {
+    opacity: 0.45;
+}
+/* Days the planner shows (Daily: one; N-day / Weekly: a band), drawn as one continuous pill per row */
+.dp-side-drawer button.dp-mc-day.is-in-range {
+    background-color: color-mix(in srgb, var(--interactive-accent) 15%, transparent);
+    border-radius: 0;
+}
+.dp-side-drawer button.dp-mc-day.is-in-range:hover {
+    background-color: color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+}
+.dp-side-drawer button.dp-mc-day.is-range-start,
+.dp-mc-week > button.dp-mc-day.is-in-range:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+.dp-side-drawer button.dp-mc-day.is-range-end,
+.dp-mc-week > button.dp-mc-day.is-in-range:last-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+.dp-mc-num {
+    width: 22px;
+    height: 22px;
+    line-height: 22px;
+    text-align: center;
+    border-radius: 999px;
+}
+.dp-mc-day.is-today .dp-mc-num {
+    font-weight: var(--font-bold, 700);
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--interactive-accent) 40%, transparent);
+}
+.dp-mc-dots {
+    position: absolute;
+    left: 50%;
+    bottom: 2px;
+    display: flex;
+    gap: 2px;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+.dp-mc-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+}
+.dp-mc-dot.is-task {
+    background-color: var(--dp-task-color, #ff9f1c);
+}
+.dp-mc-dot.is-focus {
+    background-color: var(--color-red);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--color-red) 70%, transparent);
+}
+.dp-mc-dot.is-done {
+    background-color: var(--color-green);
+}
+.dp-mc-dot.is-event {
+    background-color: var(--color-blue);
+}
+/* A drawer card held over a day: dropping reschedules it there */
+.dp-side-drawer button.dp-mc-day.dp-drop-target {
+    background-color: color-mix(in srgb, var(--interactive-accent) 18%, transparent);
+    outline: 2px dashed var(--interactive-accent);
+    outline-offset: -2px;
+}
+.dp-mc-slide-next {
+    animation: dp-mc-slide-next 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dp-mc-slide-prev {
+    animation: dp-mc-slide-prev 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes dp-mc-slide-next {
+    from { opacity: 0; transform: translateX(14px); }
+}
+@keyframes dp-mc-slide-prev {
+    from { opacity: 0; transform: translateX(-14px); }
+}
+
+/* Drawer tier 2: segmented mode switcher; the thumb slides by transform */
+.dp-drawer-modes {
+    position: relative;
+    isolation: isolate;
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--dp-mode-count, 2), minmax(0, 1fr));
+    margin: 2px var(--size-4-2, 8px) var(--size-4-2, 8px);
+    padding: 2px;
+    background-color: var(--dp-segment-track);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 10px;
+}
+.dp-drawer-modes-thumb {
+    position: absolute;
+    z-index: -1;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    width: calc((100% - 4px) / var(--dp-mode-count, 2));
+    background-color: var(--dp-segment-active);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 3px 8px rgba(0, 0, 0, 0.08),
+        inset 0 0 0 1px var(--dp-glass-border), inset 0 1px 0 var(--dp-glass-highlight);
+    transform: translateX(calc(var(--dp-mode-index, 0) * 100%));
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dp-side-drawer button.dp-drawer-mode {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-width: 0;
+    height: 28px;
+    margin: 0;
+    padding: 0 8px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-medium, 500);
+    white-space: nowrap;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+.dp-side-drawer button.dp-drawer-mode:hover {
+    color: var(--text-normal);
+}
+.dp-side-drawer button.dp-drawer-mode.is-active {
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-normal);
+}
+.dp-drawer-mode-icon {
+    display: inline-flex;
+}
+.dp-drawer-mode-icon svg {
+    width: 14px;
+    height: 14px;
+}
+.dp-drawer-mode-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dp-drawer-mode .dp-drawer-count {
+    padding: 0 5px;
+    line-height: 16px;
+}
+.dp-drawer-mode.is-active .dp-drawer-count {
+    color: var(--text-accent);
+    background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
 }
 .dp-drawer-count {
     padding: 0 6px;
@@ -2771,11 +3025,34 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     background-color: var(--background-modifier-hover);
     border-radius: 999px;
 }
+/* Drawer tier 3: the active panel; a mode switch slides the new body in from its segment's side */
 .dp-drawer-body {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
     padding: var(--size-4-2, 8px);
+    border-top: 1px solid var(--background-modifier-border);
+}
+.dp-drawer-enter-next {
+    animation: dp-drawer-enter-next 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dp-drawer-enter-prev {
+    animation: dp-drawer-enter-prev 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes dp-drawer-enter-next {
+    from { opacity: 0; transform: translateX(16px); }
+}
+@keyframes dp-drawer-enter-prev {
+    from { opacity: 0; transform: translateX(-16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dp-mc-slide-next, .dp-mc-slide-prev, .dp-drawer-enter-next, .dp-drawer-enter-prev,
+    .dp-drawer-enter-next .dp-stats-bar-fill, .dp-drawer-enter-prev .dp-stats-bar-fill, .dp-priority-popover {
+        animation: none;
+    }
+    .dp-drawer-modes-thumb, .dp-stats-ring-arc {
+        transition: none;
+    }
 }
 /* The body stacks capture \u2192 Overdue \u2192 Undated; Undated grows into all remaining height, so its unschedule drop zone
    (and highlight) reaches the drawer's bottom edge. Longer lists simply scroll the body. */
@@ -2966,7 +3243,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-drawer-card-actions {
     position: absolute;
     top: 50%;
-    right: 4px;
+    right: 30px;
     display: flex;
     gap: 3px;
     padding: 2px 2px 2px 14px;
@@ -3056,12 +3333,352 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     line-height: 1.35;
     word-break: break-word;
 }
-.dp-drawer-card .dp-badge-priority {
+.dp-drawer-card-date.is-time {
+    color: var(--text-muted);
+}
+
+/* Priority badge on a drawer card: one click opens the picker (Obsidian Tasks emoji); faint flag when unset */
+.dp-side-drawer button.dp-priority-trigger {
     flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
     margin: 0;
     padding: 0;
-    border: none;
+    font-size: 0.85em;
+    line-height: 1;
+    color: var(--text-faint);
     background: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+.dp-side-drawer button.dp-priority-trigger:hover,
+.dp-side-drawer button.dp-priority-trigger:focus-visible {
+    color: var(--text-normal);
+    background-color: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+}
+.dp-side-drawer button.dp-priority-trigger.is-empty {
+    opacity: 0;
+}
+.dp-drawer-card:hover button.dp-priority-trigger.is-empty,
+.dp-drawer-card:focus-within button.dp-priority-trigger.is-empty {
+    opacity: 1;
+}
+.dp-priority-trigger svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* MIT: an open \u{1F53A} Highest task reads as today's core focus wherever its card appears */
+.dp-drawer-card.is-mit {
+    overflow: hidden;
+    background: linear-gradient(120deg, color-mix(in srgb, var(--color-red) 10%, var(--background-primary)), var(--background-primary) 65%);
+    border-color: color-mix(in srgb, var(--color-red) 40%, var(--background-modifier-border));
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--color-red) 14%, transparent);
+}
+.dp-drawer-card.is-mit::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    background: linear-gradient(to bottom, var(--color-red), var(--color-orange));
+}
+.dp-drawer-card.is-mit:hover {
+    border-color: var(--color-red);
+    box-shadow: 0 4px 16px color-mix(in srgb, var(--color-red) 24%, transparent);
+}
+.dp-drawer-card.is-mit .dp-drawer-card-title {
+    font-weight: var(--font-semibold, 600);
+}
+.dp-drawer-card.is-mit .dp-drawer-card-actions {
+    background: linear-gradient(to right, transparent, var(--background-primary) 12px);
+}
+/* Today's Focus section: a soft red-tinted well once it holds tasks */
+.dp-drawer-section[data-section="focus"]:not(.is-collapsed) {
+    background-color: color-mix(in srgb, var(--color-red) 5%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-red) 16%, transparent);
+}
+
+/* Priority picker: a frosted popover (in document.body, so it may overhang the drawer) */
+.dp-priority-popover {
+    position: fixed;
+    z-index: var(--layer-menu, 65);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 140px;
+    padding: 4px;
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 10px;
+    box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
+    transform-origin: top right;
+    animation: dp-popover-in 0.14s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dp-priority-popover.is-above {
+    transform-origin: bottom right;
+}
+@keyframes dp-popover-in {
+    from { opacity: 0; transform: scale(0.94); }
+}
+.dp-priority-popover button.dp-priority-option {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    width: 100%;
+    height: 28px;
+    margin: 0;
+    padding: 0 8px;
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-normal);
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+.dp-priority-popover button.dp-priority-option:hover,
+.dp-priority-popover button.dp-priority-option:focus-visible {
+    background-color: var(--background-modifier-hover);
+    outline: none;
+}
+.dp-priority-popover button.dp-priority-option.is-active {
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-accent);
+    background-color: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+.dp-priority-popover button.dp-priority-option.is-active::after {
+    content: '\u2713';
+    margin-left: auto;
+}
+.dp-priority-option-emoji {
+    width: 18px;
+    text-align: center;
+    color: var(--text-faint);
+}
+
+/* Stats panel: ring + time tiles, meters, priority breakdown, a short note */
+.dp-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 2px 2px 8px;
+}
+.dp-stats-day {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 2px;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-semibold, 600);
+}
+.dp-stats-day-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.dp-stats-day-chip {
+    flex-shrink: 0;
+    padding: 0 7px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    line-height: 18px;
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+    border-radius: 999px;
+}
+.dp-stats-hero,
+.dp-stats-card {
+    background-color: var(--dp-card-bg);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 12px;
+    box-shadow: inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-stats-hero {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+}
+.dp-stats-ring {
+    --dp-ring-from: var(--interactive-accent);
+    --dp-ring-to: var(--color-purple, #a882ff);
+    position: relative;
+    flex-shrink: 0;
+    width: 104px;
+    height: 104px;
+}
+.dp-stats-ring.is-complete {
+    --dp-ring-from: var(--color-green);
+    --dp-ring-to: var(--color-cyan, #53dfdd);
+}
+.dp-stats-ring svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg); /* the arc starts at 12 o'clock */
+}
+.dp-stats-ring-track {
+    fill: none;
+    stroke: var(--background-modifier-border);
+}
+.dp-stats-ring-arc {
+    fill: none;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    filter: drop-shadow(0 0 3px color-mix(in srgb, var(--dp-ring-from) 45%, transparent));
+}
+.dp-stats-ring-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.dp-stats-ring-value {
+    font-size: 1.45em;
+    font-weight: var(--font-bold, 700);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.dp-stats-ring-caption {
+    max-width: 72px;
+    font-size: 0.66em;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--text-muted);
+}
+.dp-stats-tiles {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.dp-stats-tile-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.68em;
+    font-weight: var(--font-semibold, 600);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.dp-stats-tile-label::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--text-muted);
+}
+.dp-stats-tile.is-completed .dp-stats-tile-label::before {
+    background-color: var(--interactive-accent);
+}
+.dp-stats-tile.is-remaining .dp-stats-tile-label::before {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--text-faint);
+}
+.dp-stats-tile-value {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-semibold, 600);
+    font-variant-numeric: tabular-nums;
+}
+.dp-stats-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
+}
+.dp-stats-card-title {
+    font-size: 0.68em;
+    font-weight: var(--font-semibold, 600);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+}
+.dp-stats-meter-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: var(--font-ui-smaller, 0.8em);
+}
+.dp-stats-meter-label {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-weight: var(--font-medium, 500);
+}
+.dp-stats-meter-value {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+}
+.dp-stats-bar {
+    height: 6px;
+    margin-top: 5px;
+    overflow: hidden;
+    background-color: var(--background-modifier-border);
+    border-radius: 999px;
+}
+.dp-stats-bar-fill {
+    --dp-bar-color: var(--interactive-accent);
+    width: var(--dp-fill, 0%);
+    height: 100%;
+    background: linear-gradient(90deg, var(--dp-bar-color), color-mix(in srgb, var(--dp-bar-color) 60%, var(--color-purple, #a882ff)));
+    border-radius: inherit;
+    transform-origin: left center;
+}
+/* Bars grow in when the panel is opened, not on every data render */
+.dp-drawer-enter-next .dp-stats-bar-fill,
+.dp-drawer-enter-prev .dp-stats-bar-fill {
+    animation: dp-stats-bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes dp-stats-bar-grow {
+    from { transform: scaleX(0); }
+}
+.dp-stats-meter.is-focus .dp-stats-bar-fill {
+    background: linear-gradient(90deg, var(--color-red), var(--color-orange));
+}
+.dp-stats-priority.is-highest .dp-stats-bar-fill { --dp-bar-color: var(--color-red); }
+.dp-stats-priority.is-high .dp-stats-bar-fill { --dp-bar-color: var(--color-orange); }
+.dp-stats-priority.is-medium .dp-stats-bar-fill { --dp-bar-color: var(--color-yellow); }
+.dp-stats-priority.is-normal .dp-stats-bar-fill { --dp-bar-color: var(--interactive-accent); }
+.dp-stats-priority.is-low .dp-stats-bar-fill { --dp-bar-color: var(--color-blue); }
+.dp-stats-priority.is-lowest .dp-stats-bar-fill { --dp-bar-color: var(--text-faint); }
+.dp-stats-priority .dp-stats-bar {
+    height: 4px;
+}
+.dp-stats-message {
+    padding: 10px 12px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    line-height: 1.45;
+    color: var(--text-muted);
+    background-color: color-mix(in srgb, var(--interactive-accent) 7%, transparent);
+    border: 1px dashed color-mix(in srgb, var(--interactive-accent) 28%, transparent);
+    border-radius: 10px;
+}
+.dp-stats-message.is-done {
+    color: var(--text-normal);
+    background-color: color-mix(in srgb, var(--color-green) 10%, transparent);
+    border-color: color-mix(in srgb, var(--color-green) 35%, transparent);
 }
 /* Subtle until hovered: it is a reference, not an action */
 .dp-header-actions > button.dp-help-btn {
@@ -4774,6 +5391,37 @@ var en = {
   "drawer.card.moveNextWeek": "Move to next week ({date})",
   "drawer.card.undate": "Undate",
   "drawer.card.undateTooltip": "Clear the date (move to Undated)",
+  "drawer.stats": "Stats",
+  "drawer.modes": "Drawer mode",
+  "drawer.focus": "Today's Focus",
+  "drawer.focusEmpty": "No focus task today. Mark a task \u{1F53A} Highest to pin it here.",
+  "priority.set": "Set priority",
+  "calendar.toggle": "Fold / unfold the calendar",
+  "calendar.previous": "Previous",
+  "calendar.next": "Next",
+  "calendar.openTasks": "{n} open tasks",
+  "calendar.events": "{n} events",
+  "stats.ofTime": "of planned time",
+  "stats.ofTasks": "of tasks",
+  "stats.planned": "Planned",
+  "stats.completed": "Completed",
+  "stats.remaining": "Remaining",
+  "stats.tasks": "Tasks",
+  "stats.tasksDone": "{done} of {total} done",
+  "stats.events": "Calendar events",
+  "stats.eventsValue": "{n} \xB7 {time}",
+  "stats.byPriority": "By priority",
+  "stats.msg.empty": "Nothing planned for this day yet. Drag a task onto the timeline to timebox it.",
+  "stats.msg.start": "Ready when you are. Start with today's focus.",
+  "stats.msg.progress": "Good start. Keep the momentum going.",
+  "stats.msg.half": "Over halfway there. Nice pace!",
+  "stats.msg.focusDone": "Your focus tasks are done. Everything else is a bonus.",
+  "stats.msg.done": "Everything done. Great work! \u{1F389}",
+  "stats.msg.past": "Unfinished tasks can be rolled forward from Overdue in the Tasks tab.",
+  "duration.h": "{h}h",
+  "duration.m": "{m}m",
+  "duration.hm": "{h}h {m}m",
+  "shortcuts.priority": "Set the priority",
   "shortcuts.title": "Keyboard Shortcuts",
   "shortcuts.group.navigate": "Navigate",
   "shortcuts.group.switchView": "Switch view",
@@ -5013,6 +5661,37 @@ var ko = {
   "drawer.card.moveNextWeek": "\uB2E4\uC74C \uC8FC\uB85C \uC62E\uAE30\uAE30 ({date})",
   "drawer.card.undate": "\uB0A0\uC9DC \uD574\uC81C",
   "drawer.card.undateTooltip": "\uB0A0\uC9DC \uC9C0\uC6B0\uAE30 (\uB0A0\uC9DC \uC5C6\uC74C\uC73C\uB85C \uC774\uB3D9)",
+  "drawer.stats": "\uD1B5\uACC4",
+  "drawer.modes": "\uC11C\uB78D \uBAA8\uB4DC",
+  "drawer.focus": "\uC624\uB298\uC758 \uD575\uC2EC",
+  "drawer.focusEmpty": "\uC624\uB298\uC758 \uD575\uC2EC \uD560 \uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD560 \uC77C\uC744 \u{1F53A} \uCD5C\uC0C1\uC73C\uB85C \uD45C\uC2DC\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uACE0\uC815\uB429\uB2C8\uB2E4.",
+  "priority.set": "\uC6B0\uC120\uC21C\uC704 \uC124\uC815",
+  "calendar.toggle": "\uB2EC\uB825 \uC811\uAE30 / \uD3BC\uCE58\uAE30",
+  "calendar.previous": "\uC774\uC804",
+  "calendar.next": "\uB2E4\uC74C",
+  "calendar.openTasks": "\uB0A8\uC740 \uD560 \uC77C {n}\uAC1C",
+  "calendar.events": "\uC77C\uC815 {n}\uAC1C",
+  "stats.ofTime": "\uACC4\uD68D \uC2DC\uAC04 \uB300\uBE44",
+  "stats.ofTasks": "\uD560 \uC77C \uB300\uBE44",
+  "stats.planned": "\uACC4\uD68D",
+  "stats.completed": "\uC644\uB8CC",
+  "stats.remaining": "\uB0A8\uC74C",
+  "stats.tasks": "\uD560 \uC77C",
+  "stats.tasksDone": "{total}\uAC1C \uC911 {done}\uAC1C \uC644\uB8CC",
+  "stats.events": "\uCE98\uB9B0\uB354 \uC77C\uC815",
+  "stats.eventsValue": "{n}\uAC1C \xB7 {time}",
+  "stats.byPriority": "\uC6B0\uC120\uC21C\uC704\uBCC4",
+  "stats.msg.empty": "\uC774 \uB0A0\uC740 \uC544\uC9C1 \uACC4\uD68D\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD560 \uC77C\uC744 \uD0C0\uC784\uB77C\uC778\uC73C\uB85C \uB04C\uC5B4\uC640 \uC2DC\uAC04\uC744 \uBC30\uC815\uD574 \uBCF4\uC138\uC694.",
+  "stats.msg.start": "\uC900\uBE44\uB418\uBA74 \uC2DC\uC791\uD558\uC138\uC694. \uC624\uB298\uC758 \uD575\uC2EC\uBD80\uD130!",
+  "stats.msg.progress": "\uC88B\uC740 \uCD9C\uBC1C\uC774\uC5D0\uC694. \uC774 \uD750\uB984\uC744 \uC774\uC5B4\uAC00\uC138\uC694.",
+  "stats.msg.half": "\uC808\uBC18\uC744 \uB118\uC5C8\uC5B4\uC694. \uC88B\uC740 \uD398\uC774\uC2A4\uC785\uB2C8\uB2E4!",
+  "stats.msg.focusDone": "\uD575\uC2EC \uD560 \uC77C\uC744 \uBAA8\uB450 \uB05D\uB0C8\uC5B4\uC694. \uB098\uBA38\uC9C0\uB294 \uBCF4\uB108\uC2A4\uC785\uB2C8\uB2E4.",
+  "stats.msg.done": "\uBAA8\uB450 \uC644\uB8CC\uD588\uC5B4\uC694. \uC218\uACE0\uD558\uC168\uC2B5\uB2C8\uB2E4! \u{1F389}",
+  "stats.msg.past": "\uB05D\uB0B4\uC9C0 \uBABB\uD55C \uD560 \uC77C\uC740 \uD560 \uC77C \uD0ED\uC758 \uAE30\uD55C \uC9C0\uB0A8\uC5D0\uC11C \uC55E\uC73C\uB85C \uC62E\uAE38 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "duration.h": "{h}\uC2DC\uAC04",
+  "duration.m": "{m}\uBD84",
+  "duration.hm": "{h}\uC2DC\uAC04 {m}\uBD84",
+  "shortcuts.priority": "\uC6B0\uC120\uC21C\uC704 \uC124\uC815",
   "shortcuts.title": "\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4",
   "shortcuts.group.navigate": "\uC774\uB3D9",
   "shortcuts.group.switchView": "\uBCF4\uAE30 \uC804\uD658",
@@ -5252,6 +5931,37 @@ var ja = {
   "drawer.card.moveNextWeek": "\u6765\u9031\u3078\u79FB\u52D5 ({date})",
   "drawer.card.undate": "\u65E5\u4ED8\u89E3\u9664",
   "drawer.card.undateTooltip": "\u65E5\u4ED8\u3092\u30AF\u30EA\u30A2\uFF08\u65E5\u4ED8\u306A\u3057\u3078\u79FB\u52D5\uFF09",
+  "drawer.stats": "\u7D71\u8A08",
+  "drawer.modes": "\u30C9\u30ED\u30EF\u30FC\u306E\u30E2\u30FC\u30C9",
+  "drawer.focus": "\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9",
+  "drawer.focusEmpty": "\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9\u30BF\u30B9\u30AF\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u30BF\u30B9\u30AF\u3092 \u{1F53A} \u6700\u9AD8 \u306B\u3059\u308B\u3068\u3053\u3053\u306B\u56FA\u5B9A\u3055\u308C\u307E\u3059\u3002",
+  "priority.set": "\u512A\u5148\u5EA6\u3092\u8A2D\u5B9A",
+  "calendar.toggle": "\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u6298\u308A\u305F\u305F\u3080 / \u5E83\u3052\u308B",
+  "calendar.previous": "\u524D\u3078",
+  "calendar.next": "\u6B21\u3078",
+  "calendar.openTasks": "\u672A\u5B8C\u4E86\u306E\u30BF\u30B9\u30AF {n} \u4EF6",
+  "calendar.events": "\u4E88\u5B9A {n} \u4EF6",
+  "stats.ofTime": "\u4E88\u5B9A\u6642\u9593\u306E\u3046\u3061",
+  "stats.ofTasks": "\u30BF\u30B9\u30AF\u306E\u3046\u3061",
+  "stats.planned": "\u4E88\u5B9A",
+  "stats.completed": "\u5B8C\u4E86",
+  "stats.remaining": "\u6B8B\u308A",
+  "stats.tasks": "\u30BF\u30B9\u30AF",
+  "stats.tasksDone": "{total} \u4EF6\u4E2D {done} \u4EF6\u5B8C\u4E86",
+  "stats.events": "\u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A",
+  "stats.eventsValue": "{n} \u4EF6 \xB7 {time}",
+  "stats.byPriority": "\u512A\u5148\u5EA6\u5225",
+  "stats.msg.empty": "\u3053\u306E\u65E5\u306F\u307E\u3060\u4E88\u5B9A\u304C\u3042\u308A\u307E\u305B\u3093\u3002\u30BF\u30B9\u30AF\u3092\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u3078\u30C9\u30E9\u30C3\u30B0\u3057\u3066\u6642\u9593\u3092\u5272\u308A\u5F53\u3066\u307E\u3057\u3087\u3046\u3002",
+  "stats.msg.start": "\u6E96\u5099\u304C\u3067\u304D\u305F\u3089\u59CB\u3081\u307E\u3057\u3087\u3046\u3002\u307E\u305A\u306F\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9\u304B\u3089\u3002",
+  "stats.msg.progress": "\u826F\u3044\u30B9\u30BF\u30FC\u30C8\u3067\u3059\u3002\u3053\u306E\u8ABF\u5B50\u3067\u7D9A\u3051\u307E\u3057\u3087\u3046\u3002",
+  "stats.msg.half": "\u534A\u5206\u3092\u8D85\u3048\u307E\u3057\u305F\u3002\u826F\u3044\u30DA\u30FC\u30B9\u3067\u3059\uFF01",
+  "stats.msg.focusDone": "\u30D5\u30A9\u30FC\u30AB\u30B9\u30BF\u30B9\u30AF\u306F\u5B8C\u4E86\u3057\u307E\u3057\u305F\u3002\u6B8B\u308A\u306F\u30DC\u30FC\u30CA\u30B9\u3067\u3059\u3002",
+  "stats.msg.done": "\u3059\u3079\u3066\u5B8C\u4E86\u3057\u307E\u3057\u305F\u3002\u304A\u75B2\u308C\u3055\u307E\u3067\u3057\u305F\uFF01\u{1F389}",
+  "stats.msg.past": "\u7D42\u308F\u3089\u306A\u304B\u3063\u305F\u30BF\u30B9\u30AF\u306F\u3001\u30BF\u30B9\u30AF\u30BF\u30D6\u306E\u300C\u671F\u9650\u5207\u308C\u300D\u304B\u3089\u5148\u3078\u79FB\u52D5\u3067\u304D\u307E\u3059\u3002",
+  "duration.h": "{h}\u6642\u9593",
+  "duration.m": "{m}\u5206",
+  "duration.hm": "{h}\u6642\u9593{m}\u5206",
+  "shortcuts.priority": "\u512A\u5148\u5EA6\u3092\u8A2D\u5B9A",
   "shortcuts.title": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8",
   "shortcuts.group.navigate": "\u79FB\u52D5",
   "shortcuts.group.switchView": "\u30D3\u30E5\u30FC\u5207\u308A\u66FF\u3048",
@@ -5491,6 +6201,37 @@ var zh = {
   "drawer.card.moveNextWeek": "\u79FB\u5230\u4E0B\u5468 ({date})",
   "drawer.card.undate": "\u53D6\u6D88\u65E5\u671F",
   "drawer.card.undateTooltip": "\u6E05\u9664\u65E5\u671F\uFF08\u79FB\u5230\u65E0\u65E5\u671F\uFF09",
+  "drawer.stats": "\u7EDF\u8BA1",
+  "drawer.modes": "\u62BD\u5C49\u6A21\u5F0F",
+  "drawer.focus": "\u4ECA\u65E5\u7126\u70B9",
+  "drawer.focusEmpty": "\u4ECA\u5929\u6CA1\u6709\u7126\u70B9\u4EFB\u52A1\u3002\u5C06\u4EFB\u52A1\u6807\u8BB0\u4E3A \u{1F53A} \u6700\u9AD8 \u5373\u53EF\u56FA\u5B9A\u5728\u8FD9\u91CC\u3002",
+  "priority.set": "\u8BBE\u7F6E\u4F18\u5148\u7EA7",
+  "calendar.toggle": "\u6298\u53E0 / \u5C55\u5F00\u65E5\u5386",
+  "calendar.previous": "\u4E0A\u4E00\u4E2A",
+  "calendar.next": "\u4E0B\u4E00\u4E2A",
+  "calendar.openTasks": "{n} \u4E2A\u672A\u5B8C\u6210\u4EFB\u52A1",
+  "calendar.events": "{n} \u4E2A\u65E5\u7A0B",
+  "stats.ofTime": "\u8BA1\u5212\u65F6\u95F4",
+  "stats.ofTasks": "\u4EFB\u52A1",
+  "stats.planned": "\u8BA1\u5212",
+  "stats.completed": "\u5DF2\u5B8C\u6210",
+  "stats.remaining": "\u5269\u4F59",
+  "stats.tasks": "\u4EFB\u52A1",
+  "stats.tasksDone": "\u5DF2\u5B8C\u6210 {done} / {total}",
+  "stats.events": "\u65E5\u5386\u65E5\u7A0B",
+  "stats.eventsValue": "{n} \u4E2A \xB7 {time}",
+  "stats.byPriority": "\u6309\u4F18\u5148\u7EA7",
+  "stats.msg.empty": "\u8FD9\u4E00\u5929\u8FD8\u6CA1\u6709\u8BA1\u5212\u3002\u628A\u4EFB\u52A1\u62D6\u5230\u65F6\u95F4\u7EBF\u4E0A\u4E3A\u5B83\u5B89\u6392\u65F6\u95F4\u5427\u3002",
+  "stats.msg.start": "\u51C6\u5907\u597D\u5C31\u5F00\u59CB\u5427\uFF0C\u5148\u4ECE\u4ECA\u65E5\u7126\u70B9\u505A\u8D77\u3002",
+  "stats.msg.progress": "\u5F00\u5C40\u4E0D\u9519\uFF0C\u4FDD\u6301\u8282\u594F\u3002",
+  "stats.msg.half": "\u5DF2\u7ECF\u8FC7\u534A\uFF0C\u8282\u594F\u5F88\u597D\uFF01",
+  "stats.msg.focusDone": "\u7126\u70B9\u4EFB\u52A1\u5DF2\u5168\u90E8\u5B8C\u6210\uFF0C\u5176\u4F59\u90FD\u662F\u989D\u5916\u6536\u83B7\u3002",
+  "stats.msg.done": "\u5168\u90E8\u5B8C\u6210\uFF0C\u5E72\u5F97\u6F02\u4EAE\uFF01\u{1F389}",
+  "stats.msg.past": "\u672A\u5B8C\u6210\u7684\u4EFB\u52A1\u53EF\u4EE5\u5728\u4EFB\u52A1\u6807\u7B7E\u7684\u201C\u903E\u671F\u201D\u4E2D\u987A\u5EF6\u3002",
+  "duration.h": "{h} \u5C0F\u65F6",
+  "duration.m": "{m} \u5206\u949F",
+  "duration.hm": "{h} \u5C0F\u65F6 {m} \u5206\u949F",
+  "shortcuts.priority": "\u8BBE\u7F6E\u4F18\u5148\u7EA7",
   "shortcuts.title": "\u952E\u76D8\u5FEB\u6377\u952E",
   "shortcuts.group.navigate": "\u5BFC\u822A",
   "shortcuts.group.switchView": "\u5207\u6362\u89C6\u56FE",
@@ -6191,6 +6932,7 @@ var _ShortcutHelpModal = class extends import_obsidian4.Modal {
       ]],
       [t("shortcuts.group.drawerCard"), [
         [["f"], t("shortcuts.fit")],
+        [["p"], t("shortcuts.priority")],
         [["Enter"], t("shortcuts.edit")]
       ]],
       [t("shortcuts.group.dragging"), [
@@ -6307,10 +7049,36 @@ var import_obsidian5 = require("obsidian");
 var isOpen = (t2) => t2.statusChar !== "x" && t2.statusChar !== "-";
 var isUndatedTask = (t2) => t2.date === null && isOpen(t2);
 var isOverdueTask = (t2, todayStr) => t2.date !== null && t2.date < todayStr && isOpen(t2);
+var isFocusTask = (t2) => t2.priority === "highest" && isOpen(t2);
 var PRIORITY_RANK = { highest: 0, high: 1, medium: 2, normal: 3, low: 4, lowest: 5 };
+var PRIORITY_LEVELS = [
+  { id: "highest", emoji: "\u{1F53A}" },
+  { id: "high", emoji: "\u23EB" },
+  { id: "medium", emoji: "\u{1F53C}" },
+  { id: "normal", emoji: "" },
+  { id: "low", emoji: "\u{1F53D}" },
+  { id: "lowest", emoji: "\u23EC" }
+];
+var priorityLabel = (p) => t(`priority.${p}`);
 function sortByPriorityThenTitle(tasks, byDate = false) {
   const titles = new Map(tasks.map((t2) => [t2, cleanTaskTextForDisplay(t2.text)]));
   return tasks.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3) || (byDate ? (a.date ?? "").localeCompare(b.date ?? "") : 0) || titles.get(a).localeCompare(titles.get(b)));
+}
+function localMoment(m) {
+  const moment = window.moment;
+  const code = { en: "en", ko: "ko", ja: "ja", zh: "zh-cn" }[getLocale()];
+  return moment.locales?.().includes(code) ? m.clone().locale(code) : m.clone();
+}
+var toMinutes = (time) => {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+};
+function formatDuration(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h === 0)
+    return t("duration.m", { m });
+  return m === 0 ? t("duration.h", { h }) : t("duration.hm", { h, m });
 }
 function renderDrawerSection(body, view, id, title, tasks, empty, action) {
   const isEmpty = tasks.length === 0;
@@ -6383,10 +7151,17 @@ function renderQuickCapture(body, view) {
 var tasksPanel = {
   id: "tasks",
   title: () => t("drawer.tasks"),
-  icon: "list-checks",
+  icon: ["list-checks", "check-square"],
+  badge(view) {
+    const todayStr = window.moment().format("YYYY-MM-DD");
+    const n = view.tasks.filter((t2) => isUndatedTask(t2) || isOverdueTask(t2, todayStr)).length;
+    return n > 0 ? String(n) : "";
+  },
   render(body, view) {
     const todayStr = window.moment().format("YYYY-MM-DD");
     renderQuickCapture(body, view);
+    const focus = view.tasks.filter((t2) => t2.date === todayStr && isFocusTask(t2)).sort((a, b) => (a.startTime ?? "99").localeCompare(b.startTime ?? "99") || cleanTaskTextForDisplay(a.text).localeCompare(cleanTaskTextForDisplay(b.text)));
+    renderDrawerSection(body, view, "focus", `\u{1F3AF} ${t("drawer.focus")}`, focus, t("drawer.focusEmpty"));
     const overdue = sortByPriorityThenTitle(view.tasks.filter((t2) => isOverdueTask(t2, todayStr)), true);
     renderDrawerSection(body, view, "overdue", `\u{1F6A8} ${t("drawer.overdueTasks")}`, overdue, t("drawer.allCaughtUp"), {
       label: t("drawer.rollToToday"),
@@ -6396,7 +7171,286 @@ var tasksPanel = {
     renderDrawerSection(body, view, "undated", `\u{1F4C2} ${t("drawer.undatedTasks")}`, sortByPriorityThenTitle(view.tasks.filter(isUndatedTask)), t("drawer.noUndated"));
   }
 };
-var SIDE_DRAWER_PANELS = [tasksPanel];
+var openPicker = null;
+function renderPriorityTrigger(card, task, view) {
+  const emoji = PRIORITY_LEVELS.find((l) => l.id === task.priority)?.emoji ?? "";
+  const trigger = card.createEl("button", {
+    cls: `dp-priority-trigger${emoji ? "" : " is-empty"}`,
+    attr: { "aria-label": `${t("priority.set")} \xB7 ${priorityLabel(task.priority)}`, "aria-haspopup": "true" }
+  });
+  if (emoji)
+    trigger.setText(emoji);
+  else
+    (0, import_obsidian5.setIcon)(trigger, "flag");
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    togglePriorityPicker(trigger, task, view);
+  });
+  return trigger;
+}
+function togglePriorityPicker(anchor, task, view, viaKeyboard = false) {
+  const reopen = openPicker?.el.dataset.taskId !== task.id;
+  openPicker?.close();
+  if (!reopen)
+    return;
+  const doc = anchor.ownerDocument;
+  const win = doc.defaultView ?? window;
+  const pop = doc.body.createDiv({ cls: "dp-priority-popover", attr: { role: "menu", "aria-label": t("priority.set") } });
+  pop.dataset.taskId = task.id;
+  const buttons = [];
+  PRIORITY_LEVELS.forEach((level) => {
+    const btn = pop.createEl("button", {
+      cls: `dp-priority-option${level.id === task.priority ? " is-active" : ""}${level.id === "highest" ? " is-mit" : ""}`,
+      attr: { role: "menuitemradio", "aria-checked": String(level.id === task.priority), "aria-label": priorityLabel(level.id) }
+    });
+    btn.createSpan({ cls: "dp-priority-option-emoji", text: level.emoji || "\u25CB" });
+    btn.createSpan({ cls: "dp-priority-option-label", text: priorityLabel(level.id) });
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      close();
+      if (level.id !== task.priority)
+        void view.setTaskPriority(task, level.id);
+    });
+    buttons.push(btn);
+  });
+  const r = anchor.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+  const below = r.bottom + 6 + popRect.height <= win.innerHeight - 8;
+  pop.style.top = `${below ? r.bottom + 6 : r.top - 6 - popRect.height}px`;
+  pop.style.left = `${Math.max(8, Math.min(r.right - popRect.width, win.innerWidth - popRect.width - 8))}px`;
+  pop.addClass(below ? "is-below" : "is-above");
+  const onPointerDown = (e) => {
+    if (!pop.contains(e.target) && !anchor.contains(e.target))
+      close();
+  };
+  const onKey = (e) => {
+    const i = buttons.indexOf(doc.activeElement);
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      close();
+      anchor.focus();
+    } else if (i >= 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      e.stopPropagation();
+      buttons[(i + (e.key === "ArrowDown" ? 1 : buttons.length - 1)) % buttons.length].focus();
+    }
+  };
+  const close = () => {
+    doc.removeEventListener("pointerdown", onPointerDown, true);
+    doc.removeEventListener("keydown", onKey, true);
+    win.removeEventListener("resize", close);
+    doc.removeEventListener("scroll", close, true);
+    pop.remove();
+    if (openPicker?.el === pop)
+      openPicker = null;
+  };
+  doc.addEventListener("pointerdown", onPointerDown, true);
+  doc.addEventListener("keydown", onKey, true);
+  win.addEventListener("resize", close);
+  doc.addEventListener("scroll", close, true);
+  openPicker = { el: pop, close };
+  if (viaKeyboard)
+    (buttons.find((b) => b.hasClass("is-active")) ?? buttons[0]).focus();
+}
+var statsMemo = null;
+function computeDayStats(view, dateStr) {
+  if (statsMemo && statsMemo.tasks === view.tasks && statsMemo.dateStr === dateStr)
+    return statsMemo.stats;
+  const dayTasks = view.tasks.filter((t2) => t2.date === dateStr && t2.statusChar !== "-");
+  let plannedMin = 0, completedMin = 0, done = 0, focusTotal = 0, focusDone = 0;
+  const byPriority = /* @__PURE__ */ new Map();
+  dayTasks.forEach((task) => {
+    const isDone = task.statusChar === "x";
+    if (isDone)
+      done++;
+    if (task.startTime && task.endTime) {
+      const length = toMinutes(task.endTime) - toMinutes(task.startTime);
+      if (length > 0) {
+        plannedMin += length;
+        if (isDone)
+          completedMin += length;
+      }
+    }
+    if (task.priority === "highest") {
+      focusTotal++;
+      if (isDone)
+        focusDone++;
+    }
+    const entry = byPriority.get(task.priority) ?? { total: 0, done: 0 };
+    entry.total++;
+    if (isDone)
+      entry.done++;
+    byPriority.set(task.priority, entry);
+  });
+  let eventCount = 0, eventMin = 0;
+  if (view.plugin.settings.enableGoogleCalendar) {
+    view.getCalendarEventsForDate(dateStr).forEach((e) => {
+      if (e.isAllDay || !e.startTimeStr || !e.endTimeStr)
+        return;
+      eventCount++;
+      eventMin += Math.max(0, toMinutes(e.endTimeStr) - toMinutes(e.startTimeStr));
+    });
+  }
+  const basis = plannedMin > 0 ? "time" : dayTasks.length > 0 ? "tasks" : "none";
+  const ratio = basis === "time" ? completedMin / plannedMin : basis === "tasks" ? done / dayTasks.length : 0;
+  const stats = {
+    dateStr,
+    plannedMin,
+    completedMin,
+    total: dayTasks.length,
+    done,
+    focusTotal,
+    focusDone,
+    eventCount,
+    eventMin,
+    byPriority: PRIORITY_LEVELS.filter((l) => byPriority.has(l.id)).map((l) => ({ id: l.id, emoji: l.emoji, ...byPriority.get(l.id) })),
+    pct: Math.round(ratio * 100),
+    basis
+  };
+  statsMemo = { tasks: view.tasks, dateStr, stats };
+  return stats;
+}
+function statsMessage(s, isPast) {
+  if (s.total === 0)
+    return t("stats.msg.empty");
+  if (s.pct >= 100)
+    return t("stats.msg.done");
+  if (isPast)
+    return t("stats.msg.past");
+  if (s.focusTotal > 0 && s.focusDone === s.focusTotal)
+    return t("stats.msg.focusDone");
+  if (s.pct === 0)
+    return t("stats.msg.start");
+  return s.pct < 50 ? t("stats.msg.progress") : t("stats.msg.half");
+}
+var SVG_NS = "http://www.w3.org/2000/svg";
+var ringGradientSeq = 0;
+function renderProgressRing(parent, view, s) {
+  const size = 104, stroke = 10, r = (size - stroke) / 2, circumference = 2 * Math.PI * r;
+  const wrap = parent.createDiv({ cls: `dp-stats-ring${s.pct >= 100 ? " is-complete" : ""}` });
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+  svg.setAttribute("aria-hidden", "true");
+  const gradientId = `dp-ring-grad-${++ringGradientSeq}`;
+  const defs = svg.appendChild(document.createElementNS(SVG_NS, "defs"));
+  const gradient = defs.appendChild(document.createElementNS(SVG_NS, "linearGradient"));
+  gradient.setAttribute("id", gradientId);
+  gradient.setAttribute("x1", "0");
+  gradient.setAttribute("y1", "0");
+  gradient.setAttribute("x2", "1");
+  gradient.setAttribute("y2", "1");
+  [["0%", "var(--dp-ring-from)"], ["100%", "var(--dp-ring-to)"]].forEach(([offset, color]) => {
+    const stop = gradient.appendChild(document.createElementNS(SVG_NS, "stop"));
+    stop.setAttribute("offset", offset);
+    stop.setAttribute("style", `stop-color: ${color}`);
+  });
+  const circle = (cls) => {
+    const c = svg.appendChild(document.createElementNS(SVG_NS, "circle"));
+    c.setAttribute("class", cls);
+    c.setAttribute("cx", String(size / 2));
+    c.setAttribute("cy", String(size / 2));
+    c.setAttribute("r", String(r));
+    c.setAttribute("stroke-width", String(stroke));
+    return c;
+  };
+  circle("dp-stats-ring-track");
+  const arc = circle("dp-stats-ring-arc");
+  arc.setAttribute("stroke", `url(#${gradientId})`);
+  arc.setAttribute("stroke-dasharray", String(circumference));
+  const offsetFor = (pct) => String(circumference * (1 - Math.min(100, Math.max(0, pct)) / 100));
+  const from = view.drawerStatsPct;
+  arc.setAttribute("stroke-dashoffset", offsetFor(from));
+  wrap.appendChild(svg);
+  const center = wrap.createDiv({ cls: "dp-stats-ring-center" });
+  const value = center.createDiv({ cls: "dp-stats-ring-value", text: `${from}%` });
+  center.createDiv({
+    cls: "dp-stats-ring-caption",
+    text: s.basis === "time" ? t("stats.ofTime") : s.basis === "tasks" ? t("stats.ofTasks") : "\u2014"
+  });
+  view.drawerStatsPct = s.pct;
+  if (from === s.pct) {
+    value.setText(`${s.pct}%`);
+    return;
+  }
+  requestAnimationFrame(() => requestAnimationFrame(() => arc.setAttribute("stroke-dashoffset", offsetFor(s.pct))));
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    value.setText(`${s.pct}%`);
+    return;
+  }
+  const start = performance.now(), duration = 700;
+  const tick = (now) => {
+    if (!value.isConnected)
+      return;
+    const k = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - k, 3);
+    value.setText(`${Math.round(from + (s.pct - from) * eased)}%`);
+    if (k < 1)
+      requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+function renderMeter(parent, label, value, ratio, cls = "") {
+  const row = parent.createDiv({ cls: `dp-stats-meter${cls ? ` ${cls}` : ""}` });
+  const head = row.createDiv({ cls: "dp-stats-meter-head" });
+  head.createSpan({ cls: "dp-stats-meter-label", text: label });
+  head.createSpan({ cls: "dp-stats-meter-value", text: value });
+  if (ratio !== null) {
+    const fill = row.createDiv({ cls: "dp-stats-bar" }).createDiv({ cls: "dp-stats-bar-fill" });
+    fill.style.setProperty("--dp-fill", `${Math.round(Math.min(1, Math.max(0, ratio)) * 100)}%`);
+  }
+}
+function renderDailyStats(body, view) {
+  const moment = window.moment;
+  const day = view.currentDate.clone().startOf("day");
+  const dateStr = day.format("YYYY-MM-DD");
+  const todayStr = moment().format("YYYY-MM-DD");
+  const s = computeDayStats(view, dateStr);
+  const wrap = body.createDiv({ cls: "dp-stats" });
+  const head = wrap.createDiv({ cls: "dp-stats-day" });
+  head.createSpan({ cls: "dp-stats-day-label", text: localMoment(day).format("dddd, LL") });
+  if (dateStr === todayStr)
+    head.createSpan({ cls: "dp-stats-day-chip", text: t("common.today") });
+  const hero = wrap.createDiv({ cls: "dp-stats-hero" });
+  renderProgressRing(hero, view, s);
+  const tiles = hero.createDiv({ cls: "dp-stats-tiles" });
+  const tile = (label, value, cls) => {
+    const el = tiles.createDiv({ cls: `dp-stats-tile ${cls}` });
+    el.createDiv({ cls: "dp-stats-tile-label", text: label });
+    el.createDiv({ cls: "dp-stats-tile-value", text: value });
+  };
+  const timed = s.plannedMin > 0;
+  tile(t("stats.planned"), timed ? formatDuration(s.plannedMin) : "\u2014", "is-planned");
+  tile(t("stats.completed"), timed ? formatDuration(s.completedMin) : "\u2014", "is-completed");
+  tile(t("stats.remaining"), timed ? formatDuration(s.plannedMin - s.completedMin) : "\u2014", "is-remaining");
+  const card = wrap.createDiv({ cls: "dp-stats-card" });
+  renderMeter(card, t("stats.tasks"), t("stats.tasksDone", { done: s.done, total: s.total }), s.total > 0 ? s.done / s.total : 0);
+  if (s.focusTotal > 0) {
+    renderMeter(card, `\u{1F3AF} ${t("drawer.focus")}`, t("stats.tasksDone", { done: s.focusDone, total: s.focusTotal }), s.focusDone / s.focusTotal, "is-focus");
+  }
+  if (s.eventCount > 0) {
+    renderMeter(card, `\u{1F4C5} ${t("stats.events")}`, t("stats.eventsValue", { n: s.eventCount, time: formatDuration(s.eventMin) }), null);
+  }
+  if (s.byPriority.length > 0) {
+    const breakdown = wrap.createDiv({ cls: "dp-stats-card dp-stats-breakdown" });
+    breakdown.createDiv({ cls: "dp-stats-card-title", text: t("stats.byPriority") });
+    s.byPriority.forEach((p) => {
+      renderMeter(breakdown, `${p.emoji || "\u25CB"} ${priorityLabel(p.id)}`, `${p.done}/${p.total}`, p.done / p.total, `dp-stats-priority is-${p.id}`);
+    });
+  }
+  wrap.createDiv({ cls: `dp-stats-message${s.pct >= 100 ? " is-done" : ""}`, text: statsMessage(s, dateStr < todayStr) });
+}
+var statsPanel = {
+  id: "stats",
+  title: () => t("drawer.stats"),
+  icon: ["chart-pie", "pie-chart"],
+  badge(view) {
+    const s = computeDayStats(view, view.currentDate.format("YYYY-MM-DD"));
+    return s.basis === "none" ? "" : `${s.pct}%`;
+  },
+  render: renderDailyStats
+};
+var SIDE_DRAWER_PANELS = [tasksPanel, statsPanel];
 var SIDE_DRAWER_TABS = ["daily", "multiDay", "weekly", "monthly"];
 function setFirstIcon(el, names) {
   for (const name of names) {
@@ -6405,51 +7459,241 @@ function setFirstIcon(el, names) {
       return;
   }
 }
-function renderSideDrawer(rootEl, view) {
-  const settings = view.plugin.settings;
-  const panel = SIDE_DRAWER_PANELS.find((p) => p.id === settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0];
-  const drawer = rootEl.createDiv({ cls: "dp-side-drawer" });
-  drawer.toggleClass("is-open", view.isSideDrawerOpen());
-  drawer.setAttr("aria-label", panel.title());
-  const header = drawer.createDiv({ cls: "dp-drawer-header" });
-  if (SIDE_DRAWER_PANELS.length > 1) {
-    const tabs = header.createDiv({ cls: "dp-drawer-tabs" });
-    SIDE_DRAWER_PANELS.forEach((p) => {
-      const tab = tabs.createEl("button", { cls: `dp-drawer-tab${p === panel ? " is-active" : ""}`, attr: { "aria-label": p.title() } });
-      (0, import_obsidian5.setIcon)(tab, p.icon);
-      const count2 = p.count?.(view);
-      if (count2)
-        tab.createSpan({ cls: "dp-drawer-count", text: String(count2) });
-      tab.addEventListener("click", async () => {
-        if (p === panel)
-          return;
-        settings.sideDrawerPanel = p.id;
-        view.drawerScrollTop = 0;
-        await view.plugin.saveSettings();
-        view.render();
+function collectDayMarks(view, from, to) {
+  const marks = /* @__PURE__ */ new Map();
+  const at = (d) => {
+    let m = marks.get(d);
+    if (!m)
+      marks.set(d, m = { open: 0, done: 0, focus: false, events: 0 });
+    return m;
+  };
+  view.tasks.forEach((task) => {
+    if (!task.date || task.date < from || task.date > to || task.statusChar === "-")
+      return;
+    const m = at(task.date);
+    if (task.statusChar === "x")
+      m.done++;
+    else {
+      m.open++;
+      if (task.priority === "highest")
+        m.focus = true;
+    }
+  });
+  if (view.plugin.settings.enableGoogleCalendar) {
+    const seen = /* @__PURE__ */ new Set();
+    view.plugin.gcalRanges.forEach((range) => range.events.forEach((e) => {
+      const key = `${e.calendarId}|${e.id}`;
+      if (seen.has(key) || e.dateStr > to || (e.end ?? "").slice(0, 10) < from)
+        return;
+      seen.add(key);
+      const days = e.isAllDay || e.start.slice(0, 10) !== e.end.slice(0, 10) ? view.getSpannedDatesForEvent(e) : [e.dateStr];
+      days.forEach((d) => {
+        if (d >= from && d <= to)
+          at(d).events++;
       });
-    });
+    }));
   }
-  const title = header.createDiv({ cls: "dp-drawer-title" });
-  (0, import_obsidian5.setIcon)(title.createSpan({ cls: "dp-drawer-title-icon" }), panel.icon);
-  title.createSpan({ text: panel.title() });
-  const count = panel.count?.(view);
-  if (count)
-    title.createSpan({ cls: "dp-drawer-count", text: String(count) });
+  return marks;
+}
+function shownRange(view) {
+  const d = view.currentDate;
+  switch (view.activeTab) {
+    case "daily":
+      return { start: d.format("YYYY-MM-DD"), end: d.format("YYYY-MM-DD") };
+    case "multiDay":
+      return { start: d.format("YYYY-MM-DD"), end: d.clone().add(view.getNDayCount() - 1, "days").format("YYYY-MM-DD") };
+    case "weekly":
+      return { start: d.clone().startOf("week").format("YYYY-MM-DD"), end: d.clone().endOf("week").format("YYYY-MM-DD") };
+    default:
+      return null;
+  }
+}
+function mountMiniCalendar(drawer, view) {
+  const moment = window.moment;
+  const settings = view.plugin.settings;
+  const header = drawer.createDiv({ cls: "dp-drawer-header dp-mc-header" });
+  const label = header.createEl("button", {
+    cls: "dp-mc-label",
+    attr: { "aria-label": t("calendar.toggle"), "aria-expanded": String(!settings.miniCalendarCollapsed) }
+  });
+  const labelText = label.createSpan({ cls: "dp-mc-label-text" });
+  label.createSpan({ cls: "dp-mc-label-chevron", text: "\u25BE" });
+  const nav = header.createDiv({ cls: "dp-mc-nav" });
+  const prev = nav.createEl("button", { cls: "dp-mc-nav-btn", attr: { "aria-label": t("calendar.previous") } });
+  (0, import_obsidian5.setIcon)(prev, "chevron-left");
+  const todayBtn = nav.createEl("button", { cls: "dp-mc-today", text: t("common.today") });
+  const next = nav.createEl("button", { cls: "dp-mc-nav-btn", attr: { "aria-label": t("calendar.next") } });
+  (0, import_obsidian5.setIcon)(next, "chevron-right");
   const closeBtn = header.createEl("button", { cls: "clickable-icon dp-drawer-close", attr: { "aria-label": t("drawer.close") } });
   setFirstIcon(closeBtn, ["panel-right-close", "sidebar-close", "x"]);
   closeBtn.addEventListener("click", () => void view.toggleSideDrawer(false));
-  const body = drawer.createDiv({ cls: "dp-drawer-body" });
-  panel.render(body, view);
-  body.scrollTop = view.drawerScrollTop;
-  body.addEventListener("scroll", () => {
-    view.drawerScrollTop = body.scrollTop;
-  }, { passive: true });
+  const cal = drawer.createDiv({ cls: `dp-mini-cal${settings.miniCalendarCollapsed ? " is-collapsed" : ""}` });
+  const weekdays = cal.createDiv({ cls: "dp-mc-weekdays" });
+  const weekStart = localMoment(moment()).startOf("week");
+  for (let i = 0; i < 7; i++)
+    weekdays.createSpan({ text: weekStart.clone().add(i, "days").format("dd") });
+  let grid = null;
+  const anchor = () => moment(view.drawerCalendarAnchor ?? view.currentDate.format("YYYY-MM-DD"), "YYYY-MM-DD");
+  const build = (direction) => {
+    const collapsed = !!settings.miniCalendarCollapsed;
+    const a = anchor();
+    const month = a.clone().startOf("month");
+    const first = collapsed ? a.clone().startOf("week") : month.clone().startOf("week");
+    const weeks = collapsed ? 1 : 6;
+    const last = first.clone().add(weeks * 7 - 1, "days");
+    labelText.setText(localMoment(collapsed ? a : month).format("MMMM YYYY"));
+    const todayStr = moment().format("YYYY-MM-DD");
+    const range = shownRange(view);
+    const marks = collectDayMarks(view, first.format("YYYY-MM-DD"), last.format("YYYY-MM-DD"));
+    const nextGrid = createDiv({ cls: "dp-mc-grid" });
+    const day = first.clone();
+    for (let w = 0; w < weeks; w++) {
+      const row = nextGrid.createDiv({ cls: "dp-mc-week" });
+      for (let i = 0; i < 7; i++, day.add(1, "day")) {
+        const dateStr = day.format("YYYY-MM-DD");
+        const m = marks.get(dateStr);
+        const inRange = !!range && dateStr >= range.start && dateStr <= range.end;
+        const cell = row.createEl("button", { cls: "dp-mc-day" });
+        cell.dataset.date = dateStr;
+        cell.toggleClass("is-other-month", !collapsed && !day.isSame(month, "month"));
+        cell.toggleClass("is-today", dateStr === todayStr);
+        cell.toggleClass("is-weekend", day.day() === 0 || day.day() === 6);
+        cell.toggleClass("is-in-range", inRange);
+        cell.toggleClass("is-range-start", inRange && dateStr === range.start);
+        cell.toggleClass("is-range-end", inRange && dateStr === range.end);
+        cell.createSpan({ cls: "dp-mc-num", text: String(day.date()) });
+        const parts = [localMoment(day).format("LL")];
+        if (m) {
+          const dots = cell.createSpan({ cls: "dp-mc-dots" });
+          if (m.open > 0)
+            dots.createSpan({ cls: `dp-mc-dot is-task${m.focus ? " is-focus" : ""}` });
+          else if (m.done > 0)
+            dots.createSpan({ cls: "dp-mc-dot is-done" });
+          if (m.events > 0)
+            dots.createSpan({ cls: "dp-mc-dot is-event" });
+          if (m.open > 0)
+            parts.push(t("calendar.openTasks", { n: m.open }));
+          if (m.focus)
+            parts.push(`\u{1F3AF} ${t("drawer.focus")}`);
+          if (m.events > 0)
+            parts.push(t("calendar.events", { n: m.events }));
+        }
+        cell.setAttr("aria-label", parts.join(" \xB7 "));
+        cell.addEventListener("click", (e) => {
+          if (e.ctrlKey || e.metaKey) {
+            void view.focusDay(dateStr);
+            return;
+          }
+          view.drawerCalendarAnchor = null;
+          void view.goToDate(dateStr);
+        });
+      }
+    }
+    if (grid) {
+      grid.replaceWith(nextGrid);
+      if (direction)
+        nextGrid.addClass(direction === "next" ? "dp-mc-slide-next" : "dp-mc-slide-prev");
+    } else {
+      cal.appendChild(nextGrid);
+    }
+    grid = nextGrid;
+  };
+  const page = (step) => {
+    const unit = settings.miniCalendarCollapsed ? "week" : "month";
+    view.drawerCalendarAnchor = anchor().add(step, unit).format("YYYY-MM-DD");
+    build(step > 0 ? "next" : "prev");
+  };
+  prev.addEventListener("click", () => page(-1));
+  next.addEventListener("click", () => page(1));
+  todayBtn.addEventListener("click", () => {
+    const paged = view.drawerCalendarAnchor !== null;
+    view.drawerCalendarAnchor = null;
+    if (view.currentDate.isSame(moment(), "day")) {
+      if (paged)
+        build(null);
+    } else {
+      void view.goToToday();
+    }
+  });
+  label.addEventListener("click", () => {
+    settings.miniCalendarCollapsed = !settings.miniCalendarCollapsed;
+    cal.toggleClass("is-collapsed", settings.miniCalendarCollapsed);
+    label.setAttr("aria-expanded", String(!settings.miniCalendarCollapsed));
+    build(null);
+    void view.plugin.saveSettings();
+  });
+  let wheelLock = 0;
+  cal.addEventListener("wheel", (e) => {
+    if (Math.abs(e.deltaY) < 4)
+      return;
+    e.preventDefault();
+    if (performance.now() < wheelLock)
+      return;
+    wheelLock = performance.now() + 250;
+    page(e.deltaY > 0 ? 1 : -1);
+  }, { passive: false });
+  build(null);
+}
+function renderSideDrawer(rootEl, view) {
+  const settings = view.plugin.settings;
+  let panel = SIDE_DRAWER_PANELS.find((p) => p.id === settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0];
+  openPicker?.close();
+  statsMemo = null;
+  const drawer = rootEl.createDiv({ cls: "dp-side-drawer" });
+  drawer.toggleClass("is-open", view.isSideDrawerOpen());
+  drawer.setAttr("aria-label", panel.title());
+  drawer.style.setProperty("--dp-task-color", settings.taskColor || "#ff9f1c");
+  mountMiniCalendar(drawer, view);
+  const modes = drawer.createDiv({ cls: "dp-drawer-modes", attr: { role: "tablist", "aria-label": t("drawer.modes") } });
+  modes.style.setProperty("--dp-mode-count", String(SIDE_DRAWER_PANELS.length));
+  modes.createDiv({ cls: "dp-drawer-modes-thumb" });
+  const setThumb = () => modes.style.setProperty("--dp-mode-index", String(SIDE_DRAWER_PANELS.indexOf(panel)));
+  setThumb();
+  const segments = SIDE_DRAWER_PANELS.map((p) => {
+    const seg = modes.createEl("button", {
+      cls: `dp-drawer-mode${p === panel ? " is-active" : ""}`,
+      attr: { role: "tab", "aria-selected": String(p === panel), "data-panel": p.id }
+    });
+    setFirstIcon(seg.createSpan({ cls: "dp-drawer-mode-icon" }), p.icon);
+    seg.createSpan({ cls: "dp-drawer-mode-label", text: p.title() });
+    const badge = p.badge?.(view) ?? "";
+    if (badge)
+      seg.createSpan({ cls: "dp-drawer-count", text: badge });
+    return seg;
+  });
+  let body = drawer.createDiv({ cls: "dp-drawer-body", attr: { role: "tabpanel", "data-panel": panel.id } });
+  const fillBody = (target) => {
+    panel.render(target, view);
+    target.scrollTop = view.drawerScrollTop;
+    target.addEventListener("scroll", () => {
+      view.drawerScrollTop = target.scrollTop;
+    }, { passive: true });
+  };
+  fillBody(body);
+  segments.forEach((seg, i) => seg.addEventListener("click", () => {
+    const p = SIDE_DRAWER_PANELS[i];
+    if (p === panel)
+      return;
+    const forward = i > SIDE_DRAWER_PANELS.indexOf(panel);
+    panel = p;
+    settings.sideDrawerPanel = p.id;
+    view.drawerScrollTop = 0;
+    segments.forEach((s, j) => {
+      s.toggleClass("is-active", j === i);
+      s.setAttr("aria-selected", String(j === i));
+    });
+    setThumb();
+    drawer.setAttr("aria-label", p.title());
+    const nextBody = createDiv({ cls: `dp-drawer-body ${forward ? "dp-drawer-enter-next" : "dp-drawer-enter-prev"}`, attr: { role: "tabpanel", "data-panel": p.id } });
+    body.replaceWith(nextBody);
+    body = nextBody;
+    fillBody(nextBody);
+    void view.plugin.saveSettings();
+  }));
   return drawer;
 }
 
 // views.ts
-var PRIORITY_EMOJI = { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" };
 var isLockedTask = (task) => !!task && (task.completed || task.statusChar === "x" || task.statusChar === "-");
 function grabOffsetIn(card, clientY) {
   const col = card.offsetParent;
@@ -7522,7 +8766,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     card.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "touch" || e.button !== 0 || this.activePointerDrag)
         return;
-      if (e.target.closest(".dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions"))
+      if (e.target.closest(".dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions, .dp-priority-trigger"))
         return;
       const doc = card.ownerDocument;
       const { pointerId, clientX: startX, clientY: startY } = e;
@@ -7583,7 +8827,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     this.activeDragClickOffsetMin = grabOffset;
     doc.body.addClass("dp-pointer-dragging");
     const canUnschedule = source.kind === "timeline" || source.origin !== "undated";
-    const undatedOnly = source.kind === "task" && source.origin === "overdue";
+    const undatedOnly = source.kind === "task" && (source.origin === "overdue" || source.origin === "focus");
     let target = null;
     let scroller = null;
     let frame = 0;
@@ -7592,6 +8836,9 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       const hit = doc.elementFromPoint(x, y);
       if (!hit || !this.containerEl.contains(hit))
         return null;
+      const miniDay = source.kind === "task" ? hit.closest(".dp-side-drawer.is-open .dp-mc-day[data-date]") : null;
+      if (miniDay)
+        return { kind: "day", el: miniDay, dateStr: miniDay.dataset.date };
       const drawer = hit.closest(".dp-side-drawer.is-open");
       if (drawer) {
         if (!canUnschedule)
@@ -8627,6 +9874,21 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       this.navDirection = null;
     }
   }
+  async goToDate(dateStr) {
+    const target = window.moment(dateStr, "YYYY-MM-DD");
+    if (target.isSame(this.currentDate, "day"))
+      return;
+    const tab = this.getViewTabType();
+    const unit = tab === "weekly" ? "week" : tab === "monthly" || tab === "list" ? "month" : "day";
+    this.navDirection = target.isSame(this.currentDate, unit) ? null : target.isAfter(this.currentDate, unit) ? "next" : "prev";
+    this.currentDate = target;
+    triggerHaptic("selection");
+    try {
+      await this.refreshTasks();
+    } finally {
+      this.navDirection = null;
+    }
+  }
   async navigateWithSlide(direction) {
     this.navigateDate(direction);
     this.navDirection = direction > 0 ? "next" : "prev";
@@ -9072,7 +10334,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     card.addEventListener("pointerdown", (e) => {
       if (e.pointerType !== "touch" || !e.isPrimary || dragging)
         return;
-      if (e.target.closest(".dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions"))
+      if (e.target.closest(".dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions, .dp-priority-trigger"))
         return;
       pointerId = e.pointerId;
       startX = lastX = e.clientX;
@@ -10915,6 +12177,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.drawerScrollTop = 0;
     this.drawerSectionOverrides = /* @__PURE__ */ new Map();
     this.drawerSectionState = /* @__PURE__ */ new Map();
+    this.drawerCalendarAnchor = null;
+    this.drawerStatsPct = 0;
     this.headerResizeObserver = null;
     this.drawerCaptureDraft = "";
     this.drawerCaptureFocused = false;
@@ -11062,7 +12326,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.headerResizeObserver.observe(header);
   }
   renderDrawerTaskCard(list, task, section) {
-    const card = list.createDiv({ cls: "dp-drawer-card" });
+    const card = list.createDiv({ cls: `dp-drawer-card${task.priority === "highest" ? " is-mit" : ""}` });
     card.dataset.drawerTaskId = task.id;
     card.title = task.filePath;
     createCustomCheckbox(card, task, async (newStatus) => {
@@ -11072,11 +12336,12 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     card.createSpan({ cls: "dp-drawer-card-title", text: cleanTaskTextForDisplay(task.text) });
     if (section === "overdue" && task.date) {
       card.createSpan({ cls: "dp-drawer-card-date", text: window.moment(task.date, "YYYY-MM-DD").format("MMM D") });
+    } else if (section === "focus" && task.startTime) {
+      card.createSpan({ cls: "dp-drawer-card-date is-time", text: task.startTime });
     }
-    if (task.priority !== "normal")
-      card.createSpan({ cls: "dp-badge dp-badge-priority", text: PRIORITY_EMOJI[task.priority] });
+    const priorityTrigger = renderPriorityTrigger(card, task, this);
     card.addEventListener("click", (e) => {
-      if (e.target.closest(".dp-custom-cb, .dp-drawer-card-actions"))
+      if (e.target.closest(".dp-custom-cb, .dp-drawer-card-actions, .dp-priority-trigger"))
         return;
       this.openTaskEditor(task);
     });
@@ -11091,6 +12356,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
         e.preventDefault();
         e.stopPropagation();
         void this.fitTaskIn(task, this.upcomingDates(14));
+      } else if (e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        e.stopPropagation();
+        togglePriorityPicker(priorityTrigger, task, this, true);
       }
     });
     if (section === "overdue") {
@@ -11111,6 +12380,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       addAction(t("drawer.card.undate"), t("drawer.card.undateTooltip"), () => this.unscheduleTasks([task]));
     }
     this.registerMouseDrag(card, { kind: "task", task, origin: section });
+  }
+  async setTaskPriority(task, priority) {
+    if (await updateTaskInFile3(this.app, task, { priority }))
+      await this.refreshTasks();
   }
   upcomingDates(count) {
     const today = window.moment();
