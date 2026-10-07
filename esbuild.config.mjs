@@ -23,6 +23,8 @@ esbuild.build({
 	external: [
 		"obsidian",
 		"electron",
+		"@codemirror/state", // provided by Obsidian: a bundled copy would not match its editor instances
+		"@codemirror/view",
 		"@electron/remote",
 		...builtins],
 	format: "cjs",

@@ -7,15 +7,21 @@ import {
     setIcon,
     Notice,
     TFile,
+    TFolder,
     parseYaml,
-    Platform
+    Platform,
+    editorLivePreviewField
 } from 'obsidian';
+import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from '@codemirror/view';
+import { RangeSetBuilder } from '@codemirror/state';
 import { 
     DayPlannerSettings, 
     DEFAULT_SETTINGS, 
     VIEW_TYPES,
     TaskItem,
     GCalEvent,
+    ReminderType,
+    GCAL_CACHE_TTL_MS,
     GCAL_MAX_CACHED_RANGES
 } from './types';
 import { STYLES } from './styles';
@@ -25,19 +31,20 @@ import {
     cleanTaskTextForDisplay,
     parseTaskLine,
     formatMinutesNice,
-    setHapticsEnabled
+    setHapticsEnabled,
+    setScanSettings,
+    isExcludedPath,
+    GCAL_ID_TAG_RE,
+    attachPathSuggest,
+    onEnterSubmit
 } from './utils';
-import {
-    deleteGoogleCalendarEvent,
-    syncTaskToGCal,
-    fetchSingleCalendarEvents
-} from './gcalApi';
+import { fetchSingleCalendarEvents } from './gcalApi';
 import { 
     DayPlannerCombinedView, 
     DayPlannerDailyView,
     DayPlannerCodeBlockRenderer
 } from './views';
-import { PathSelectorModal } from './modals';
+import { ShortcutHelpModal } from './modals';
 
 export class DayPlannerSettingTab extends PluginSettingTab {
     plugin: DayPlannerPlugin;
@@ -47,101 +54,156 @@ export class DayPlannerSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
-    addTemplateSuggestSetting(
-        containerEl: HTMLElement, 
-        name: string, 
-        desc: string, 
-        value: string, 
-        onChange: (value: string) => Promise<void>
-    ) {
-        const setting = new Setting(containerEl)
-            .setName(name)
-            .setDesc(desc);
+    /** Settings tab on screen; kept across display() calls (toggles that reveal dependent settings re-render the tab) */
+    private activeSettingsTab = 'general';
 
-        setting.addText(text => {
-            const inputEl = text.inputEl;
-            inputEl.value = value;
-            inputEl.placeholder = 'Search template files...';
-
-            // Create suggestion container
-            const suggContainer = document.createElement('div');
-            suggContainer.className = 'dp-sugg-container';
-            suggContainer.style.display = 'none';
-            
-            // Append suggestion container to the control element
-            const controlEl = inputEl.parentElement;
-            if (controlEl) {
-                controlEl.style.position = 'relative';
-                document.body.appendChild(suggContainer);
-            }
-
-            const positionSuggestions = () => {
-                const rect = inputEl.getBoundingClientRect();
-                const maxHeight = Math.min(280, window.innerHeight - rect.bottom - 12);
-                suggContainer.style.position = 'fixed';
-                suggContainer.style.left = `${rect.left}px`;
-                suggContainer.style.top = `${rect.bottom + 4}px`;
-                suggContainer.style.width = `${rect.width}px`;
-                suggContainer.style.maxHeight = `${Math.max(140, maxHeight)}px`;
-                suggContainer.style.zIndex = '1000';
-            };
-
-            const updateSuggestions = () => {
-                suggContainer.empty();
-                const query = inputEl.value.toLowerCase().trim();
-                const allMarkdownFiles = this.app.vault.getMarkdownFiles().filter(f => !isSyncConflictPath(f.path));
-                
-                const filtered = query === '' 
-                    ? allMarkdownFiles 
-                    : allMarkdownFiles.filter(f => f.path.toLowerCase().includes(query));
-                
-                if (filtered.length === 0) {
-                    const noItem = suggContainer.createDiv({ 
-                        cls: 'dp-sugg-item'
-                    });
-                    noItem.setText('No matching files found');
-                    positionSuggestions();
-                    suggContainer.style.display = 'block';
-                    return;
-                }
-
-                // Show only top 10 matches to keep it clean and performant
-                filtered.slice(0, 10).forEach(file => {
-                    const item = suggContainer.createDiv({ 
-                        cls: 'dp-sugg-item'
-                    });
-                    item.setText(file.path);
-                    
-                    item.addEventListener('mousedown', async (e) => {
-                        // Prevent input blur before mousedown click registers
-                        e.preventDefault();
-                        inputEl.value = file.path;
-                        suggContainer.style.display = 'none';
-                        await onChange(file.path);
-                    });
-                });
-                
-                positionSuggestions();
-                suggContainer.style.display = 'block';
-            };
-
-            inputEl.addEventListener('input', () => {
-                updateSuggestions();
+    /**
+     * Top tab bar + one panel per category. Every panel is built on each display(); switching only flips classes,
+     * so it is instant and keeps the panels' state. Returns the panel bodies, keyed by tab id.
+     */
+    private createSettingsTabs(container: HTMLElement): Record<'general' | 'timeline' | 'gcal' | 'reminders' | 'display', HTMLElement> {
+        const tabs = [
+            { id: 'general', label: '⚙️ General' },
+            { id: 'timeline', label: '⏱️ Timeline' },
+            { id: 'gcal', label: '☁️ Google Calendar' },
+            { id: 'reminders', label: '🔔 Reminders' },
+            { id: 'display', label: '📱 Display' }
+        ] as const;
+        const bar = container.createDiv({ cls: 'dp-settings-tabs', attr: { role: 'tablist' } });
+        const panels = {} as Record<typeof tabs[number]['id'], HTMLElement>;
+        const buttons: HTMLElement[] = [];
+        const activate = (id: string) => {
+            this.activeSettingsTab = id;
+            tabs.forEach((tab, i) => {
+                const on = tab.id === id;
+                buttons[i].toggleClass('is-active', on);
+                buttons[i].setAttr('aria-selected', String(on));
+                panels[tab.id].toggleClass('is-active', on);
             });
-
-            inputEl.addEventListener('focus', () => {
-                updateSuggestions();
-            });
-
-            inputEl.addEventListener('blur', () => {
-                // Delay hiding suggestion to allow mousedown event to complete first
-                setTimeout(() => {
-                    suggContainer.style.display = 'none';
-                }, 150);
-            });
-
-            this.plugin.register(() => suggContainer.remove());
+        };
+        tabs.forEach(tab => {
+            const btn = bar.createEl('button', { cls: 'dp-settings-tab', text: tab.label, attr: { role: 'tab' } });
+            btn.addEventListener('click', () => activate(tab.id));
+            buttons.push(btn);
         });
+        tabs.forEach(tab => { panels[tab.id] = container.createDiv({ cls: 'dp-settings-panel', attr: { role: 'tabpanel' } }); });
+        activate(tabs.some(t => t.id === this.activeSettingsTab) ? this.activeSettingsTab : 'general');
+        return panels;
+    }
+
+    /** A text setting for a vault path with Obsidian's fuzzy file / folder suggestions (utils.attachPathSuggest) */
+    private addPathSetting(container: HTMLElement, name: string, desc: string, placeholder: string,
+        kind: 'file' | 'folder', value: string, save: (value: string) => Promise<void>) {
+        new Setting(container)
+            .setName(name)
+            .setDesc(desc)
+            .addText(text => {
+                text.setPlaceholder(placeholder)
+                    .setValue(value)
+                    .onChange(async (v) => save(v));
+                attachPathSuggest(this.app, text.inputEl, kind);
+            });
+    }
+
+    /** Mode for the next rule added in the exclusion filter (session only) */
+    private exclusionInputMode: 'exclude' | 'keep' = 'exclude';
+
+    /**
+     * Excluded files & folders, in the shape of Obsidian's own search filters: one input with vault suggestions adds
+     * a rule as a chip; chips show what they match (folder, note, or * pattern) and are removed with ×. A rule can
+     * exclude or keep: "Keep" re-includes something inside an excluded folder ("!" prefix in the stored rule).
+     * A click on a chip flips it between the two. A live count shows what the rules currently leave out.
+     */
+    private renderExclusionFilter(container: HTMLElement) {
+        new Setting(container)
+            .setName('Excluded Files & Folders')
+            .setDesc('Notes matched here are not scanned for tasks. Pick a folder or note from the suggestions, or type a pattern: * stays within one folder, ** crosses folders (e.g. **/Templates). "Keep" re-includes something inside an excluded folder.')
+            .setClass('dp-path-filter-setting');
+
+        const box = container.createDiv({ cls: 'dp-path-filter' });
+        const inputRow = box.createDiv({ cls: 'dp-path-filter-input-row' });
+        const modeToggle = inputRow.createDiv({ cls: 'dp-path-filter-mode', attr: { role: 'group', 'aria-label': 'Rule type' } });
+        const input = inputRow.createEl('input', {
+            cls: 'dp-path-filter-input',
+            attr: { type: 'text', placeholder: 'Folder, note or pattern…', spellcheck: 'false' }
+        });
+        const chips = box.createDiv({ cls: 'dp-path-chips' });
+        const summary = box.createDiv({ cls: 'dp-path-filter-summary' });
+
+        const rules = () => (this.plugin.settings.excludePaths ??= []);
+        const save = async () => {
+            await this.plugin.saveSettings(); // a changed rule list rescans the vault and refreshes the views
+            renderChips();
+        };
+        const addRule = async (rawPath: string) => {
+            const path = rawPath.trim().replace(/^!/, '');
+            if (!path) return;
+            const rule = this.exclusionInputMode === 'keep' ? `!${path}` : path;
+            const list = rules();
+            // One rule per path: re-adding it with the other mode switches that rule instead of duplicating it
+            const existing = list.findIndex(r => r.replace(/^!/, '') === path);
+            if (existing >= 0) list.splice(existing, 1);
+            list.push(rule);
+            input.value = '';
+            await save();
+        };
+
+        const renderMode = () => {
+            modeToggle.empty();
+            (['exclude', 'keep'] as const).forEach(mode => {
+                const btn = modeToggle.createEl('button', {
+                    cls: `dp-path-filter-mode-btn${this.exclusionInputMode === mode ? ' is-active' : ''}`,
+                    text: mode === 'exclude' ? 'Exclude' : 'Keep'
+                });
+                btn.addEventListener('click', () => {
+                    this.exclusionInputMode = mode;
+                    renderMode();
+                    input.focus();
+                });
+            });
+        };
+
+        const renderChips = () => {
+            chips.empty();
+            const list = rules();
+            if (list.length === 0) {
+                chips.createSpan({ cls: 'dp-path-chips-empty', text: 'No rules: every note in the vault is scanned.' });
+            }
+            list.forEach((rule, index) => {
+                const keep = rule.startsWith('!');
+                const path = keep ? rule.slice(1) : rule;
+                const target = this.app.vault.getAbstractFileByPath(path.replace(/\/+$/, ''))
+                    ?? this.app.vault.getAbstractFileByPath(`${path}.md`);
+                const icon = path.includes('*') ? 'asterisk' : target instanceof TFolder || path.endsWith('/') ? 'folder' : target instanceof TFile ? 'file-text' : 'help-circle';
+                const chip = chips.createDiv({
+                    cls: `dp-path-chip${keep ? ' is-keep' : ''}${!target && !path.includes('*') ? ' is-missing' : ''}`,
+                    attr: { 'aria-label': `${keep ? 'Keep' : 'Exclude'}: ${path}${!target && !path.includes('*') ? ' (not found in the vault)' : ''} · click to switch` }
+                });
+                chip.createSpan({ cls: 'dp-path-chip-mode', text: keep ? 'Keep' : 'Exclude' });
+                setIcon(chip.createSpan({ cls: 'dp-path-chip-icon' }), icon);
+                chip.createSpan({ cls: 'dp-path-chip-label', text: path });
+                chip.addEventListener('click', async () => {
+                    list[index] = keep ? path : `!${path}`;
+                    await save();
+                });
+                const remove = chip.createEl('button', { cls: 'dp-path-chip-remove', attr: { 'aria-label': `Remove ${path}` } });
+                setIcon(remove, 'x');
+                remove.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    list.splice(index, 1);
+                    await save();
+                });
+            });
+
+            const notes = this.app.vault.getMarkdownFiles().filter(f => !isSyncConflictPath(f.path));
+            const excluded = notes.filter(f => isExcludedPath(f.path)).length;
+            summary.setText(list.length === 0 ? '' : `Leaving out ${excluded} of ${notes.length} notes.`);
+        };
+
+        attachPathSuggest(this.app, input, 'any', path => void addRule(path));
+        onEnterSubmit(input, () => void addRule(input.value)); // typed patterns; IME-safe for Korean names
+        renderMode();
+        renderChips();
     }
 
     display(): void {
@@ -149,153 +211,31 @@ export class DayPlannerSettingTab extends PluginSettingTab {
         containerEl.empty();
         containerEl.addClass('dp-settings');
 
-        new Setting(containerEl).setName('General').setHeading();
+        new Setting(containerEl).setName('Dayloom Settings').setHeading();
 
-        new Setting(containerEl)
-            .setName('Default Task File Path')
-            .setDesc('The default markdown file where tasks will be added when creating them in the planner.')
-            .addText(text => text
-                .setPlaceholder('Day Planner.md')
-                .setValue(this.plugin.settings.defaultTaskFile)
-                .onChange(async (value) => {
-                    this.plugin.settings.defaultTaskFile = value || 'Day Planner.md';
-                    await this.plugin.saveSettings();
-                })
-            );
+        // Panels are created up front, so each block below lands in its tab regardless of code order
+        const { general, timeline, gcal, reminders, display: mobileDisplay } = this.createSettingsTabs(containerEl);
 
-        new Setting(containerEl)
-            .setName('Exclude Folder/File Paths')
-            .setDesc('Paths of folders or files to exclude from task scanning. (e.g. archive/ or templates/Draft.md)')
-            .setClass('dp-filter-setting');
-
-        // Filter card
-        const filterCard = containerEl.createDiv({ cls: 'dp-filter-card' });
-
-        // Header inside the card: Match [any / all] of the below filter group
-        const filterHeader = filterCard.createDiv({ cls: 'dp-filter-header' });
-        filterHeader.createSpan({ text: 'Match' });
-        
-        const matchSelect = filterHeader.createEl('select', { cls: 'dp-filter-select dropdown' });
-        matchSelect.createEl('option', { value: 'any', text: 'any' });
-        matchSelect.createEl('option', { value: 'all', text: 'all' });
-        matchSelect.value = this.plugin.settings.excludeMatchMode || 'any';
-        matchSelect.addEventListener('change', async () => {
-            this.plugin.settings.excludeMatchMode = matchSelect.value as 'any' | 'all';
-            await this.plugin.saveSettings();
-        });
-
-        filterHeader.createSpan({ text: 'of the below filter group' });
-
-        // Divider line below header
-        filterCard.createEl('hr', { cls: 'dp-filter-divider' });
-
-        // List container
-        const filterList = filterCard.createDiv({ cls: 'dp-filter-list' });
-
-        // Render function
-        const renderExcludes = () => {
-            filterList.empty();
-            
-            if (!this.plugin.settings.excludePaths || this.plugin.settings.excludePaths.length === 0) {
-                filterList.createDiv({ 
-                    text: 'No exclusion rules defined. All files will be scanned.' 
-                });
-                return;
-            }
-
-            this.plugin.settings.excludePaths.forEach((path, index) => {
-                const item = filterList.createDiv({ cls: 'dp-filter-item' });
-                
-                // Icon (folder or file depending on content)
-                const iconEl = item.createDiv({ cls: 'dp-filter-item-icon' });
-                const isFolder = path.endsWith('/') || !path.includes('.');
-                setIcon(iconEl, isFolder ? 'folder' : 'file-text');
-
-                // Input
-                const input = item.createEl('input', {
-                    type: 'text',
-                    cls: 'dp-filter-item-input',
-                    placeholder: 'e.g. archive/ or templates/Draft.md'
-                });
-                input.value = path;
-                input.addEventListener('change', async () => {
-                    this.plugin.settings.excludePaths[index] = input.value.trim();
-                    
-                    // Update icon dynamically
-                    const newPath = input.value.trim();
-                    const newIsFolder = newPath.endsWith('/') || !newPath.includes('.');
-                    setIcon(iconEl, newIsFolder ? 'folder' : 'file-text');
-                    
-                    await this.plugin.saveSettings();
-                });
-
-                // Delete Button
-                const deleteBtn = item.createEl('button', { cls: 'dp-filter-item-delete' });
-                setIcon(deleteBtn, 'trash-2');
-                deleteBtn.addEventListener('click', async () => {
-                    this.plugin.settings.excludePaths.splice(index, 1);
-                    await this.plugin.saveSettings();
-                    renderExcludes();
-                });
+        this.addPathSetting(general, 'Default Task File Path',
+            'The default markdown file where tasks will be added when creating them in the planner.',
+            'Day Planner.md', 'file', this.plugin.settings.defaultTaskFile,
+            async (value) => {
+                this.plugin.settings.defaultTaskFile = value || 'Day Planner.md';
+                await this.plugin.saveSettings();
             });
-        };
 
-        // Footer inside the card
-        const filterFooter = filterCard.createDiv({ cls: 'dp-filter-footer' });
+        this.renderExclusionFilter(general);
 
-        const createFooterBtn = (icon: string, label: string, onClick: () => void, cta = false) => {
-            const btn = filterFooter.createEl('button', { cls: cta ? 'mod-cta' : '' });
-            setIcon(btn.createSpan({ cls: 'dp-filter-btn-icon' }), icon);
-            btn.createSpan({ text: label });
-            btn.addEventListener('click', onClick);
-        };
-
-        createFooterBtn('plus', 'Add filter group', async () => {
-            if (!this.plugin.settings.excludePaths) {
-                this.plugin.settings.excludePaths = [];
-            }
-            this.plugin.settings.excludePaths.push('');
-            await this.plugin.saveSettings();
-            renderExcludes();
-        }, true);
-
-        const openPathSelector = (tab: 'files' | 'folders') => {
-            const modal = new PathSelectorModal(this.app, async (selectedPath) => {
-                if (!this.plugin.settings.excludePaths) {
-                    this.plugin.settings.excludePaths = [];
-                }
-                if (!this.plugin.settings.excludePaths.includes(selectedPath)) {
-                    this.plugin.settings.excludePaths.push(selectedPath);
-                    await this.plugin.saveSettings();
-                    renderExcludes();
-                    new Notice(`Excluded: ${selectedPath}`);
-                } else {
-                    new Notice('This path is already in the exclusion list.');
-                }
+        new Setting(general).setName('Daily notes').setHeading();
+        this.addPathSetting(general, 'Daily Notes Folder Path',
+            'Obsidian folder path for your daily notes. Leave empty for root folder.',
+            'Daily/Journal', 'folder', this.plugin.settings.dailyNotesFolder,
+            async (value) => {
+                this.plugin.settings.dailyNotesFolder = value.trim() || '';
+                await this.plugin.saveSettings();
             });
-            modal.activeTab = tab;
-            modal.open();
-        };
 
-        createFooterBtn('file-plus', 'Add file', () => openPathSelector('files'));
-        createFooterBtn('folder-plus', 'Add folder', () => openPathSelector('folders'));
-
-        renderExcludes();
-
-        new Setting(containerEl).setName('Daily notes').setHeading();
-        new Setting(containerEl)
-            .setName('Daily Notes Folder Path')
-            .setDesc('Obsidian folder path for your daily notes. Leave empty for root folder.')
-            .addText(text => text
-                .setPlaceholder('Daily/Journal')
-                .setValue(this.plugin.settings.dailyNotesFolder)
-                .onChange(async (value) => {
-                    this.plugin.settings.dailyNotesFolder = value.trim() || '';
-                    await this.plugin.saveSettings();
-                })
-            );
-
-        new Setting(containerEl)
+        new Setting(general)
             .setName('Daily Notes File Format')
             .setDesc('File name format for daily notes (Default: YYYY-MM-DD).')
             .addText(text => text
@@ -307,31 +247,24 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
-        this.addTemplateSuggestSetting(
-            containerEl,
-            'Daily Note Template',
+        this.addPathSetting(general, 'Daily Note Template',
             'Choose the markdown file in your vault to use as a template for new Daily Notes.',
-            this.plugin.settings.dailyNoteTemplate || '',
+            'Templates/Daily.md', 'file', this.plugin.settings.dailyNoteTemplate || '',
             async (value) => {
-                this.plugin.settings.dailyNoteTemplate = value;
+                this.plugin.settings.dailyNoteTemplate = value.trim();
                 await this.plugin.saveSettings();
-            }
-        );
+            });
 
-        new Setting(containerEl).setName('Weekly notes').setHeading();
-        new Setting(containerEl)
-            .setName('Weekly Notes Folder Path')
-            .setDesc('Obsidian folder path for your weekly notes. Leave empty for root folder.')
-            .addText(text => text
-                .setPlaceholder('Weekly/Plans')
-                .setValue(this.plugin.settings.weeklyNotesFolder || '')
-                .onChange(async (value) => {
-                    this.plugin.settings.weeklyNotesFolder = value.trim() || '';
-                    await this.plugin.saveSettings();
-                })
-            );
+        new Setting(general).setName('Weekly notes').setHeading();
+        this.addPathSetting(general, 'Weekly Notes Folder Path',
+            'Obsidian folder path for your weekly notes. Leave empty for root folder.',
+            'Weekly/Plans', 'folder', this.plugin.settings.weeklyNotesFolder || '',
+            async (value) => {
+                this.plugin.settings.weeklyNotesFolder = value.trim() || '';
+                await this.plugin.saveSettings();
+            });
 
-        new Setting(containerEl)
+        new Setting(general)
             .setName('Weekly Notes File Format')
             .setDesc('File name format for weekly notes (Default: gggg-[W]ww).')
             .addText(text => text
@@ -343,18 +276,15 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
-        this.addTemplateSuggestSetting(
-            containerEl,
-            'Weekly Note Template',
+        this.addPathSetting(general, 'Weekly Note Template',
             'Choose the markdown file in your vault to use as a template for new Weekly Notes.',
-            this.plugin.settings.weeklyNoteTemplate || '',
+            'Templates/Weekly.md', 'file', this.plugin.settings.weeklyNoteTemplate || '',
             async (value) => {
-                this.plugin.settings.weeklyNoteTemplate = value;
+                this.plugin.settings.weeklyNoteTemplate = value.trim();
                 await this.plugin.saveSettings();
-            }
-        );
+            });
 
-        new Setting(containerEl)
+        new Setting(timeline)
             .setName('N-day view length')
             .setDesc('Number of consecutive days to show in the N-day calendar view.')
             .addSlider(slider => slider
@@ -368,20 +298,105 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerEl).setName('Theme').setHeading();
-        new Setting(containerEl)
-            .setName('Local Task Color')
-            .setDesc('Color for highlight borders on your local tasks.')
-            .addColorPicker(color => color
-                .setValue(this.plugin.settings.taskColor || '#ff9f1c')
+        new Setting(mobileDisplay)
+            .setName('Hide Inline Metadata Fields')
+            .setDesc('Hide bracketed inline fields such as [gcalId:: ...] from task titles in the planner, and the [gcalId:: ...] sync tag in Reading View and Live Preview. Files keep them; only the display is cleaned.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.hideBracketMetadata ?? true)
                 .onChange(async (value) => {
-                    this.plugin.settings.taskColor = value;
+                    this.plugin.settings.hideBracketMetadata = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshActiveViews();
+                    this.plugin.updateStatusBar();
+                    document.body.toggleClass('dp-hide-gcal-id', value);
+                    this.app.workspace.updateOptions(); // re-runs the Live Preview hider in open editors
+                    // Reading View re-renders on next open/switch of each note
+                })
+            );
+
+        new Setting(mobileDisplay)
+            .setName('Show shortcut button in header')
+            .setDesc('Show the keyboard shortcut (?) button in the timeline header. The ? and h keys open the shortcut list either way.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.showShortcutButton ?? true)
+                .onChange(async (value) => {
+                    this.plugin.settings.showShortcutButton = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshActiveViews();
+                })
+            );
+
+        new Setting(reminders)
+            .setName('Reminder Type')
+            .setDesc('How to alert you before a task or event starts. Auto shows an in-app notice while Obsidian is focused and a system notification otherwise.')
+            .addDropdown(dropdown => dropdown
+                .addOption('off', 'Off')
+                .addOption('auto', 'Auto')
+                .addOption('notice', 'In-app notice')
+                .addOption('system', 'System notification')
+                .setValue(this.plugin.settings.reminderType ?? 'auto')
+                .onChange(async (value) => {
+                    this.plugin.settings.reminderType = value as ReminderType;
+                    await this.plugin.saveSettings();
+                    if (value === 'system' || value === 'auto') this.plugin.requestNotificationPermission();
+                })
+            );
+
+        new Setting(reminders)
+            .setName('Reminder Timing')
+            .setDesc('When to alert you relative to the start time of a task or event.')
+            .addDropdown(dropdown => dropdown
+                .addOption('0', 'At event start time')
+                .addOption('5', '5 minutes before')
+                .addOption('10', '10 minutes before')
+                .addOption('15', '15 minutes before')
+                .addOption('30', '30 minutes before')
+                .setValue(String(this.plugin.settings.reminderOffsetMinutes ?? 0))
+                .onChange(async (value) => {
+                    this.plugin.settings.reminderOffsetMinutes = Number(value);
                     await this.plugin.saveSettings();
                 })
             );
 
-        new Setting(containerEl).setName('Mobile').setHeading();
-        new Setting(containerEl)
+        new Setting(reminders)
+            .setName('Reminder Sound')
+            .setDesc('Play a short two-tone chime with each reminder.')
+            .addExtraButton(button => button
+                .setIcon('volume-2')
+                .setTooltip('Play test chime')
+                .onClick(() => this.plugin.playReminderChime())
+            )
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableReminderSound ?? true)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableReminderSound = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        new Setting(reminders)
+            .setName('Remind for Tasks')
+            .setDesc('Send reminders for vault tasks with a start time (⏰HH:mm) scheduled for today.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.reminderForTasks ?? true)
+                .onChange(async (value) => {
+                    this.plugin.settings.reminderForTasks = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        new Setting(reminders)
+            .setName('Remind for Google Calendar Events')
+            .setDesc('Send reminders for timed Google Calendar events today. All-day events are skipped.')
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.reminderForGCal ?? true)
+                .onChange(async (value) => {
+                    this.plugin.settings.reminderForGCal = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+
+        new Setting(mobileDisplay)
             .setName('Haptic Feedback')
             .setDesc('Vibrate briefly when completing tasks, switching tabs or modes, and dragging or resizing timeline items. Only on mobile devices that support vibration.')
             .addToggle(toggle => toggle
@@ -393,11 +408,10 @@ export class DayPlannerSettingTab extends PluginSettingTab {
             );
 
         // 📐 타임라인 세로 간격 및 노출 시간 범위 조절 설정 UI 추가
-        new Setting(containerEl).setName('Timeline spacing & hour range').setHeading();
         
-        new Setting(containerEl)
-            .setName('Separate Combined and Daily View Heights')
-            .setDesc('Enable this to adjust the zoom (hour height) of Combined and Daily views independently.')
+        new Setting(timeline)
+            .setName('Separate Dayloom and Dayloom Compact Heights')
+            .setDesc('Enable this to adjust the zoom (hour height) of Dayloom and Dayloom Compact independently.')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.separateViewHeights || false)
                 .onChange(async (value) => {
@@ -408,9 +422,9 @@ export class DayPlannerSettingTab extends PluginSettingTab {
             );
 
         if (this.plugin.settings.separateViewHeights) {
-            new Setting(containerEl)
-                .setName('Timeline Hour Height (Combined View)')
-                .setDesc('Adjust the vertical spacing height (in pixels) for 1 hour on Combined View timelines. (Default: 60px)')
+            new Setting(timeline)
+                .setName('Timeline Hour Height (Dayloom)')
+                .setDesc('Adjust the vertical spacing height (in pixels) for 1 hour on Dayloom timelines. (Default: 60px)')
                 .addSlider(slider => slider
                     .setLimits(30, 180, 5)
                     .setValue(this.plugin.settings.timelineHourHeight || 60)
@@ -422,9 +436,9 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                     })
                 );
 
-            new Setting(containerEl)
-                .setName('Timeline Hour Height (Daily View)')
-                .setDesc('Adjust the vertical spacing height (in pixels) for 1 hour on Daily View timelines. (Default: 60px)')
+            new Setting(timeline)
+                .setName('Timeline Hour Height (Dayloom Compact)')
+                .setDesc('Adjust the vertical spacing height (in pixels) for 1 hour on Dayloom Compact timelines. (Default: 60px)')
                 .addSlider(slider => slider
                     .setLimits(30, 180, 5)
                     .setValue(this.plugin.settings.timelineHourHeightDaily || 60)
@@ -436,7 +450,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                     })
                 );
         } else {
-            new Setting(containerEl)
+            new Setting(timeline)
                 .setName('Timeline Hour Height (Synced)')
                 .setDesc('Adjust the vertical spacing height (in pixels) for 1 hour on all timelines. (Default: 60px)')
                 .addSlider(slider => slider
@@ -452,7 +466,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 );
         }
 
-        new Setting(containerEl)
+        new Setting(timeline)
             .setName('Timeline Start Hour')
             .setDesc('The hour at which the daily and weekly timeline starts.')
             .addDropdown(dropdown => {
@@ -474,7 +488,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                     });
             });
 
-        new Setting(containerEl)
+        new Setting(timeline)
             .setName('Timeline End Hour')
             .setDesc('The hour at which the daily and weekly timeline ends.')
             .addDropdown(dropdown => {
@@ -496,10 +510,26 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                     });
             });
 
+        new Setting(timeline)
+            .setName('Default Task Duration (minutes)')
+            .setDesc('Length of the time block an untimed task gets when you drag it onto the timeline from the side drawer or an all-day row (end time = start time + this). Any value from 1 to 1440.')
+            .addText(text => {
+                text.inputEl.type = 'number';
+                text.inputEl.min = '1';
+                text.inputEl.max = '1440';
+                text.setPlaceholder('60')
+                    .setValue(String(this.plugin.settings.defaultTaskDuration ?? 60))
+                    .onChange(async (value) => {
+                        const minutes = Math.round(Number(value));
+                        if (!value.trim() || !Number.isFinite(minutes) || minutes < 1 || minutes > 1440) return;
+                        this.plugin.settings.defaultTaskDuration = minutes;
+                        await this.plugin.saveSettings();
+                    });
+                // Empty or out-of-range entries are never saved: once the field is left, show the value in use
+                text.inputEl.addEventListener('blur', () => text.setValue(String(this.plugin.settings.defaultTaskDuration ?? 60)));
+            });
 
-
-        new Setting(containerEl).setName('Google Calendar integration').setHeading();
-        new Setting(containerEl)
+        new Setting(gcal)
             .setName('Enable Google Calendar Integration')
             .setDesc('When enabled, your active Google Calendar events will be fetched and shown alongside tasks.')
             .addToggle(toggle => toggle
@@ -512,7 +542,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
             );
 
         if (this.plugin.settings.enableGoogleCalendar) {
-            new Setting(containerEl)
+            new Setting(gcal)
                 .setName('Task Sync Google Calendar')
                 .setDesc('Choose the Google Calendar to synchronize your timed vault tasks with.')
                 .addDropdown(dropdown => {
@@ -530,12 +560,12 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 });
         }
 
-        new Setting(containerEl).setName('Google Calendar OAuth 2.0 (sync & editing)').setHeading();
-        containerEl.createEl('p', { 
+        new Setting(gcal).setName('Google Calendar OAuth 2.0 (sync & editing)').setHeading();
+        gcal.createEl('p', { 
             text: 'To sync calendars (including private ones) and edit/drag events directly in the timeline, you need to configure your custom OAuth 2.0 web application credentials.'
         });
 
-        new Setting(containerEl)
+        new Setting(gcal)
             .setName('Google Client ID')
             .setDesc('OAuth Web Client Application ID.')
             .addText(text => text
@@ -547,7 +577,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerEl)
+        new Setting(gcal)
             .setName('Google Client Secret')
             .setDesc('OAuth Web Client Secret Key.')
             .addText(text => text
@@ -559,7 +589,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
-        new Setting(containerEl)
+        new Setting(gcal)
             .setName('Google Refresh Token')
             .setDesc('Offline persistent refresh token for background writing API authorization.')
             .addText(text => text
@@ -571,7 +601,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
-        const calHeader = containerEl.createDiv();
+        const calHeader = gcal.createDiv();
         calHeader.style.cssText = 'margin-top: 24px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;';
         const h4El = calHeader.createEl('h4', { text: 'Google Calendars 📅' });
         h4El.style.cssText = 'margin: 0;';
@@ -588,7 +618,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
             this.display();
         });
 
-        const calsContainer = containerEl.createDiv();
+        const calsContainer = gcal.createDiv();
         calsContainer.style.cssText = 'display: flex; flex-direction: column; gap: 10px; border: 1px solid var(--background-modifier-border); padding: 12px; border-radius: 6px; background-color: var(--background-secondary-alt);';
         if (this.plugin.settings.googleCalendars.length === 0) {
             calsContainer.createEl('span', { 
@@ -650,8 +680,59 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 });
             });
         }
+
+        // Next to the calendar colours above, so local tasks and each calendar can be balanced in one place
+        new Setting(gcal)
+            .setName('Local Task Color')
+            .setDesc('Color for the highlight borders of your local (vault) tasks, shown alongside the calendar colors above.')
+            .addColorPicker(color => color
+                .setValue(this.plugin.settings.taskColor || '#ff9f1c')
+                .onChange(async (value) => {
+                    this.plugin.settings.taskColor = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.refreshActiveViews();
+                })
+            );
     }
 }
+/**
+ * Live Preview: hides ` [gcalId:: ...]` with a replace decoration (display only, the document text is untouched).
+ * The tag reappears while the cursor or a selection touches it, so it stays editable; source mode is never affected.
+ */
+function gcalIdHider(isEnabled: () => boolean) {
+    const hide = Decoration.replace({});
+    return ViewPlugin.fromClass(class {
+        decorations: DecorationSet;
+        constructor(view: EditorView) { this.decorations = this.build(view); }
+        update(u: ViewUpdate) {
+            if (u.docChanged || u.viewportChanged || u.selectionSet || u.transactions.some(t => t.reconfigured)) {
+                this.decorations = this.build(u.view);
+            }
+        }
+        build(view: EditorView): DecorationSet {
+            const builder = new RangeSetBuilder<Decoration>();
+            if (!isEnabled() || !view.state.field(editorLivePreviewField, false)) return builder.finish();
+            const selection = view.state.selection.ranges;
+            for (const { from, to } of view.visibleRanges) {
+                const text = view.state.doc.sliceString(from, to);
+                for (const m of text.matchAll(GCAL_ID_TAG_RE)) {
+                    const start = from + (m.index ?? 0);
+                    const end = start + m[0].length;
+                    if (selection.some(r => r.from <= end && r.to >= start)) continue;
+                    builder.add(start, end, hide);
+                }
+            }
+            return builder.finish();
+        }
+    }, { decorations: v => v.decorations });
+}
+
+/** Resolves once the main thread goes idle (capped at 2s), so the first vault scan never competes with Obsidian's boot. */
+const whenIdle = () => new Promise<void>(resolve => {
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(() => resolve(), { timeout: 2000 });
+    else window.setTimeout(resolve, 1000); // iOS WebKit has no requestIdleCallback
+});
+
 export default class DayPlannerPlugin extends Plugin {
     settings!: DayPlannerSettings; // assigned by loadSettings(), the first thing onload() awaits
     // Union of all cached ranges, used for id lookups (click/edit handlers)
@@ -662,53 +743,133 @@ export default class DayPlannerPlugin extends Plugin {
     statusBarItem: HTMLElement | null = null;
     tasksCache: TaskItem[] | null = null;
     private selfWrites = new Map<string, number>();
+    private exclusionKey = '';
+    private gcalCacheSaveTimer: number | null = null;
+    private scanPromise: Promise<TaskItem[]> | null = null;
+    private layoutReady!: Promise<void>;
+    private viewRefreshTimer: number | null = null;
+    private viewRefreshFirstAt = 0;
+    /** Mounted `dayplanner` code blocks, refreshed with the leaf views on vault changes */
+    codeBlockRenderers = new Set<DayPlannerCodeBlockRenderer>();
+    /** Reminder keys already fired today; reset when the date changes */
+    private notifiedReminders = new Set<string>();
+    private notifiedRemindersDate = '';
 
-    /** Call right before the plugin itself writes `path` during a sync, so the resulting `modify` is not re-synced. */
+    /**
+     * Coalesces per-file cache updates into one view refresh: trailing 250ms, forced after 1.5s of continuous changes.
+     * Post-launch re-indexing fires 'changed' for hundreds of notes; refreshing per file meant hundreds of full renders.
+     */
+    requestViewRefresh() {
+        const now = Date.now();
+        if (this.viewRefreshTimer === null) this.viewRefreshFirstAt = now;
+        else window.clearTimeout(this.viewRefreshTimer);
+        const delay = Math.max(0, Math.min(250, this.viewRefreshFirstAt + 1500 - now));
+        this.viewRefreshTimer = window.setTimeout(() => {
+            this.viewRefreshTimer = null;
+            this.updateStatusBar();
+            // Views and code blocks whose visible tasks are unchanged keep their DOM
+            this.refreshActiveViews(false, true);
+            this.codeBlockRenderers.forEach(r => r.refreshContentOnly(true));
+        }, delay);
+    }
+
+    /** Single shared full scan: waits for the layout (never scans during Obsidian's boot) and dedupes concurrent callers. */
+    ensureTasksCache(): Promise<TaskItem[]> {
+        if (this.tasksCache) return Promise.resolve(this.tasksCache);
+        if (!this.scanPromise) {
+            this.scanPromise = this.layoutReady
+                .then(whenIdle)
+                .then(() => scanVaultTasks(this.app))
+                .then(tasks => {
+                    if (!this.tasksCache) this.tasksCache = tasks;
+                    return this.tasksCache;
+                })
+                .finally(() => { this.scanPromise = null; });
+        }
+        return this.scanPromise;
+    }
+
+    /**
+     * Call right before the plugin itself writes `path` during a sync. Only in-view edits push to Google Calendar (one task
+     * each, see syncEditedTaskToGCal); note edits and these self-writes never do, so sync and 'modify' cannot loop.
+     */
     markSelfWrite(path: string) {
         this.selfWrites.set(path, (this.selfWrites.get(path) ?? 0) + 1);
         window.setTimeout(() => this.selfWrites.delete(path), 3000);
     }
 
-    private consumeSelfWrite(path: string): boolean {
-        const n = this.selfWrites.get(path) ?? 0;
-        if (n <= 0) return false;
-        if (n === 1) this.selfWrites.delete(path); else this.selfWrites.set(path, n - 1);
-        return true;
+    private get gcalCachePath(): string {
+        return `${this.manifest.dir ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`}/gcal-cache.json`;
+    }
+
+    /** Restores the last fetched events so views paint them instantly on startup; each range revalidates on first view. */
+    private async loadGCalCache() {
+        try {
+            if (!(await this.app.vault.adapter.exists(this.gcalCachePath))) return;
+            const data = JSON.parse(await this.app.vault.adapter.read(this.gcalCachePath));
+            if (data?.version !== 1 || !Array.isArray(data.ranges)) return;
+            for (const [key, events] of data.ranges) this.gcalRanges.set(key, { events, fetchedAt: 0 });
+            this.rebuildGCalCache();
+        } catch (err) {
+            console.warn('Day Planner Pro: ignoring unreadable Google Calendar cache', err);
+        }
+    }
+
+    private scheduleGCalCacheSave() {
+        if (this.gcalCacheSaveTimer) window.clearTimeout(this.gcalCacheSaveTimer);
+        this.gcalCacheSaveTimer = window.setTimeout(async () => {
+            this.gcalCacheSaveTimer = null;
+            try {
+                const ranges = Array.from(this.gcalRanges.entries()).map(([key, r]) => [key, r.events]);
+                await this.app.vault.adapter.write(this.gcalCachePath, JSON.stringify({ version: 1, ranges }));
+            } catch (err) {
+                console.warn('Day Planner Pro: could not save Google Calendar cache', err);
+            }
+        }, 2000);
+    }
+
+    private rebuildGCalCache() {
+        const byId = new Map<string, GCalEvent>();
+        this.gcalRanges.forEach(r => r.events.forEach(e => byId.set(`${e.calendarId}::${e.id}`, e)));
+        this.gcalCache = Array.from(byId.values());
     }
 
     async onload() {
+        // Resolves immediately when the plugin is enabled after startup
+        this.layoutReady = new Promise(resolve => this.app.workspace.onLayoutReady(() => resolve()));
         await this.loadSettings();
+        await this.loadGCalCache();
 
         const styleEl = document.createElement('style');
         styleEl.id = 'day-planner-pro-styles';
         styleEl.textContent = STYLES;
         document.head.appendChild(styleEl);
 
-        // Combined tab view + Sidebar Day Planner Pro (same planner, compact shell)
+        // Dayloom tab view + Dayloom Compact (same planner, compact shell)
         this.registerView(VIEW_TYPES.COMBINED, (leaf) => new DayPlannerCombinedView(leaf, this));
         this.registerView(VIEW_TYPES.DAILY, (leaf) => new DayPlannerDailyView(leaf, this));
 
-        this.addRibbonIcon('calendar-glyph', 'Day Planner Pro (Combined View)', () => {
+        this.addRibbonIcon('calendar-glyph', 'Open Dayloom', () => {
             this.activateView(VIEW_TYPES.COMBINED);
         });
-        // Sidebar Day Planner Pro: compact 5-tab shell in the right sidebar (the right drawer on tablets)
-        this.addRibbonIcon('calendar-clock', 'Open Sidebar Day Planner Pro', () => {
+        // Dayloom Compact: compact 5-tab shell in the right sidebar (the right drawer on tablets)
+        this.addRibbonIcon('calendar-clock', 'Open Dayloom Compact', () => {
             this.activateView(VIEW_TYPES.DAILY);
         });
 
         this.addCommand({
             id: 'open-day-planner-pro-combined',
-            name: 'Day Planner Pro: Open Combined Tab View',
+            name: 'Open Dayloom',
             callback: () => this.activateView(VIEW_TYPES.COMBINED)
         });
         this.addCommand({
             id: 'open-day-planner-pro-daily',
-            name: 'Open Sidebar Day Planner Pro',
+            name: 'Open Dayloom Compact',
             callback: () => this.activateView(VIEW_TYPES.DAILY)
         });
         this.addCommand({
             id: 'go-to-today',
-            name: 'Day Planner Pro: Go to Today',
+            name: 'Go to Today',
             callback: async () => {
                 // Prefer the focused planner view, else the first open one; same animated path as the Today button
                 const active = this.app.workspace.getActiveViewOfType(DayPlannerCombinedView)
@@ -719,74 +880,120 @@ export default class DayPlannerPlugin extends Plugin {
                     .find((v): v is DayPlannerCombinedView | DayPlannerDailyView =>
                         v instanceof DayPlannerCombinedView || v instanceof DayPlannerDailyView);
                 if (view) await view.goToToday();
-                else new Notice('Open a Day Planner view first.');
+                else new Notice('Open a Dayloom view first.');
             }
         });
         this.addCommand({
             id: 'insert-inline-view',
-            name: 'Day Planner Pro: Insert Inline View (dayplanner block)',
+            name: 'Insert Inline View (dayloom block)',
             editorCallback: (editor) => {
-                const codeblock = "```dayplanner\ntype: daily\nheight: 500px\n```\n";
+                const codeblock = "```dayloom\ntype: daily\nheight: 500px\n```\n";
                 editor.replaceSelection(codeblock);
             }
+        });
+        this.addCommand({
+            id: 'toggle-side-drawer',
+            name: 'Toggle Side Drawer',
+            callback: () => {
+                // The focused Dayloom tab, else the first open one (the sidebar view is compact: no drawer)
+                const view = this.app.workspace.getActiveViewOfType(DayPlannerCombinedView)
+                    ?? this.app.workspace.getLeavesOfType(VIEW_TYPES.COMBINED).map(leaf => leaf.view)
+                        .find((v): v is DayPlannerCombinedView => v instanceof DayPlannerCombinedView);
+                if (view) void view.toggleSideDrawer();
+                else new Notice('Open Dayloom first.');
+            }
+        });
+        this.addCommand({
+            id: 'show-keyboard-shortcuts',
+            name: 'Show Keyboard Shortcuts',
+            callback: () => ShortcutHelpModal.toggle(this.app, this)
         });
 
         this.addSettingTab(new DayPlannerSettingTab(this.app, this));
 
         this.statusBarItem = this.addStatusBarItem();
-        this.updateStatusBar();
+
+        // Codeblock processors are cheap to register; their renders await ensureTasksCache (i.e. layout ready)
+        this.registerCodeBlockProcessors();
+
+        // Notes: hide the [gcalId:: ...] sync tag in Reading View and Live Preview (files keep it for Google Calendar sync)
+        this.registerEditorExtension(gcalIdHider(() => this.settings.hideBracketMetadata !== false));
+        this.registerMarkdownPostProcessor((el) => {
+            if (this.settings.hideBracketMetadata === false || !el.textContent?.includes('gcalId::')) return;
+            const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+            const hits: Text[] = [];
+            while (walker.nextNode()) {
+                const node = walker.currentNode as Text;
+                if (node.data.includes('gcalId::')) hits.push(node);
+            }
+            hits.forEach(node => { node.data = node.data.replace(GCAL_ID_TAG_RE, ''); }); // rendered DOM only
+        });
+        document.body.toggleClass('dp-hide-gcal-id', this.settings.hideBracketMetadata !== false);
+
+        // Everything heavy waits for the layout: Obsidian fires 'create' for every file while loading the vault,
+        // which previously started one full scan per file during boot.
+        this.app.workspace.onLayoutReady(() => this.onLayoutReadyInit());
+    }
+
+    private onLayoutReadyInit() {
         this.registerInterval(window.setInterval(() => this.updateStatusBar(), 30000));
+        // registerInterval clears this on unload
+        this.registerInterval(window.setInterval(() => this.checkReminders(), 15000)); // at-start alerts land within 15s
+        this.checkReminders();
+        // Open views await this same scan in their own refreshTasks(); re-rendering them here would paint them twice
+        this.ensureTasksCache().then(() => this.updateStatusBar());
 
-        // Metadata cache index completion event -> full re-scan
-        this.registerEvent(this.app.metadataCache.on('resolved', async () => {
-            this.tasksCache = await scanVaultTasks(this.app);
-            this.updateStatusBar();
-            this.refreshActiveViews();
-        }));
-
-        // Centralized file modify observers
-        let modifyTimeout: number | null = null;
-        const userModifiedPaths = new Set<string>();
+        // Centralized file modify observers (debounced per file). Cache + view refresh only: Google Calendar task sync
+        // and repair run solely from the Sync button / Task Sync modal.
+        const modifyTimeouts = new Map<string, number>();
+        const scheduleFileUpdate = (file: TFile, run: () => Promise<void>) => {
+            window.clearTimeout(modifyTimeouts.get(file.path));
+            modifyTimeouts.set(file.path, window.setTimeout(() => {
+                modifyTimeouts.delete(file.path);
+                run();
+            }, 350));
+        };
         this.registerEvent(this.app.vault.on('modify', (file) => {
             if (file instanceof TFile && file.extension === 'md' && !isSyncConflictPath(file.path)) {
-                if (!this.consumeSelfWrite(file.path)) userModifiedPaths.add(file.path);
-                if (modifyTimeout) window.clearTimeout(modifyTimeout);
-                modifyTimeout = window.setTimeout(async () => {
-                    const isUserEdit = userModifiedPaths.delete(file.path);
-                    await this.updateCacheForFile(file, !isUserEdit);
-                }, 350);
+                scheduleFileUpdate(file, () => this.updateCacheForFile(file));
+            }
+        }));
+
+        // Re-indexed notes (external/Syncthing edits reconciled after launch): the startup scan may have skipped
+        // them from a stale cache entry. Shares the per-file debounce with 'modify', so an edit is handled once.
+        this.registerEvent(this.app.metadataCache.on('changed', (file) => {
+            if (file.extension === 'md' && !isSyncConflictPath(file.path)) {
+                scheduleFileUpdate(file, () => this.updateCacheForFile(file));
             }
         }));
 
         this.registerEvent(this.app.vault.on('create', (file) => {
             if (file instanceof TFile && file.extension === 'md' && !isSyncConflictPath(file.path)) {
-                if (modifyTimeout) window.clearTimeout(modifyTimeout);
-                modifyTimeout = window.setTimeout(async () => {
-                    await this.updateCacheForFile(file);
-                }, 350);
+                scheduleFileUpdate(file, () => this.updateCacheForFile(file));
+            }
+        }));
+
+        this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
+            if (file instanceof TFile && this.tasksCache) {
+                // Keep the snapshot keyed by the new path so the next edit diffs against it instead of re-syncing everything
+                this.tasksCache.forEach(t => {
+                    if (t.filePath === oldPath) { t.filePath = file.path; t.id = `${file.path}:${t.lineNumber}`; }
+                });
             }
         }));
 
         this.registerEvent(this.app.vault.on('delete', (file) => {
             if (file instanceof TFile && file.extension === 'md' && !isSyncConflictPath(file.path)) {
-                const deletedTasks = (this.tasksCache || []).filter(t => t.filePath === file.path && t.gcalEventId);
-                if (this.tasksCache) {
-                    this.tasksCache = this.tasksCache.filter(t => t.filePath !== file.path);
-                }
-                if (this.settings.enableGoogleCalendar && this.settings.taskSyncCalendarId) {
-                    deletedTasks.forEach(task => {
-                        deleteGoogleCalendarEvent(this, this.settings.taskSyncCalendarId, task.gcalEventId!).catch(err => {
-                            console.error('Failed to delete synced Google Calendar event for removed file task:', err);
-                        });
-                    });
-                }
-                this.updateStatusBar();
-                this.refreshActiveViews();
+                // Events of deleted tasks are removed by the next manual Sync (orphan cleanup)
+                if (this.tasksCache) this.tasksCache = this.tasksCache.filter(t => t.filePath !== file.path);
+                this.requestViewRefresh();
             }
         }));
+    }
 
-        // Register codeblock processors for tags `dayplanner` and `dayplanner-pro`
-        ['dayplanner', 'dayplanner-pro'].forEach(lang => {
+    // Codeblock processors: `dayloom` (current) plus the legacy `dayplanner` / `dayplanner-pro`, which keep working
+    private registerCodeBlockProcessors() {
+        ['dayloom', 'dayplanner', 'dayplanner-pro'].forEach(lang => {
             this.registerMarkdownCodeBlockProcessor(lang, async (source, el, ctx) => {
                 let config: any = {};
                 try {
@@ -872,70 +1079,199 @@ export default class DayPlannerPlugin extends Plugin {
         });
     }
 
-    async updateCacheForFile(file: TFile, skipGCalSync: boolean = false) {
+    async updateCacheForFile(file: TFile) {
         if (isSyncConflictPath(file.path)) return;
-        const previousFileTasks = (this.tasksCache || []).filter(t => t.filePath === file.path);
         if (!this.tasksCache) {
-            this.tasksCache = await scanVaultTasks(this.app);
+            await this.ensureTasksCache();
         } else {
-            const content = await this.app.vault.read(file);
-            const lines = content.split('\n');
+            // Re-indexed note that has no checkbox and had no tasks: nothing to read or redraw. A stale index entry
+            // right after an edit is safe to trust: Obsidian re-indexes the note and 'changed' schedules another pass.
+            const cache = this.app.metadataCache.getFileCache(file);
+            if (cache && !cache.listItems?.some(item => item.task !== undefined)
+                && !this.tasksCache.some(t => t.filePath === file.path)) return;
             const fileTasks: TaskItem[] = [];
-            for (let i = 0; i < lines.length; i++) {
-                const parsed = parseTaskLine(lines[i], file.path, i, this.settings.dailyNotesFormat);
-                if (parsed) {
-                    fileTasks.push(parsed);
+            // Excluded notes contribute no tasks (and drop any they had before the rule was added)
+            if (!isExcludedPath(file.path)) {
+                const lines = (await this.app.vault.cachedRead(file)).split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    const parsed = parseTaskLine(lines[i], file.path, i, this.settings.dailyNotesFormat);
+                    if (parsed) fileTasks.push(parsed);
                 }
             }
             this.tasksCache = this.tasksCache.filter(t => t.filePath !== file.path).concat(fileTasks);
-
-            if (!skipGCalSync && this.settings.enableGoogleCalendar && this.settings.taskSyncCalendarId) {
-                const currentGCalIds = new Set(fileTasks.map(t => t.gcalEventId).filter(Boolean));
-                const deletedSyncedTasks = previousFileTasks.filter(t => t.gcalEventId && !currentGCalIds.has(t.gcalEventId));
-                for (const task of deletedSyncedTasks) {
-                    await deleteGoogleCalendarEvent(this, this.settings.taskSyncCalendarId, task.gcalEventId!);
-                }
-
-                const timedTasks = fileTasks.filter(t => t.date && t.startTime && t.endTime);
-                for (const task of timedTasks) {
-                    let prevTask: TaskItem | undefined;
-                    if (task.gcalEventId) {
-                        prevTask = previousFileTasks.find(pt => pt.gcalEventId === task.gcalEventId);
-                    }
-                    if (!prevTask) {
-                        prevTask = previousFileTasks.find(pt => pt.lineNumber === task.lineNumber);
-                    }
-                    if (!prevTask) {
-                        prevTask = previousFileTasks.find(pt => pt.text === task.text && pt.date === task.date);
-                    }
-
-                    if (prevTask) {
-                        const isChanged = 
-                            task.text !== prevTask.text ||
-                            task.statusChar !== prevTask.statusChar ||
-                            task.date !== prevTask.date ||
-                            task.startTime !== prevTask.startTime ||
-                            task.endTime !== prevTask.endTime ||
-                            task.gcalEventId !== prevTask.gcalEventId ||
-                            task.priority !== prevTask.priority;
-                        
-                        if (!isChanged) {
-                            continue;
-                        }
-                    }
-
-                    await syncTaskToGCal(this, task, this.settings.taskSyncCalendarId);
-                }
-            }
         }
-        this.updateStatusBar();
-        this.refreshActiveViews();
+        this.requestViewRefresh();
     }
 
     async onunload() {
         const styleEl = document.getElementById('day-planner-pro-styles');
         if (styleEl) styleEl.remove();
+        document.body.removeClass('dp-hide-gcal-id');
         if (this.statusBarItem) this.statusBarItem.remove();
+        void this.audioCtx?.close();
+    }
+
+    /**
+     * Fires each reminder once, inside the window [start - offset, start + 1 min). The minute of grace past the start
+     * is what makes "at start time" (offset 0) fire at all; reminders whose start passed longer ago are skipped.
+     */
+    async checkReminders() {
+        const type = this.settings.reminderType ?? 'auto';
+        if (type === 'off') return;
+        const moment = (window as any).moment;
+        const now = moment();
+        const todayStr = now.format('YYYY-MM-DD');
+        if (this.notifiedRemindersDate !== todayStr) {
+            this.notifiedRemindersDate = todayStr;
+            this.notifiedReminders.clear();
+        }
+        const leadMs = Math.max(0, this.settings.reminderOffsetMinutes ?? 0) * 60000;
+        const GRACE_MS = 60000;
+
+        const due: Array<{ key: string; title: string; start: any }> = [];
+        if (this.settings.reminderForTasks) {
+            try {
+                for (const t of await this.ensureTasksCache()) {
+                    if (t.date !== todayStr || !t.startTime || t.statusChar === 'x' || t.statusChar === '-') continue;
+                    due.push({
+                        key: `task:${t.filePath}:${t.text}:${t.startTime}`,
+                        title: cleanTaskTextForDisplay(t.text),
+                        start: moment(`${todayStr} ${t.startTime}`, 'YYYY-MM-DD HH:mm')
+                    });
+                }
+            } catch (err) {
+                console.warn('Day Planner Pro: reminder task scan failed', err);
+            }
+        }
+        if (this.settings.reminderForGCal && this.settings.enableGoogleCalendar) {
+            this.refreshTodayGCalForReminders(now);
+            for (const e of this.gcalCache) {
+                if (e.isAllDay || e.dateStr !== todayStr) continue;
+                due.push({ key: `gcal:${e.calendarId}:${e.id}:${e.start}`, title: e.summary || '(No title)', start: moment(e.start) });
+            }
+        }
+
+        const nowMs = now.valueOf();
+        let chime = false;
+        for (const r of due) {
+            const startMs = r.start.valueOf();
+            if (this.notifiedReminders.has(r.key) || nowMs < startMs - leadMs || nowMs >= startMs + GRACE_MS) continue;
+            this.notifiedReminders.add(r.key);
+            const mins = Math.round((startMs - nowMs) / 60000);
+            const channel = this.deliverReminder(type, r.title, r.start.format('HH:mm'), mins <= 0 ? 'Starting now' : `Starts in ${formatMinutesNice(mins)}`);
+            if (channel === 'notice') chime = true;
+        }
+        // In-app notices only: an OS notification brings the system's own tone. Once per batch.
+        if (chime && this.settings.enableReminderSound !== false) this.playReminderChime();
+    }
+
+    private audioCtx: AudioContext | null = null;
+
+    /**
+     * Playful marimba-style arpeggio, synthesized with Web Audio (no bundled audio file): E5 → G5 → C6, 110ms apart,
+     * the last note ringing longest. Each note is a sine body that drops 2% into pitch (a mallet "boing"), plus the
+     * marimba's bright ~3.9x partial as a 120ms strike tick; a shared 5.5Hz vibrato adds a little shimmer.
+     */
+    playReminderChime() {
+        try {
+            const Ctx: typeof AudioContext | undefined = window.AudioContext ?? (window as any).webkitAudioContext;
+            if (!Ctx) return;
+            this.audioCtx ??= new Ctx();
+            const ctx = this.audioCtx;
+            if (ctx.state === 'suspended') void ctx.resume();
+            const t0 = ctx.currentTime + 0.03;
+
+            const master = ctx.createGain();
+            master.gain.value = 0.22;
+            master.connect(ctx.destination);
+            const vibrato = ctx.createOscillator();
+            const vibratoDepth = ctx.createGain();
+            vibrato.frequency.value = 5.5;
+            vibratoDepth.gain.value = 3; // ±3Hz
+            vibrato.connect(vibratoDepth);
+
+            let end = t0;
+            ([[659.25, 0, 0.5], [783.99, 0.11, 0.5], [1046.5, 0.22, 1.1]] as const).forEach(([freq, at, len]) => {
+                const t = t0 + at;
+                end = Math.max(end, t + len);
+                const env = ctx.createGain();
+                env.gain.setValueAtTime(0.0001, t);
+                env.gain.exponentialRampToValueAtTime(1, t + 0.008);
+                env.gain.exponentialRampToValueAtTime(0.0001, t + len);
+                env.connect(master);
+
+                const body = ctx.createOscillator();
+                body.type = 'sine';
+                body.frequency.setValueAtTime(freq * 1.02, t);
+                body.frequency.exponentialRampToValueAtTime(freq, t + 0.04);
+                vibratoDepth.connect(body.frequency);
+                body.connect(env);
+
+                const tick = ctx.createOscillator();
+                const tickEnv = ctx.createGain();
+                tick.type = 'sine';
+                tick.frequency.value = freq * 3.9;
+                tickEnv.gain.setValueAtTime(0.0001, t);
+                tickEnv.gain.exponentialRampToValueAtTime(0.18, t + 0.004);
+                tickEnv.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+                tick.connect(tickEnv).connect(env);
+
+                body.start(t);
+                body.stop(t + len + 0.05);
+                tick.start(t);
+                tick.stop(t + 0.15);
+            });
+            vibrato.start(t0);
+            vibrato.stop(end + 0.1);
+            vibrato.onended = () => master.disconnect();
+        } catch (err) {
+            console.warn('Day Planner Pro: reminder chime failed', err);
+        }
+    }
+
+    /** Keeps today's events fresh even when no planner view is open; runs in the background at most once per TTL. */
+    private refreshTodayGCalForReminders(now: any) {
+        const cacheKey = `reminders:${now.format('YYYY-MM-DD')}`;
+        const cached = this.gcalRanges.get(cacheKey);
+        if (cached && Date.now() - cached.fetchedAt < GCAL_CACHE_TTL_MS) return;
+        this.fetchGCalRange(cacheKey, now.clone().startOf('day').toDate(), now.clone().endOf('day').toDate())
+            .catch(err => console.warn('Day Planner Pro: reminder GCal refresh failed', err));
+    }
+
+    /** Shows one reminder and returns the channel it actually went out on (the caller chimes for 'notice' only). */
+    private deliverReminder(type: ReminderType, title: string, timeStr: string, body: string): 'system' | 'notice' {
+        const heading = `⏰ ${timeStr} ${title}`;
+        // Visible AND focused: a minimized/hidden window can still report focus. activeDocument (= document unless an
+        // Obsidian popout window is in front) keeps a focused popout from counting as "away".
+        const doc = activeDocument ?? document;
+        const isAppFocused = doc.visibilityState === 'visible' && doc.hasFocus();
+        const canNotify = typeof window.Notification !== 'undefined';
+        const useSystem = canNotify && (type === 'system' || (type === 'auto' && !isAppFocused));
+        if (useSystem && Notification.permission === 'granted') {
+            try {
+                new Notification(heading, { body });
+                return 'system';
+            } catch (err) {
+                console.warn('Day Planner Pro: system notification failed, falling back to Notice', err);
+            }
+        } else if (useSystem && Notification.permission === 'default') {
+            this.requestNotificationPermission();
+        }
+        const notice = new Notice(createFragment(f => {
+            f.createDiv({ cls: 'dayloom-reminder-title', text: heading });
+            f.createDiv({ cls: 'dayloom-reminder-body', text: body });
+        }), 12000);
+        notice.noticeEl.addClass('dayloom-reminder-notice');
+        return 'notice';
+    }
+
+    requestNotificationPermission() {
+        if (typeof window.Notification === 'undefined' || Notification.permission !== 'default') return;
+        try {
+            Notification.requestPermission().catch(() => { /* user dismissed */ });
+        } catch {
+            // Older WebViews only support the callback form
+        }
     }
 
     async updateStatusBar() {
@@ -945,10 +1281,7 @@ export default class DayPlannerPlugin extends Plugin {
         const todayStr = now.format('YYYY-MM-DD');
         const currentMinutes = now.hour() * 60 + now.minute();
 
-        if (!this.tasksCache) {
-            this.tasksCache = await scanVaultTasks(this.app);
-        }
-        const todayTasks = this.tasksCache.filter(t => t.date === todayStr && t.startTime && t.endTime);
+        const todayTasks = (await this.ensureTasksCache()).filter(t => t.date === todayStr && t.startTime && t.endTime);
 
         let activeTask: TaskItem | null = null;
         let nextTask: TaskItem | null = null;
@@ -1019,7 +1352,7 @@ export default class DayPlannerPlugin extends Plugin {
             this.statusBarItem.setText(`📅 [Upcoming: ${cleanTitle}] ${formatMinutesNice(minNextDiff)} until start`);
             this.statusBarItem.title = `Next Task: ${nextTask.startTime} ~ ${nextTask.endTime}`;
         } else {
-            this.statusBarItem.setText('📅 Day Planner: Complete');
+            this.statusBarItem.setText('📅 Dayloom: Complete');
             this.statusBarItem.title = 'All tasks for today are completed or no tasks scheduled.';
         }
     }
@@ -1027,6 +1360,13 @@ export default class DayPlannerPlugin extends Plugin {
     async loadSettings() {
         const data = await this.loadData();
         this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+        // Superseded by reminderOffsetMinutes; its stored 10 was the old default, so the new at-start default applies
+        delete (this.settings as any).reminderMinutesBefore;
+        // showHelpButton (3.99.5) was renamed showShortcutButton (4.0.0): keep a button the user already hid hidden
+        if ((data as any)?.showHelpButton === false && (data as any)?.showShortcutButton === undefined) {
+            this.settings.showShortcutButton = false;
+        }
+        delete (this.settings as any).showHelpButton;
 
         if (data && (data as any).googleCalendarId && (!this.settings.googleCalendars || this.settings.googleCalendars.length === 0)) {
             this.settings.googleCalendars = [{
@@ -1037,11 +1377,22 @@ export default class DayPlannerPlugin extends Plugin {
             }];
         }
         setHapticsEnabled(this.settings.enableMobileHaptics);
+        setScanSettings(this.settings);
+        this.exclusionKey = JSON.stringify([this.settings.excludePaths, this.settings.excludeMatchMode]);
     }
 
     async saveSettings() {
         setHapticsEnabled(this.settings.enableMobileHaptics);
+        setScanSettings(this.settings);
         await this.saveData(this.settings);
+        // Exclusion rules changed: rescan so newly excluded notes disappear (and re-included ones return) right away
+        const exclusionKey = JSON.stringify([this.settings.excludePaths, this.settings.excludeMatchMode]);
+        if (exclusionKey !== this.exclusionKey) {
+            this.exclusionKey = exclusionKey;
+            this.tasksCache = await scanVaultTasks(this.app);
+            this.updateStatusBar();
+            this.refreshActiveViews();
+        }
     }
 
     /**
@@ -1113,9 +1464,8 @@ export default class DayPlannerPlugin extends Plugin {
                 this.gcalRanges.delete(this.gcalRanges.keys().next().value as string);
             }
             if (changed) {
-                const byId = new Map<string, GCalEvent>();
-                this.gcalRanges.forEach(r => r.events.forEach(e => byId.set(`${e.calendarId}::${e.id}`, e)));
-                this.gcalCache = Array.from(byId.values());
+                this.rebuildGCalCache();
+                this.scheduleGCalCacheSave();
             }
             return changed;
         })();
@@ -1124,13 +1474,13 @@ export default class DayPlannerPlugin extends Plugin {
         return promise;
     }
 
-    refreshActiveViews(forceFetchGCal: boolean = false) {
+    refreshActiveViews(forceFetchGCal: boolean = false, skipIfUnchanged: boolean = false) {
         const { workspace } = this.app;
         [VIEW_TYPES.COMBINED, VIEW_TYPES.DAILY].forEach(viewType => {
             workspace.getLeavesOfType(viewType).forEach(leaf => {
                 const view = leaf.view as any;
                 if (view && typeof view.refreshTasks === 'function') {
-                    view.refreshTasks(null, forceFetchGCal);
+                    view.refreshTasks(null, forceFetchGCal, skipIfUnchanged);
                 }
             });
         });

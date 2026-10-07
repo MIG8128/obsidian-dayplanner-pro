@@ -592,6 +592,97 @@ export class AddChoiceModal extends Modal {
     }
 }
 
+/** Keyboard shortcut reference (`?`), frosted like the other planner modals */
+export class ShortcutHelpModal extends Modal {
+    /**
+     * The open instance, if any. `?` / `h` keep reaching the view's document-level key handler while the modal is up
+     * (a modal does not change the active view), so each press used to stack one more modal and darken the backdrop.
+     */
+    private static current: ShortcutHelpModal | null = null;
+
+    /** Every entry point (? / h, the header button, the command) toggles: open it, or close the one already open */
+    static toggle(app: App, plugin: DayPlannerPlugin) {
+        if (ShortcutHelpModal.current) {
+            ShortcutHelpModal.current.close();
+            return;
+        }
+        new ShortcutHelpModal(app, plugin).open();
+    }
+
+    private plugin: DayPlannerPlugin;
+
+    private constructor(app: App, plugin: DayPlannerPlugin) {
+        super(app);
+        this.plugin = plugin;
+    }
+
+    onOpen() {
+        ShortcutHelpModal.current = this;
+        const { contentEl, modalEl } = this;
+        modalEl.addClass('dp-shortcut-modal');
+        contentEl.empty();
+        contentEl.createEl('h2', { text: 'Keyboard Shortcuts' });
+
+        const groups: Array<[string, Array<[string[], string]>]> = [
+            ['Navigate', [
+                [['j'], 'Next day / period (compact Board: next column)'],
+                [['k'], 'Previous day / period (compact Board: previous column)'],
+                [['t'], 'Jump to today']
+            ]],
+            ['Switch view', [
+                [['d'], 'Daily timeline'],
+                [['x'], 'N-day view'],
+                [['w'], 'Weekly view'],
+                [['m'], 'Monthly calendar'],
+                [['b'], 'Board'],
+                [['l'], 'List view']
+            ]],
+            ['Panels', [
+                [['s'], 'Toggle the sidebar drawer (desktop)'],
+                [['?', 'h'], 'Show this help'],
+                [['F5', 'Ctrl/Cmd+R'], 'Sync (rescan tasks, refresh Google Calendar)']
+            ]],
+            ['Side drawer card (Tab to focus)', [
+                [['f'], 'Fit it into the first free slot (next 14 days)'],
+                [['Enter'], 'Edit the task']
+            ]],
+            ['While dragging (desktop)', [
+                [['j', 'k'], 'Page dates without dropping the task'],
+                [['Esc'], 'Cancel the drag']
+            ]]
+        ];
+
+        groups.forEach(([title, rows]) => {
+            const section = contentEl.createDiv({ cls: 'dp-shortcut-section' });
+            section.createDiv({ cls: 'dp-shortcut-section-title', text: title });
+            rows.forEach(([keys, desc]) => {
+                const row = section.createDiv({ cls: 'dp-shortcut-row' });
+                const keysEl = row.createDiv({ cls: 'dp-shortcut-keys' });
+                keys.forEach(k => keysEl.createEl('kbd', { cls: 'dp-kbd', text: k }));
+                row.createDiv({ cls: 'dp-shortcut-desc', text: desc });
+            });
+        });
+
+        // Footer: the header button can be hidden right here (same setting as Settings → Display)
+        const footer = contentEl.createDiv({ cls: 'dp-shortcut-footer' });
+        const label = footer.createEl('label', { cls: 'dp-shortcut-footer-option' });
+        const checkbox = label.createEl('input', { type: 'checkbox' });
+        checkbox.checked = this.plugin.settings.showShortcutButton === false;
+        label.createSpan({ text: 'Hide the shortcut (?) button in the header' });
+        checkbox.addEventListener('change', async () => {
+            this.plugin.settings.showShortcutButton = !checkbox.checked;
+            await this.plugin.saveSettings();
+            this.plugin.refreshActiveViews(); // re-renders the headers: the button goes / comes back at once
+        });
+        footer.createDiv({ cls: 'dp-shortcut-footer-hint', text: '? and h open this list either way.' });
+    }
+
+    onClose() {
+        if (ShortcutHelpModal.current === this) ShortcutHelpModal.current = null;
+        this.contentEl.empty();
+    }
+}
+
 export class TaskSyncModal extends Modal {
     plugin: DayPlannerPlugin;
     onSyncComplete: () => void;
@@ -670,7 +761,7 @@ export class TaskSyncModal extends Modal {
 
             try {
                 const result = await syncAllTasksToGCal(this.plugin, calendarId);
-                new Notice(`✅ Task synchronization complete! Created: ${result.created}, Updated: ${result.updated}, Skipped: ${result.skipped}`);
+                new Notice(`✅ Task synchronization complete! Created: ${result.created}, Updated: ${result.updated}, Repaired: ${result.repaired}, Removed: ${result.removed}, Skipped: ${result.skipped}`);
                 this.onSyncComplete();
                 this.close();
             } catch (e) {

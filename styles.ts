@@ -1,22 +1,41 @@
 export const STYLES = `
 /* Glass design tokens (declared on theme roots so modals/menus outside .dp-container inherit them) */
+/* Glass material (Apple "regular material"): neutral translucent fill + blur(16px) saturate(180%) + hairline border
+   + a 1px top highlight + two-layer shadow (contact + ambient). Blur only goes on chrome that content actually passes
+   behind (modals, menus, suggestions, the sticky all-day row); never on repeated cards or grid cells. Dark uses a
+   graphite fill rather than a white tint: a white wash over a dark, dimmed workspace loses text contrast. */
 .theme-dark {
-    --dp-glass-bg: rgba(25, 27, 38, 0.75);
-    --dp-glass-border: rgba(255, 255, 255, 0.1);
-    --dp-glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    --dp-glass-bg: rgba(30, 30, 34, 0.62);
+    --dp-glass-border: rgba(255, 255, 255, 0.10);
+    --dp-glass-highlight: rgba(255, 255, 255, 0.07);
+    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 6px 20px rgba(0, 0, 0, 0.22);
+    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.28), 0 24px 60px rgba(0, 0, 0, 0.45);
+    --dp-glass-blur: blur(16px) saturate(180%);
     --dp-segment-track: rgba(255, 255, 255, 0.05);
     --dp-segment-active: rgba(255, 255, 255, 0.12);
     --dp-card-bg: rgba(255, 255, 255, 0.06);
     --dp-card-border: rgba(255, 255, 255, 0.16);
 }
 .theme-light {
-    --dp-glass-bg: rgba(255, 255, 255, 0.72);
+    --dp-glass-bg: rgba(255, 255, 255, 0.68);
     --dp-glass-border: rgba(0, 0, 0, 0.08);
-    --dp-glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --dp-glass-highlight: rgba(255, 255, 255, 0.7);
+    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.08);
+    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.08), 0 24px 60px rgba(0, 0, 0, 0.18);
+    --dp-glass-blur: blur(16px) saturate(180%);
     --dp-segment-track: rgba(0, 0, 0, 0.05);
     --dp-segment-active: rgba(255, 255, 255, 0.95);
     --dp-card-bg: rgba(0, 0, 0, 0.03);
     --dp-card-border: rgba(0, 0, 0, 0.14);
+}
+/* No blur support, or the OS asks for less transparency: same surfaces, near-opaque fills, no blur */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .theme-dark { --dp-glass-bg: rgba(30, 30, 34, 0.94); }
+    .theme-light { --dp-glass-bg: rgba(255, 255, 255, 0.95); }
+}
+@media (prefers-reduced-transparency: reduce) {
+    .theme-dark { --dp-glass-bg: rgba(30, 30, 34, 0.97); --dp-glass-blur: none; }
+    .theme-light { --dp-glass-bg: rgba(255, 255, 255, 0.97); --dp-glass-blur: none; }
 }
 
 .dp-container {
@@ -28,6 +47,7 @@ export const STYLES = `
     font-family: var(--font-interface);
     position: relative;
     overflow: hidden;
+    overscroll-behavior-x: none; /* horizontal swipes page the planner; they never chain to the workspace */
     user-select: none;
     --dp-hour-height: 60px; /* 세로 1시간 간격 CSS 변수 바인딩 */
     container: dp-planner / inline-size; /* narrow layout keys off the pane width, not the device */
@@ -43,68 +63,102 @@ export const STYLES = `
     z-index: 30; /* above sticky hour column so the ambient shadow stays visible */
     border-bottom: 1px solid var(--dp-glass-border);
     background-color: var(--dp-glass-bg);
-    backdrop-filter: blur(16px) saturate(160%);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
-    box-shadow: var(--dp-glass-shadow);
+    /* No backdrop-filter: nothing ever scrolls behind the header (it is a flex row above the panes), so the blur only
+       re-filtered a flat background on the GPU every frame the header repainted, e.g. through each pill slide */
+    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
 }
+/* One row above the tabs: [date pill] ... [🔍] [< 📅 Today >] [Sync] [+]. Wraps (actions drop below) only when a
+   narrow non-compact host, e.g. a code block, cannot fit both; the compact shell forces nowrap */
 .dp-header-top {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-}
-.dp-title {
-    font-size: 0.8em;
-    font-weight: normal;
-    color: var(--text-muted);
-    opacity: 0.5;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.dp-nav {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
     flex-wrap: wrap;
-    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-2, 8px);
 }
+/* Pinned right even when it is the row's only item (or wrapped onto its own line) */
+.dp-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-1, 4px);
+    margin-left: auto;
+}
+/* < 📅 Today > reads as one control: tight inner gap, a little more air than its neighbours outside */
 .dp-nav-buttons-group {
     display: flex;
-    gap: 3px;
+    gap: 2px;
+    margin: 0 var(--size-4-1, 4px);
 }
 .dp-nav-buttons-group button {
-    padding: 3px 8px;
-    font-size: 0.8em;
-    height: 26px;
+    padding: 0 var(--size-4-2, 8px);
 }
 /* Header date: segments are either note links (.dp-nav-date-link) or plain labels (.dp-nav-date-static) */
+/* Pill button: [📅 2026-10-06 (Wk 41)]. Clickable pills (.is-clickable) open the linked note */
 .dp-nav-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px 0 10px;
+    box-sizing: border-box;
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--text-normal);
+    background-color: var(--interactive-normal);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 999px;
+    box-shadow: var(--input-shadow, 0 1px 2px rgba(0, 0, 0, 0.06));
+    cursor: default;
+    white-space: nowrap;
+    user-select: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease;
+}
+.dp-nav-date.is-clickable {
+    cursor: pointer;
+}
+.dp-nav-date.is-clickable:hover {
+    background-color: var(--interactive-hover);
+    border-color: var(--background-modifier-border-hover);
+}
+.dp-nav-date.is-clickable:active {
+    transform: scale(0.97);
+    background-color: var(--background-modifier-active-hover, var(--interactive-hover));
+    box-shadow: none;
+}
+.dp-nav-date-icon {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+.dp-nav-date-icon svg {
+    width: 14px;
+    height: 14px;
+}
+.dp-nav-date.is-clickable:hover .dp-nav-date-icon {
+    color: var(--interactive-accent);
+}
+.dp-nav-date-static,
+.dp-nav-date-link {
     display: inline-flex;
     align-items: baseline;
     gap: 4px;
-    font-weight: bold;
-    font-size: 1.15em;
-    color: var(--text-normal);
-    cursor: default;
-    border-bottom: 2px solid var(--interactive-accent);
-    padding: 2px 4px;
-    text-align: right;
-    white-space: nowrap;
 }
-.dp-nav-date-static {
-    cursor: default;
+.dp-nav-date-main {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+}
+.dp-nav-date-sub {
+    font-size: 0.85em;
+    font-weight: 500;
+    color: var(--text-muted);
 }
 .dp-nav-date-link {
     cursor: pointer;
-    padding: 0 2px;
-    border-radius: 4px;
-    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+    border-radius: var(--radius-s, 4px);
+    transition: color 0.15s ease;
 }
-.dp-nav-date-link:hover {
+.dp-nav-date-link:hover,
+.dp-nav-date-link:hover .dp-nav-date-sub {
     color: var(--text-accent);
-    background-color: var(--background-modifier-hover);
 }
 
 /* Segmented control: transparent track, rounded pill items, no divider lines */
@@ -172,7 +226,9 @@ export const STYLES = `
     z-index: -1;
     border-radius: inherit;
     background-color: var(--dp-segment-active);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), inset 0 0 0 1px var(--dp-glass-border);
+    /* Raised segmented-control thumb: contact shadow + soft ambient + hairline + top highlight */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 3px 8px rgba(0, 0, 0, 0.08),
+        inset 0 0 0 1px var(--dp-glass-border), inset 0 1px 0 var(--dp-glass-highlight);
     transform-origin: left center;
 }
 .dp-tabs > .dp-tab.dp-tab-pill-slide::before {
@@ -190,6 +246,14 @@ export const STYLES = `
     padding: 12px;
     position: relative;
 }
+/* GPU-composited (threaded) scrolling at every display scale: below 150% Chromium keeps a scroller without an opaque
+   background on the main thread to preserve LCD text (grayscale AA is the trade-off there), repainting every card and
+   sticky row each frame. Leaf views only; code blocks scroll inside the note's own scroller. */
+.day-planner-view-pane,
+.day-planner-view-pane :is(.dp-content, .dp-weekly-scroll-wrapper, .dp-monthly-scroll-wrapper, .dp-grid-task-list,
+    .dp-kanban-board, .dp-kanban-cards, .dp-gc-list-scroll) {
+    will-change: scroll-position;
+}
 
 /* Keep-alive view panes (combined view): cached panes are hidden, never destroyed.
    The 150ms reveal is added by applyViewReveal() only when a pane becomes visible, and removed on animationend.
@@ -198,9 +262,22 @@ export const STYLES = `
 .day-planner-view-pane.dp-view-reveal {
     animation: dp-pane-enter 0.15s ease-out;
 }
-/* !important: view-specific pane layouts (e.g. ".dp-content:has(> .dp-kanban-board) { display: flex }", same
-   specificity and later in this sheet) must never re-show a hidden pane */
+/* Sized by the leaf, not its content: an auto basis laid the whole pane out twice per show or re-render
+   (once at content height only to measure its flex base size) */
+.day-planner-view-pane {
+    flex-basis: 0;
+}
+/* content-visibility skips a hidden pane but keeps its computed style and layout, so switching back to a cached tab
+   only repaints it (display: none tore both down and rebuilt the whole pane on every switch).
+   Zero flex size and padding keep a hidden pane out of the visible one's space. */
 .day-planner-view-pane.is-hidden {
+    content-visibility: hidden;
+    flex: 0 0 0;
+    padding: 0;
+}
+/* Mobile keeps display: none (older iOS WebKit has no content-visibility). !important: view-specific pane layouts
+   (e.g. ".dp-content:has(> .dp-kanban-board) { display: flex }") must never re-show a hidden pane */
+.is-mobile .day-planner-view-pane.is-hidden {
     display: none !important;
 }
 @keyframes dp-pane-enter {
@@ -240,9 +317,42 @@ export const STYLES = `
     .day-planner-view-pane.dp-view-reveal,
     .dp-zoom-in,
     .dp-slide-from-right,
-    .dp-slide-from-left {
+    .dp-slide-from-left,
+    .notice.dayloom-reminder-notice {
         animation: none;
     }
+}
+
+/* Reminder notice: larger and accent-framed so a start-time alert is hard to miss (shown for 12s) */
+.notice.dayloom-reminder-notice {
+    position: relative;
+    z-index: calc(var(--layer-notice, 60) + 1);
+    min-width: min(300px, calc(100vw - 32px));
+    max-width: min(440px, calc(100vw - 32px));
+    padding: var(--size-4-4, 16px) var(--size-4-5, 20px);
+    color: var(--text-normal);
+    background-color: var(--background-primary);
+    border: 1px solid var(--interactive-accent);
+    border-left-width: 4px;
+    border-radius: var(--radius-l, 12px);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 22%, transparent),
+        var(--shadow-l, 0 8px 24px rgba(0, 0, 0, 0.25));
+    animation: dayloom-reminder-in 0.25s ease-out;
+}
+.dayloom-reminder-title {
+    font-size: var(--font-ui-large, 1.15em);
+    font-weight: var(--font-semibold, 600);
+    line-height: 1.35;
+    font-variant-numeric: tabular-nums;
+}
+.dayloom-reminder-body {
+    margin-top: var(--size-4-1, 4px);
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-muted);
+}
+@keyframes dayloom-reminder-in {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to { opacity: 1; transform: none; }
 }
 
 /* 1. 타임라인 (Daily) 뷰 */
@@ -262,8 +372,12 @@ export const STYLES = `
     grid-template-columns: 48px 1fr; /* 48px = hour column, same as .dp-weekly-allday-grid's label column */
     margin: -12px -12px 8px;
     padding: 0 12px;
-    background-color: var(--background-secondary-alt);
-    border-bottom: 1px solid var(--background-modifier-border);
+    /* Real glass: the hourly grid scrolls under this one sticky bar (a single element, so the blur stays cheap) */
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
+    border-bottom: 1px solid var(--dp-glass-border);
+    box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.35); /* soft lip: lifts the bar off the grid sliding underneath */
 }
 /* Inline code blocks render the daily timeline in an unpadded scroller */
 .dp-codeblock-container .dp-daily-allday {
@@ -339,8 +453,8 @@ export const STYLES = `
     border-radius: 8px !important;
     font-size: 0.82em !important;
     cursor: grab !important;
-    opacity: 0.98 !important;
-    transition: transform 0.1s, box-shadow 0.1s !important;
+    /* No opacity < 1 here: it made every card its own offscreen compositing group, re-blended on each raster */
+    transition: transform 0.1s !important;
     border-left: 5px solid var(--interactive-accent) !important;
     display: flex !important;
     flex-direction: column !important;
@@ -356,6 +470,19 @@ export const STYLES = `
     transform: translateY(-1px) scale(1.01) !important;
     z-index: 10 !important;
 }
+/* While a scroller moves (.dp-is-scrolling, set on it in views.ts): cards sliding under a stationary cursor would flip
+   :hover every few frames (transform + z-index restack + repaint). Hit-testing resumes 150ms after the scroll settles.
+   No transitions meanwhile: the card hovered when the scroll starts snaps back instead of animating its transform,
+   which promoted it to its own GPU layer (splitting the scrolling layer) right as the scroll began. */
+@media (hover: hover) {
+    .dp-is-scrolling .dp-timeline-event,
+    .dp-is-scrolling .dp-grid-task-item,
+    .dp-is-scrolling .dp-kanban-card,
+    .dp-is-scrolling .dp-grid-week-cell {
+        pointer-events: none;
+        transition: none !important;
+    }
+}
 
 /* 다크 모드 테마 설정 */
 /* Surface = translucent tint layered on an opaque base, so hour grid lines don't bleed through the card.
@@ -369,7 +496,7 @@ export const STYLES = `
 }
 .theme-dark .dp-timeline-event {
     color: #ffffff !important;
-    box-shadow: 0 0 0 1px var(--background-primary), 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+    box-shadow: 0 0 0 1px var(--background-primary), 0 1px 3px rgba(0, 0, 0, 0.35) !important; /* small blur: cheap to raster as tiles scroll in */
 }
 .theme-dark .dp-timeline-event.completed {
     background-image: linear-gradient(rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.025)) !important;
@@ -387,7 +514,7 @@ export const STYLES = `
 /* 라이트 모드 테마 설정 */
 .theme-light .dp-timeline-event {
     color: #1c1c1e !important;
-    box-shadow: 0 0 0 1px var(--background-primary), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 0 0 0 1px var(--background-primary), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
 }
 .theme-light .dp-timeline-event.completed {
     background-image: none !important;
@@ -686,6 +813,37 @@ export const STYLES = `
     gap: 0;
     border-bottom: 1px solid var(--background-modifier-border);
     background-color: var(--background-secondary-alt);
+}
+
+/* Weekend accents (weekendCls in views.ts): soft red Sunday, soft blue Saturday on headers, columns, cells and pills.
+   Built on the theme's own red/blue so they follow light/dark and custom themes; today's accent always wins. */
+.dp-container {
+    --dp-sun-rgb: var(--color-red-rgb, 233, 49, 71);
+    --dp-sat-rgb: var(--color-blue-rgb, 8, 109, 221);
+}
+.dp-grid-header.is-sunday:not(.today),
+.dp-grid-cell.is-sunday .dp-grid-cell-num {
+    color: rgba(var(--dp-sun-rgb), 0.85);
+}
+.dp-grid-header.is-saturday:not(.today),
+.dp-grid-cell.is-saturday .dp-grid-cell-num {
+    color: rgba(var(--dp-sat-rgb), 0.85);
+}
+.dp-grid-header.is-sunday,
+.dp-grid-cell.is-sunday,
+.dp-allday-cell.is-sunday {
+    background-image: linear-gradient(rgba(var(--dp-sun-rgb), 0.06), rgba(var(--dp-sun-rgb), 0.06));
+}
+.dp-grid-header.is-saturday,
+.dp-grid-cell.is-saturday,
+.dp-allday-cell.is-saturday {
+    background-image: linear-gradient(rgba(var(--dp-sat-rgb), 0.06), rgba(var(--dp-sat-rgb), 0.06));
+}
+.dp-weekly-day-col.is-sunday:not(.today) {
+    background-color: rgba(var(--dp-sun-rgb), 0.035);
+}
+.dp-weekly-day-col.is-saturday:not(.today) {
+    background-color: rgba(var(--dp-sat-rgb), 0.035);
 }
 
 /* 4. 칸반 보드 (Board) 뷰 */
@@ -1237,117 +1395,154 @@ export const STYLES = `
     line-height: 1.4;
 }
 
-/* Premium Filter Group & Exclude Paths styling */
-.dp-filter-card {
-    background-color: var(--background-secondary-alt);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 8px;
-    padding: 16px;
-    margin-top: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-.dp-filter-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9em;
-    color: var(--text-normal);
-    font-weight: 500;
-}
-.dp-filter-select {
-    background-color: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
-    padding: 2px 8px;
-    font-weight: bold;
-    color: var(--text-normal);
-    cursor: pointer;
-}
-.dp-filter-divider {
-    border: 0;
-    border-top: 1px solid var(--background-modifier-border);
-    margin: 12px 0;
-    opacity: 0.7;
-}
-.dp-filter-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-.dp-filter-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.dp-filter-item-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-accent);
-    opacity: 0.8;
-}
-.dp-filter-item-input {
-    flex: 1;
-    background-color: var(--background-primary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
-    padding: 6px 10px;
-    color: var(--text-normal);
-    font-size: 0.9em;
-    height: 32px;
-    box-sizing: border-box;
-}
-.dp-filter-item-delete {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 4px;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-.dp-filter-item-delete:hover {
-    background-color: var(--background-modifier-error-hover);
-    color: var(--text-error);
-}
-.dp-filter-footer {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding-top: 12px;
-    border-top: 1px solid var(--background-modifier-border);
-}
-.dp-filter-footer button {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-.dp-filter-btn-icon {
-    display: inline-flex;
-}
-.dp-filter-btn-icon svg {
-    width: 14px;
-    height: 14px;
-}
-
-/* Settings tab: native sizing */
-.dp-settings .dp-filter-setting {
+/* Settings → Excluded files & folders: one input (vault suggestions) + rule chips, like Obsidian's search filters */
+.dp-settings .dp-path-filter-setting {
     border-bottom: none;
     padding-bottom: 0;
 }
-.dp-settings .dp-filter-card {
-    margin-top: 8px;
-    padding: 12px;
-    box-shadow: none;
-    background-color: var(--background-primary-alt);
+.dp-path-filter {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2, 8px);
+    margin: var(--size-4-2, 8px) 0 var(--size-4-4, 16px);
 }
+.dp-path-filter-input-row {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2, 8px);
+}
+.dp-path-filter-mode {
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 2px;
+    background-color: var(--background-modifier-hover);
+    border-radius: var(--radius-m, 8px);
+}
+.dp-settings button.dp-path-filter-mode-btn {
+    height: 26px;
+    padding: 0 10px;
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: var(--radius-s, 6px);
+}
+.dp-settings button.dp-path-filter-mode-btn.is-active {
+    color: var(--text-normal);
+    background-color: var(--background-primary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+}
+.dp-settings input.dp-path-filter-input {
+    flex: 1;
+    min-width: 0;
+    height: 32px;
+}
+.dp-path-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.dp-path-chips-empty,
+.dp-path-filter-summary {
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-muted);
+}
+.dp-path-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 100%;
+    height: 26px;
+    padding: 0 4px 0 4px;
+    box-sizing: border-box;
+    font-size: var(--font-ui-small, 0.9em);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.dp-path-chip:hover {
+    border-color: var(--interactive-accent);
+}
+.dp-path-chip-mode {
+    flex-shrink: 0;
+    padding: 0 6px;
+    font-size: 0.8em;
+    font-weight: var(--font-semibold, 600);
+    line-height: 18px;
+    color: var(--text-error);
+    background-color: color-mix(in srgb, var(--text-error) 12%, transparent);
+    border-radius: 999px;
+}
+.dp-path-chip.is-keep .dp-path-chip-mode {
+    color: var(--text-success, var(--color-green));
+    background-color: color-mix(in srgb, var(--color-green, #3eb370) 14%, transparent);
+}
+.dp-path-chip-icon {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+.dp-path-chip-icon svg {
+    width: 14px;
+    height: 14px;
+}
+.dp-path-chip-label {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.dp-path-chip.is-missing .dp-path-chip-label {
+    color: var(--text-faint);
+    text-decoration: line-through dotted;
+}
+.dp-settings button.dp-path-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 999px;
+}
+.dp-settings button.dp-path-chip-remove:hover {
+    color: var(--text-error);
+    background-color: var(--background-modifier-error-hover, var(--background-modifier-hover));
+}
+.dp-path-chip-remove svg {
+    width: 12px;
+    height: 12px;
+}
+
+/* Vault path suggestions (utils.attachPathSuggest): icon + fuzzy-highlighted path */
+.dp-path-suggestion {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.dp-path-suggestion-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+.dp-path-suggestion-icon svg {
+    width: 14px;
+    height: 14px;
+}
+.dp-path-suggestion-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Settings: native sizing */
 .dp-settings .setting-item-control:has(> input[type="text"]) {
     flex: 0 1 50%;
     min-width: 200px;
@@ -1430,11 +1625,11 @@ export const STYLES = `
 .dp-sugg-container {
     position: absolute;
     background-color: var(--dp-glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
     border: 1px solid var(--dp-glass-border);
     border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
     max-height: 220px;
     overflow-y: auto;
     z-index: 1000;
@@ -1507,14 +1702,33 @@ export const STYLES = `
     padding-left: 8px;
     box-sizing: border-box;
 }
-.dp-zoom-slider-floating:hover,
+/* Slider + value; row-reverse keeps the original order (value · slider · 🔍) */
+.dp-zoom-popover {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    flex-shrink: 0;
+}
+/* Hover expansion only where hover exists: touch browsers emulate a sticky :hover that would never close */
+@media (hover: hover) {
+    .dp-zoom-slider-floating:hover {
+        width: 185px;
+        background-color: var(--background-modifier-hover);
+    }
+    .dp-zoom-slider-floating:hover .dp-zoom-slider,
+    .dp-zoom-slider-floating:hover .dp-zoom-value {
+        opacity: 1;
+    }
+}
+/* Tap toggle (.is-open) and keyboard focus expand it on every device */
+.dp-zoom-slider-floating.is-open,
 .dp-zoom-slider-floating:focus-within {
     width: 185px;
     background-color: var(--background-modifier-hover);
 }
-.dp-zoom-slider-floating:hover .dp-zoom-slider,
+.dp-zoom-slider-floating.is-open .dp-zoom-slider,
 .dp-zoom-slider-floating:focus-within .dp-zoom-slider,
-.dp-zoom-slider-floating:hover .dp-zoom-value,
+.dp-zoom-slider-floating.is-open .dp-zoom-value,
 .dp-zoom-slider-floating:focus-within .dp-zoom-value {
     opacity: 1;
 }
@@ -1555,6 +1769,13 @@ export const STYLES = `
 .dp-tab .dp-tab-select:focus-visible {
     background-color: var(--background-modifier-hover);
     box-shadow: inset 0 0 0 1px var(--interactive-accent);
+}
+
+/* Notes (Reading View / Live Preview): Dataview renders [gcalId:: ...] as a "gcalId: <id>" badge; hide it too.
+   body.dp-hide-gcal-id follows the "Hide Inline Metadata Fields" setting. */
+body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-norm-key="gcalid"]),
+body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key="gcalId"]) {
+    display: none;
 }
 
 /* Fill the leaf: no Obsidian view padding, container stretches to the bottom */
@@ -1743,17 +1964,160 @@ export const STYLES = `
 /* -------------------------------------------------------------
    Collapsible Filter Panel Styles
    ------------------------------------------------------------- */
-/* No backdrop-filter here: it would become a backdrop root and stop the nested .dp-sugg-container from blurring */
+/* Inline (code block) filters, Obsidian-style: one wrapping bar of chips + a single editor row while a chip is edited.
+   No backdrop-filter here: it would become a backdrop root and stop nested popovers from blurring. */
 .dp-filter-panel {
-    border: 1px solid var(--dp-glass-border);
-    border-radius: 8px;
-    padding: 8px 12px;
-    background-color: var(--dp-glass-bg);
-    box-shadow: var(--dp-glass-shadow);
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--dp-glass-border);
+    border-radius: var(--radius-m, 8px);
+    background-color: var(--dp-glass-bg);
+    box-shadow: var(--dp-glass-shadow);
     animation: slideDown 0.2s ease-out;
+}
+.dp-filter-bar,
+.dp-filter-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+}
+/* A nested group: its chips in brackets, inline with the rest of the bar */
+.dp-filter-chip-group {
+    padding: 1px 4px;
+    border: 1px dashed var(--background-modifier-border-hover);
+    border-radius: 999px;
+}
+.dp-filter-chip-group::before {
+    content: '(';
+    color: var(--text-faint);
+}
+.dp-filter-chip-group::after {
+    content: ')';
+    color: var(--text-faint);
+}
+.dp-filter-panel select.dp-filter-mode {
+    height: 24px;
+    padding: 0 22px 0 8px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-semibold, 600);
+}
+.dp-filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    max-width: 100%;
+    height: 24px;
+    padding: 0 3px 0 8px;
+    box-sizing: border-box;
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-normal);
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.dp-filter-chip:hover,
+.dp-filter-chip:focus-visible {
+    border-color: var(--interactive-accent);
+}
+.dp-filter-chip.is-editing {
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+}
+.dp-filter-chip-icon {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+.dp-filter-chip.is-editing .dp-filter-chip-icon {
+    color: inherit;
+}
+.dp-filter-chip-icon svg {
+    width: 12px;
+    height: 12px;
+}
+.dp-filter-chip-label {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.dp-filter-panel button.dp-filter-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 999px;
+    opacity: 0.6;
+}
+.dp-filter-panel button.dp-filter-chip-remove:hover {
+    opacity: 1;
+    background-color: var(--background-modifier-hover);
+}
+.dp-filter-chip-remove svg {
+    width: 11px;
+    height: 11px;
+}
+.dp-filter-panel button.dp-filter-add {
+    height: 24px;
+    padding: 0 8px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-medium, 500);
+    color: var(--text-accent);
+    background: transparent;
+    border: 1px dashed var(--background-modifier-border-hover);
+    box-shadow: none;
+    border-radius: 999px;
+}
+.dp-filter-panel button.dp-filter-add:hover {
+    border-color: var(--interactive-accent);
+    background-color: var(--background-modifier-hover);
+}
+.dp-filter-empty {
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-faint);
+}
+.dp-filter-editor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--background-modifier-border);
+}
+.dp-filter-editor select,
+.dp-filter-editor input {
+    height: 26px;
+    font-size: var(--font-ui-smaller, 0.8em);
+}
+.dp-filter-editor-value {
+    display: flex;
+    flex: 1 1 140px;
+    gap: 6px;
+    min-width: 0;
+}
+.dp-filter-editor-value input[type="text"] {
+    flex: 1;
+    min-width: 0;
+}
+.dp-filter-editor .dp-hidden {
+    display: none;
+}
+.dp-filter-panel button.dp-filter-editor-done {
+    height: 26px;
+    padding: 0 10px;
+    font-size: var(--font-ui-smaller, 0.8em);
 }
 @keyframes slideDown {
     from { opacity: 0; transform: translateY(-5px); }
@@ -1764,19 +2128,104 @@ export const STYLES = `
    Frosted modals & quick-add menus (scoped to this plugin's UI only)
    ------------------------------------------------------------- */
 .modal:has(.dp-modal-buttons, .dp-selector-modal-tabs),
+.modal.dp-shortcut-modal,
 .menu.dp-glass-menu {
     background-color: var(--dp-glass-bg);
-    backdrop-filter: blur(20px) saturate(160%);
-    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
     border: 1px solid var(--dp-glass-border);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
 }
-.modal:has(.dp-modal-buttons, .dp-selector-modal-tabs) {
+.modal:has(.dp-modal-buttons, .dp-selector-modal-tabs),
+.modal.dp-shortcut-modal {
     border-radius: 12px;
 }
 /* Lighter dimming so the frost actually picks up the workspace behind it */
-.modal-container:has(.dp-modal-buttons, .dp-selector-modal-tabs) > .modal-bg {
+.modal-container:has(.dp-modal-buttons, .dp-selector-modal-tabs, .dp-shortcut-modal) > .modal-bg {
     opacity: 0.45;
+}
+
+/* Keyboard shortcut help (?) */
+.modal.dp-shortcut-modal {
+    width: min(460px, calc(100vw - 32px));
+}
+.dp-shortcut-section + .dp-shortcut-section {
+    margin-top: var(--size-4-4, 16px);
+}
+.dp-shortcut-section-title {
+    margin-bottom: var(--size-4-1, 4px);
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-semibold, 600);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+.dp-shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-3, 12px);
+    padding: var(--size-4-1, 4px) 0;
+    border-bottom: 1px solid var(--dp-glass-border);
+}
+.dp-shortcut-row:last-child {
+    border-bottom: none;
+}
+.dp-shortcut-keys {
+    display: flex;
+    gap: var(--size-4-1, 4px);
+    min-width: 64px;
+}
+.dp-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    font-family: var(--font-monospace);
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-normal);
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-s, 4px);
+}
+.dp-shortcut-desc {
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-normal);
+}
+/* Footer: the "hide the header button" option, on the modal's frosted surface behind a hairline */
+.dp-shortcut-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--size-4-1, 4px) var(--size-4-3, 12px);
+    margin: var(--size-4-4, 16px) calc(-1 * var(--size-4-2, 8px)) 0;
+    padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
+    background-color: color-mix(in srgb, var(--background-primary) 35%, transparent);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: var(--radius-m, 8px);
+    box-shadow: inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-shortcut-footer-option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--size-4-2, 8px);
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-normal);
+    cursor: pointer;
+    user-select: none;
+}
+.dp-shortcut-footer-option input[type="checkbox"] {
+    margin: 0;
+    accent-color: var(--interactive-accent);
+    cursor: pointer;
+}
+.dp-shortcut-footer-hint {
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-faint);
 }
 
 /* -------------------------------------------------------------
@@ -1788,14 +2237,9 @@ export const STYLES = `
         padding: 8px 10px;
         gap: 6px;
     }
-    .dp-title {
-        display: none;
-    }
-    .dp-nav {
-        gap: 6px;
-    }
     .dp-nav-date {
-        font-size: 1em;
+        font-size: 0.92em;
+        padding: 0 10px 0 8px;
     }
     .dp-tabs > .dp-tab {
         padding: 0 8px;
@@ -1828,10 +2272,6 @@ export const STYLES = `
     left: -10px;
     right: -10px;
 }
-.is-mobile .dp-nav-buttons-group button {
-    height: 32px;
-    padding: 4px 10px;
-}
 .is-mobile .dp-tabs > .dp-tab {
     height: 30px;
 }
@@ -1850,9 +2290,7 @@ export const STYLES = `
     border: 1px solid var(--dp-glass-border);
     border-radius: 12px;
     background-color: var(--dp-glass-bg);
-    backdrop-filter: blur(16px) saturate(160%);
-    -webkit-backdrop-filter: blur(16px) saturate(160%);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight); /* no blur: nothing scrolls behind this row */
     z-index: 30;
 }
 .is-phone .dp-phone-shell > .dp-bottom-nav {
@@ -1885,6 +2323,66 @@ export const STYLES = `
     white-space: nowrap;
 }
 
+/* Compact header controls are icon-only: labels hidden, action buttons square (Today, Sync, +) */
+.dp-compact-shell .dp-header-actions .dp-btn-label {
+    display: none;
+}
+.dp-compact-shell .dp-header-actions > button {
+    flex-shrink: 0;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 0.95em;
+    line-height: 1;
+}
+/* The zoom control is the desktop one (tap toggles .is-open, which expands it inline to the left); collapsed it is
+   the same 30px square as its neighbours, and open it still fits a phone-width actions row */
+.dp-compact-shell .dp-header-actions > .dp-zoom-slider-floating {
+    height: 30px;
+    width: 30px;
+    margin: 0;
+}
+.dp-compact-shell .dp-header-actions > .dp-zoom-slider-floating.is-open {
+    width: 176px;
+}
+.dp-compact-shell .dp-zoom-slider-floating span:first-child {
+    width: 28px;
+    height: 28px;
+}
+.dp-compact-shell .dp-board-toggle {
+    height: 30px;
+}
+.dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
+    width: 30px;
+    height: 24px;
+    padding: 0;
+    font-size: 0.95em;
+}
+
+/* Single header row (phone views, compact Board): [date pill] ... [🔍] [📅] [Sync] [+]; never wraps: the actions
+   never shrink, the date pill gives way (clipped) on the narrowest screens */
+.dp-compact-shell .dp-header-top {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--size-4-2, 8px);
+}
+.dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0 var(--size-4-3, 12px) 0 var(--size-4-2, 8px);
+    font-size: var(--font-ui-small, 0.9em);
+}
+.dp-compact-shell .dp-header-top > .dp-header-actions {
+    flex-shrink: 0;
+}
 /* Daily / 2-Day: 7-day date strip under the header nav */
 .dp-compact-shell .dp-date-strip {
     display: grid;
@@ -1919,9 +2417,24 @@ export const STYLES = `
     background-color: var(--interactive-accent);
     color: var(--text-on-accent);
 }
+/* Date strip weekends: tinted pill and coloured weekday; the shown day(s) keep the solid accent fill */
+.dp-compact-shell .dp-date-strip > .dp-date-pill.is-sunday:not(.is-shown) {
+    background-color: rgba(var(--dp-sun-rgb), 0.1);
+}
+.dp-compact-shell .dp-date-strip > .dp-date-pill.is-saturday:not(.is-shown) {
+    background-color: rgba(var(--dp-sat-rgb), 0.1);
+}
+.dp-compact-shell .dp-date-strip > .dp-date-pill.is-sunday:not(.is-shown):not(.is-today) {
+    color: rgba(var(--dp-sun-rgb), 0.9);
+}
+.dp-compact-shell .dp-date-strip > .dp-date-pill.is-saturday:not(.is-shown):not(.is-today) {
+    color: rgba(var(--dp-sat-rgb), 0.9);
+}
 .dp-date-pill-dow {
     font-size: 0.85em;
     opacity: 0.8;
+    white-space: nowrap; /* 3-letter labels (Sun, Wed) stay on one line in ~45px phone pills */
+    letter-spacing: -0.01em;
 }
 .dp-date-pill-date {
     font-weight: 600;
@@ -1941,7 +2454,7 @@ export const STYLES = `
     display: none;
 }
 
-/* Monthly: 7 columns, compact cells, max 2 chips (+N); the whole cell is the tap target */
+/* Monthly: 7 columns, compact cells, as many chips as fit (+N), no inner scrolling; the whole cell is the tap target */
 .dp-compact-shell .dp-monthly-compact {
     min-width: 0;
 }
@@ -1979,6 +2492,9 @@ export const STYLES = `
     font-size: 0.6em !important;
     padding: 0 3px !important;
     margin-bottom: 0 !important;
+}
+.dp-compact-shell .dp-monthly-compact .dp-grid-task-item.dp-chip-overflow {
+    display: none !important; /* past the cell's height (fitMonthlyChips); counted in the +N badge instead */
 }
 .dp-compact-shell .dp-monthly-compact .dp-task-link-btn {
     display: none !important;
@@ -2094,5 +2610,538 @@ export const STYLES = `
     align-self: center;
     max-width: 88px;
     margin-left: 0;
+}
+
+/* -------------------------------------------------------------
+   Desktop side drawer (drawer.ts): hangs under the header on the right; the panes and the tracker bar make room
+   with a right margin. Sliding is transform-only; the panes reflow once per toggle (no animated layout).
+   No blur: nothing scrolls behind it, so it gets a solid secondary surface.
+   ------------------------------------------------------------- */
+.dp-container {
+    --dp-drawer-w: 272px;
+}
+.dp-container.dp-drawer-open > .day-planner-view-pane {
+    margin-right: var(--dp-drawer-w);
+}
+.dp-container.dp-drawer-open > .dp-current-task-bar {
+    margin-right: calc(var(--dp-drawer-w) + 12px);
+}
+.dp-side-drawer {
+    position: absolute;
+    top: var(--dp-header-h, 0px);
+    right: 0;
+    bottom: 0;
+    z-index: 26; /* under the header (30) and its shadow */
+    width: var(--dp-drawer-w);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    background-color: var(--background-secondary);
+    border-left: 1px solid var(--background-modifier-border);
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.22s;
+}
+.dp-side-drawer.is-open {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
+}
+.dp-drawer-header {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2, 8px);
+    padding: var(--size-4-2, 8px) var(--size-4-2, 8px) var(--size-4-2, 8px) var(--size-4-3, 12px);
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+.dp-drawer-tabs {
+    display: flex;
+    gap: 2px;
+}
+.dp-drawer-tab.is-active {
+    color: var(--text-accent);
+    background-color: var(--background-modifier-hover);
+}
+.dp-drawer-title {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-semibold, 600);
+    white-space: nowrap;
+}
+.dp-drawer-title-icon {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+.dp-drawer-title-icon svg {
+    width: 15px;
+    height: 15px;
+}
+.dp-drawer-count {
+    padding: 0 6px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-medium, 500);
+    line-height: 18px;
+    color: var(--text-muted);
+    background-color: var(--background-modifier-hover);
+    border-radius: 999px;
+}
+.dp-drawer-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: var(--size-4-2, 8px);
+}
+/* The body stacks capture → Overdue → Undated; Undated grows into all remaining height, so its unschedule drop zone
+   (and highlight) reaches the drawer's bottom edge. Longer lists simply scroll the body. */
+.dp-drawer-body {
+    display: flex;
+    flex-direction: column;
+}
+.dp-drawer-body > * {
+    flex-shrink: 0;
+}
+.dp-drawer-section[data-section="undated"] {
+    flex: 1 0 auto;
+}
+.dp-drawer-empty {
+    margin: 2px 4px var(--size-4-2, 8px);
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-faint);
+}
+.dp-drawer-empty {
+    margin-top: var(--size-4-4, 16px);
+    text-align: center;
+}
+.dp-drawer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.dp-drawer-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    padding: 7px 8px;
+    font-size: var(--font-ui-small, 0.9em);
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m, 8px);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    cursor: grab;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.dp-drawer-card:hover {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+.dp-drawer-card.is-dragging,
+.dp-grid-task-item.is-dragging {
+    opacity: 0.4 !important; /* monthly items carry an inline opacity for done / cancelled */
+}
+/* Unschedule drop zone: the Undated section (the whole drawer only if that section is missing) */
+/* The outline is drawn on a layer ABOVE the cards: an inset box-shadow paints beneath child elements, so cards
+   running edge to edge covered it and seemed to push through the drop zone's border */
+.dp-drawer-section {
+    position: relative; /* the drawer itself is already absolutely positioned */
+}
+.dp-side-drawer.dp-drop-target::after,
+.dp-drawer-section.dp-drop-target::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border: 2px dashed var(--interactive-accent);
+    border-radius: inherit;
+    pointer-events: none;
+}
+.dp-side-drawer.dp-drop-target .dp-drawer-body,
+.dp-drawer-section.dp-drop-target {
+    background-color: color-mix(in srgb, var(--interactive-accent) 8%, transparent);
+}
+
+/* Accordion sections (Overdue / Undated): header = chevron, title, count pill; the body folds via grid rows */
+.dp-drawer-section {
+    border-radius: var(--radius-m, 8px);
+}
+.dp-drawer-section + .dp-drawer-section {
+    margin-top: var(--size-4-2, 8px);
+}
+.dp-drawer-section-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.dp-side-drawer button.dp-drawer-section-action {
+    flex-shrink: 0;
+    height: 22px;
+    padding: 0 8px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-medium, 500);
+    color: var(--text-accent);
+    background-color: transparent;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 999px;
+    box-shadow: none;
+    cursor: pointer;
+}
+.dp-side-drawer button.dp-drawer-section-action:hover {
+    background-color: var(--background-modifier-hover);
+    border-color: var(--interactive-accent);
+}
+.dp-side-drawer button.dp-drawer-section-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    height: auto;
+    padding: 6px 4px;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-semibold, 600);
+    color: var(--text-normal);
+    background: none;
+    border: none;
+    box-shadow: none;
+    border-radius: var(--radius-s, 4px);
+    cursor: pointer;
+}
+.dp-side-drawer button.dp-drawer-section-toggle:hover {
+    background-color: var(--background-modifier-hover);
+}
+.dp-drawer-chevron {
+    width: 12px;
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+}
+.dp-drawer-section.is-collapsed .dp-drawer-chevron {
+    transform: rotate(-90deg); /* ▾ → ▸ */
+}
+.dp-drawer-section-title {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dp-drawer-section-body {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows 0.22s ease;
+}
+.dp-drawer-section.is-collapsed > .dp-drawer-section-body {
+    grid-template-rows: 0fr;
+}
+.dp-drawer-section-inner {
+    min-height: 0;
+    overflow: hidden;
+    padding: 2px 6px 6px; /* side inset: cards sit inside the drop zone's 2px outline, never on it */
+}
+.dp-drawer-section.is-collapsed .dp-drawer-section-inner {
+    visibility: hidden; /* folded cards leave the tab order */
+    transition: visibility 0s linear 0.22s;
+}
+.dp-drawer-section .dp-drawer-empty {
+    margin: 4px 4px 6px;
+}
+/* Quick capture line at the top of the Tasks panel */
+.dp-side-drawer input.dp-drawer-capture {
+    width: 100%;
+    height: 30px;
+    margin-bottom: var(--size-4-2, 8px);
+    padding: 0 10px;
+    box-sizing: border-box;
+    font-size: var(--font-ui-small, 0.9em);
+    background-color: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m, 8px);
+}
+.dp-side-drawer input.dp-drawer-capture:focus {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+}
+
+/* Keyboard focus on a drawer card (Enter edits, f fits it in) */
+.dp-drawer-card {
+    position: relative;
+}
+.dp-drawer-card:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
+}
+
+/* Overdue triage: a pill row fades in over the card's right side on hover / keyboard focus */
+.dp-drawer-card-actions {
+    position: absolute;
+    top: 50%;
+    right: 4px;
+    display: flex;
+    gap: 3px;
+    padding: 2px 2px 2px 14px;
+    transform: translateY(-50%);
+    background: linear-gradient(to right, transparent, var(--background-primary) 12px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.12s ease;
+}
+.dp-drawer-card:hover .dp-drawer-card-actions,
+.dp-drawer-card:focus-within .dp-drawer-card-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+.dp-side-drawer button.dp-drawer-card-action {
+    height: 20px;
+    padding: 0 6px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-medium, 500);
+    color: var(--text-normal);
+    background-color: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 999px;
+    box-shadow: none;
+    cursor: pointer;
+}
+.dp-side-drawer button.dp-drawer-card-action:hover {
+    color: var(--text-on-accent);
+    background-color: var(--interactive-accent);
+    border-color: var(--interactive-accent);
+}
+
+/* Inline task creation (double-click an empty slot): an editable card at the snapped slot */
+.dp-timeline-event.dp-inline-create {
+    z-index: 60 !important;
+    gap: 2px;
+    padding: 4px 6px !important;
+    cursor: text !important;
+    border-style: dashed !important;
+    border-color: var(--interactive-accent) !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18) !important;
+}
+.dp-timeline-event.dp-inline-create:hover {
+    transform: none !important;
+}
+.dp-inline-create-time {
+    font-size: 0.85em;
+    font-weight: var(--font-bold, 700);
+    font-variant-numeric: tabular-nums;
+    color: var(--interactive-accent);
+}
+.dp-timeline-event input.dp-inline-create-input {
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    padding: 0;
+    font: inherit;
+    font-weight: var(--font-semibold, 600);
+    color: inherit;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+/* "Fit it in" drop target: a Weekly / N-day day header */
+.dp-grid-header.dp-drop-target {
+    outline: 2px dashed var(--interactive-accent);
+    outline-offset: -2px;
+    background-color: color-mix(in srgb, var(--interactive-accent) 12%, transparent);
+}
+.dp-drawer-card-date {
+    flex-shrink: 0;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-error);
+}
+.dp-drawer-card .dp-custom-cb {
+    flex-shrink: 0;
+}
+.dp-drawer-card-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.35;
+    word-break: break-word;
+}
+.dp-drawer-card .dp-badge-priority {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: none;
+}
+/* Subtle until hovered: it is a reference, not an action */
+.dp-header-actions > button.dp-help-btn {
+    color: var(--text-muted);
+}
+.dp-header-actions > button.dp-help-btn:hover {
+    color: var(--text-normal);
+}
+.dp-header-actions > button.dp-drawer-toggle.is-active {
+    color: var(--text-accent);
+    background-color: var(--background-modifier-hover);
+}
+
+/* Desktop pointer drag (views.ts beginPointerDrag): floating title chip, drop-target day cell, grabbing cursor */
+.dp-drag-ghost {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: var(--layer-dragged-item, 1000);
+    max-width: 220px; /* narrowed further in views.ts to fit the drawer / view it is over */
+    box-sizing: border-box;
+    padding: 4px 10px;
+    overflow: hidden;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-semibold, 600);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--text-normal);
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
+    border: 1px solid var(--interactive-accent);
+    border-radius: 999px;
+    box-shadow: var(--dp-glass-shadow);
+    pointer-events: none;
+}
+/* Snap preview container: always exactly the hovered column's width (width = 100% of the column it is appended to,
+   i.e. its clientWidth), never wider. Height comes from the absolutely positioned card inside, so no overflow clip. */
+.dp-drag-preview {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    z-index: 1000;
+    opacity: 0.85;
+    pointer-events: none;
+}
+/* 1:1 clone: the preview copies the card's classes, .selected included, whose scale(0.97) (around the centre) drew
+   the preview 3% short and 1.5% of its height lower than the slot it snaps to. The clone stays unscaled. */
+.dp-drag-preview > .dp-timeline-event {
+    transform: none !important;
+    transition: none !important;
+}
+.dp-drag-ghost.is-over-timeline {
+    display: none;
+}
+.dp-drag-time {
+    flex-shrink: 0;
+    font-size: 0.8em;
+    font-weight: var(--font-bold, 700);
+    font-variant-numeric: tabular-nums;
+    color: var(--interactive-accent);
+}
+.dp-grid-cell.dp-drop-target {
+    outline: 2px dashed var(--interactive-accent);
+    outline-offset: -2px;
+    background-color: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+}
+body.dp-pointer-dragging,
+body.dp-pointer-dragging * {
+    cursor: grabbing !important;
+}
+
+/* Settings tab: top tab bar (DayPlannerSettingTab.createSettingsTabs); only the active panel is shown */
+.dp-settings .dp-settings-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    margin-bottom: var(--size-4-4, 16px);
+    padding: 3px;
+    background-color: var(--background-modifier-hover);
+    border-radius: var(--radius-m, 8px);
+}
+.dp-settings button.dp-settings-tab {
+    flex: 1 1 auto;
+    height: 30px;
+    padding: 0 12px;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-medium, 500);
+    color: var(--text-muted);
+    white-space: nowrap;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: var(--radius-s, 6px);
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+.dp-settings button.dp-settings-tab:hover {
+    color: var(--text-normal);
+}
+.dp-settings button.dp-settings-tab.is-active {
+    color: var(--text-normal);
+    font-weight: var(--font-semibold, 600);
+    background-color: var(--background-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.dp-settings .dp-settings-panel {
+    display: none;
+}
+.dp-settings .dp-settings-panel.is-active {
+    display: block;
+    animation: dp-settings-panel-in 0.15s ease-out;
+}
+@keyframes dp-settings-panel-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dp-settings .dp-settings-panel.is-active {
+        animation: none;
+    }
+}
+
+/* Progressive disclosure: once a timeline card's content box drops under ~85px (a card ~105px wide), location,
+   description, the open-note arrow and the priority badge go; the title stays as one bold, ellipsized line.
+   Each card is its own size container, so overlapping (side-by-side) events collapse as well as narrow columns. */
+.dp-timeline-event {
+    container: dp-card / inline-size;
+}
+@container dp-card (max-width: 85px) {
+    .dp-event-meta,
+    .dp-event-main .dp-task-link-btn,
+    .dp-event-main .dp-badge-priority {
+        display: none !important;
+    }
+    .dp-event-main {
+        display: flex;
+        align-items: flex-start;
+        min-width: 0;
+    }
+    /* Up to three wrapped lines before the ellipsis (a single line hid most of a title in an 84px day column) */
+    .dp-event-title,
+    .dp-event-main .dp-task-text {
+        min-width: 0;
+        overflow: hidden;
+        white-space: normal;
+        word-break: break-word;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        font-weight: var(--font-bold, 700);
+        line-height: 1.25;
+    }
+    .dp-event-main .dp-task-text {
+        flex: 1;
+    }
+}
+
+/* Done / cancelled tasks are locked (views.ts isLockedTask): no grab hand, a click still opens the editor */
+.dp-timeline-event.completed,
+.dp-timeline-event.cancelled {
+    cursor: pointer !important;
 }
 `;

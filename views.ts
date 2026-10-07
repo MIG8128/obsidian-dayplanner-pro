@@ -17,13 +17,56 @@ import {
     getTargetTaskFilePath,
     isSyncConflictPath,
     addMinutesToTime,
-    triggerHaptic
+    triggerHaptic,
+    isExcludedPath,
+    taskListSignature,
+    fileNameTaskDate,
+    getDefaultTaskFilePath,
+    attachPathSuggest,
+    onEnterSubmit
 } from './utils';
-import { patchGoogleCalendarEvent, updateGoogleCalendarEvent, syncTaskToGCal, syncAllTasksToGCal } from './gcalApi';
-import { TaskEditModal, GCalEventEditModal, AddChoiceModal, TaskSyncModal } from './modals';
+import { patchGoogleCalendarEvent, updateGoogleCalendarEvent, syncAllTasksToGCal, syncEditedTaskToGCal } from './gcalApi';
+import { TaskEditModal, GCalEventEditModal, AddChoiceModal, TaskSyncModal, ShortcutHelpModal } from './modals';
+import { renderSideDrawer, SIDE_DRAWER_TABS, setFirstIcon, DrawerSectionId } from './drawer';
 import DayPlannerPlugin from './main';
 
 type TabPillMemo = { key: string; left: number; width: number };
+
+const PRIORITY_EMOJI: Record<string, string> = { highest: '🔺', high: '⏫', medium: '🔼', low: '🔽', lowest: '⏬' };
+
+/** Done or cancelled tasks are history: no drag, resize or drop moves them */
+const isLockedTask = (task?: TaskItem | null): boolean =>
+    !!task && (task.completed || task.statusChar === 'x' || task.statusChar === '-');
+
+/**
+ * How far below a timeline card's top edge the pointer grabbed it, from layout (offsetTop in its column) rather than
+ * getBoundingClientRect: the hover (scale 1.01) and selected (scale 0.97) transforms scale around the card's centre,
+ * moving a tall card's painted top by up to 1.5% of its height. That error carried into every snapped preview
+ * position as a gap between the cursor and the dragged card.
+ */
+function grabOffsetIn(card: HTMLElement, clientY: number): number {
+    const col = card.offsetParent as HTMLElement | null;
+    if (!col) return clientY - card.getBoundingClientRect().top;
+    return clientY - (col.getBoundingClientRect().top + col.clientTop + card.offsetTop);
+}
+
+/**
+ * What a desktop pointer drag carries: timed timeline card(s) being moved (with the multi-selection), or one task
+ * picked up from the side drawer (Undated or Overdue section), an all-day row (dated, untimed) or a monthly cell
+ */
+type PointerDragSource =
+    | { kind: 'timeline'; refId: string; isGCal: boolean; previewRoot: HTMLElement }
+    | { kind: 'task'; task: TaskItem; origin: 'undated' | 'overdue' | 'allday' | 'month' };
+
+/** Where a pointer drag would land: a timeline column (date + time), a monthly day cell (date only), the side drawer
+ *  (unschedule), or a Weekly / N-day day header ("fit it in": first free slot of that day) */
+type PointerDropTarget = { kind: 'timeline' | 'day' | 'drawer' | 'fit'; el: HTMLElement; dateStr: string };
+
+/** Weekend tint class for a day (by real weekday, so any N-day window or week start is tagged correctly). */
+function weekendCls(day: any): string {
+    const dow = day.day();
+    return dow === 0 ? ' is-sunday' : dow === 6 ? ' is-saturday' : '';
+}
 
 /**
  * The header is rebuilt on every tab switch, so a CSS transition has nothing to transition from.
@@ -126,6 +169,10 @@ function applyViewReveal(targetPaneEl: HTMLElement): void {
     if (!wasVisible && !prefersReducedMotion()) playOnce(targetPaneEl, REVEAL_CLASS);
 }
 
+/** The plugin instance, for the module-level write helpers that only receive `app` */
+const getPlannerPlugin = (app: App): DayPlannerPlugin | undefined => (app as any).plugins?.getPlugin('obsidian-day-planner-pro');
+const isTimedTask = (task: TaskItem) => !!(task.date && task.startTime && task.endTime);
+
 function showTaskUndoNotice(
     app: App,
     task: TaskItem,
@@ -143,20 +190,17 @@ function showTaskUndoNotice(
     undoBtn.addEventListener('click', async (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        const plugin = (app as any).plugins?.getPlugin('obsidian-day-planner-pro');
+        const plugin = getPlannerPlugin(app);
         plugin?.markSelfWrite(task.filePath);
+        const wasTimed = isTimedTask(task);
         const success = await rawUpdateTaskInFile(app, task, previous);
         if (success) {
+            if (plugin) syncEditedTaskToGCal(plugin, task, wasTimed);
             notice.hide();
             new Notice('Task edit undone.');
             const file = app.vault.getAbstractFileByPath(task.filePath);
             if (plugin && file instanceof TFile) {
-                await plugin.updateCacheForFile(file, true);
-            }
-            if (plugin && plugin.settings.enableGoogleCalendar && plugin.settings.taskSyncCalendarId) {
-                syncTaskToGCal(plugin, task, plugin.settings.taskSyncCalendarId).catch(err => {
-                    console.error('Error auto-syncing task undo to Google Calendar:', err);
-                });
+                await plugin.updateCacheForFile(file);
             }
         }
     });
@@ -215,36 +259,97 @@ export function showGCalEventUndoNotice(
     });
 }
 
+type TaskUpdates = Partial<Omit<TaskItem, 'id' | 'filePath' | 'lineNumber' | 'originalLine'>>;
+
+/** The editable fields an Undo restores */
+const snapshotTask = (task: TaskItem): TaskUpdates => ({
+    text: task.text,
+    statusChar: task.statusChar,
+    priority: task.priority,
+    date: task.date,
+    startTime: task.startTime,
+    endTime: task.endTime,
+    recurrence: task.recurrence,
+    dueDate: task.dueDate,
+    scheduledDate: task.scheduledDate,
+    startDate: task.startDate,
+    completionDate: task.completionDate,
+    cancelledDate: task.cancelledDate
+    // gcalEventId is sync metadata, not an edit: Undo must not unlink an event the background sync just created
+});
+
+/**
+ * Several tasks at once (overdue triage "Roll all", unscheduling a multi-selection): the same write + background
+ * calendar sync per task as updateTaskInFile, but ONE notice with one Undo for the batch instead of a notice each.
+ * A single task goes through updateTaskInFile unchanged. Returns how many tasks were written.
+ */
+async function updateTasksInFile(app: App, tasks: TaskItem[], updates: TaskUpdates, summary: (count: number) => string): Promise<number> {
+    if (tasks.length === 1) return (await updateTaskInFile(app, tasks[0], updates)) ? 1 : 0;
+    const plugin = getPlannerPlugin(app);
+    const done: Array<{ task: TaskItem; previous: TaskUpdates }> = [];
+    for (const task of tasks) {
+        const previous = snapshotTask(task);
+        const wasTimed = isTimedTask(task);
+        if (await rawUpdateTaskInFile(app, task, updates)) {
+            if (plugin) syncEditedTaskToGCal(plugin, task, wasTimed);
+            done.push({ task, previous });
+        }
+    }
+    if (done.length === 0) return 0;
+
+    const notice = new Notice('', 8000);
+    const messageEl = (notice as any).noticeEl || (notice as any).messageEl;
+    if (!messageEl) return done.length;
+    messageEl.empty();
+    messageEl.createSpan({ text: `${summary(done.length)} ` });
+    const undoBtn = messageEl.createEl('button', { text: 'Undo' });
+    undoBtn.addEventListener('click', async (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        notice.hide();
+        const files = new Set<string>();
+        for (const { task, previous } of done) {
+            plugin?.markSelfWrite(task.filePath);
+            const wasTimed = isTimedTask(task);
+            if (await rawUpdateTaskInFile(app, task, previous)) {
+                if (plugin) syncEditedTaskToGCal(plugin, task, wasTimed);
+                files.add(task.filePath);
+            }
+        }
+        new Notice(`Undid ${done.length} task change(s).`);
+        for (const path of files) {
+            const file = app.vault.getAbstractFileByPath(path);
+            if (plugin && file instanceof TFile) await plugin.updateCacheForFile(file);
+        }
+    });
+    return done.length;
+}
+
+const EMOJI_PRIORITY: Record<string, TaskItem['priority']> = { '🔺': 'highest', '⏫': 'high', '🔼': 'medium', '🔽': 'low', '⏬': 'lowest' };
+
+/** Quick-entry text → task text + priority: a Tasks priority emoji anywhere in the text sets the priority */
+function parseQuickEntry(raw: string): { text: string; priority: TaskItem['priority'] } {
+    let priority: TaskItem['priority'] = 'normal';
+    const text = raw
+        .replace(/(🔺|⏫|🔼|🔽|⏬)️?/gu, (_m: string, emoji: string) => { priority = EMOJI_PRIORITY[emoji]; return ' '; })
+        .replace(/\s+/g, ' ')
+        .trim();
+    return { text, priority };
+}
+
 async function updateTaskInFile(
     app: App,
     task: TaskItem,
-    updates: Partial<Omit<TaskItem, 'id' | 'filePath' | 'lineNumber' | 'originalLine'>>
+    updates: TaskUpdates
 ): Promise<boolean> {
-    const previous = {
-        text: task.text,
-        statusChar: task.statusChar,
-        priority: task.priority,
-        date: task.date,
-        startTime: task.startTime,
-        endTime: task.endTime,
-        recurrence: task.recurrence,
-        dueDate: task.dueDate,
-        scheduledDate: task.scheduledDate,
-        startDate: task.startDate,
-        completionDate: task.completionDate,
-        cancelledDate: task.cancelledDate,
-        gcalEventId: task.gcalEventId
-    };
-    const plugin = (app as any).plugins?.getPlugin('obsidian-day-planner-pro');
-    if (plugin?.settings.enableGoogleCalendar && plugin.settings.taskSyncCalendarId) plugin.markSelfWrite(task.filePath);
+    const previous = snapshotTask(task);
+    const wasTimed = isTimedTask(task);
     const success = await rawUpdateTaskInFile(app, task, updates);
     if (success) {
+        // This one task only, in the background; the Sync button remains the full vault ↔ calendar reconciliation
+        const plugin = getPlannerPlugin(app);
+        if (plugin) syncEditedTaskToGCal(plugin, task, wasTimed);
         showTaskUndoNotice(app, task, previous);
-        if (plugin && plugin.settings.enableGoogleCalendar && plugin.settings.taskSyncCalendarId) {
-            syncTaskToGCal(plugin, task, plugin.settings.taskSyncCalendarId).catch(err => {
-                console.error('Error auto-syncing task to Google Calendar:', err);
-            });
-        }
     }
     return success;
 }
@@ -260,7 +365,9 @@ async function createNewTaskInFile(
     priority: 'lowest' | 'low' | 'normal' | 'medium' | 'high' | 'highest' = 'normal',
     gcalEventId: string | null = null
 ): Promise<void> {
-    await rawCreateNewTaskInFile(app, filePath, text, date, startTime, endTime, statusChar, priority, gcalEventId);
+    const task = await rawCreateNewTaskInFile(app, filePath, text, date, startTime, endTime, statusChar, priority, gcalEventId);
+    const plugin = getPlannerPlugin(app);
+    if (task && plugin) syncEditedTaskToGCal(plugin, task, false);
 }
 
 interface FilterRule {
@@ -279,13 +386,55 @@ interface FilterGroup {
     children?: (FilterRule | FilterGroup)[];
 }
 
-function parseFilterGroup(obj: any): FilterGroup {
+const randomFilterId = () => Math.random().toString(36).substring(2, 9);
+
+/** Chip / editor vocabulary for the inline filter bar (the stored rule keeps its type / operator / value) */
+const FILTER_TYPES: Array<{ type: FilterRule['type']; label: string; icons: string[] }> = [
+    { type: 'folder', label: 'Folder', icons: ['folder'] },
+    { type: 'file', label: 'File', icons: ['file-text'] },
+    { type: 'tag', label: 'Tag', icons: ['hash'] },
+    { type: 'status', label: 'Status', icons: ['circle-check', 'check-circle', 'check'] },
+    { type: 'priority', label: 'Priority', icons: ['flag'] },
+    { type: 'date', label: 'Date', icons: ['calendar'] },
+    { type: 'text', label: 'Text', icons: ['type', 'text'] },
+    { type: 'itemType', label: 'Item type', icons: ['layers'] }
+];
+
+const FILTER_OP_LABEL: Record<FilterRule['operator'], string> = {
+    contains: 'contains', notContains: 'does not contain', equals: 'is', notEquals: 'is not',
+    startsWith: 'starts with', endsWith: 'ends with', isHigher: 'above', isLower: 'below',
+    isBefore: 'before', isAfter: 'after', isEmpty: 'is empty', isNotEmpty: 'is set'
+};
+
+/** One-line chip text for a rule, e.g. "Folder in Work", "Tag contains #urgent", "Date before today" */
+function describeFilterRule(rule: FilterRule): string {
+    const type = FILTER_TYPES.find(t => t.type === rule.type)?.label ?? rule.type;
+    let op = FILTER_OP_LABEL[rule.operator] ?? rule.operator;
+    if (rule.type === 'folder') op = rule.operator === 'notContains' ? 'not in' : 'in';
+    if (rule.type === 'file') op = rule.operator === 'notContains' ? 'does not match' : 'matches';
+    if (rule.operator === 'isEmpty' || rule.operator === 'isNotEmpty') return `${type} ${op}`;
+    let value = rule.value.trim();
+    if (rule.type === 'tag' && value && !value.startsWith('#')) value = `#${value}`;
+    if (rule.type === 'itemType') value = value === 'gcal' ? 'appointment' : 'task';
+    return `${type} ${op} ${value || '…'}`;
+}
+
+/** A new rule of `type` with the same defaults the type picker has always applied */
+function newFilterRule(type: FilterRule['type']): FilterRule {
+    const defaults: Partial<Record<FilterRule['type'], [FilterRule['operator'], string]>> = {
+        status: ['equals', 'todo'], priority: ['equals', 'normal'], itemType: ['equals', 'task'], date: ['equals', 'today']
+    };
+    const [operator, value] = defaults[type] ?? ['contains', ''];
+    return { kind: 'rule', id: randomFilterId(), type, operator, value };
+}
+
+function parseFilterGroup(obj: any, isRoot = true): FilterGroup {
     const mode = obj.mode || 'all';
     const children: (FilterRule | FilterGroup)[] = [];
     if (Array.isArray(obj.children)) {
         for (const child of obj.children) {
             if (child.kind === 'group') {
-                children.push(parseFilterGroup(child));
+                children.push(parseFilterGroup(child, false));
             } else {
                 children.push({
                     kind: 'rule',
@@ -309,7 +458,9 @@ function parseFilterGroup(obj: any): FilterGroup {
     }
     return {
         kind: 'group',
-        id: obj.id || 'root',
+        // Nested groups get their own id (ids are never serialized): they all used to be "root", so removing one
+        // could remove the wrong group
+        id: obj.id || (isRoot ? 'root' : randomFilterId()),
         mode,
         children
     };
@@ -654,20 +805,30 @@ export abstract class DayPlannerBaseView extends ItemView {
     currentDate: any;
     collapsedColumns: Set<string> = new Set();
 
+    /**
+     * Visible range widened to whole months: every tab and every day of a month shares one cached fetch, so moving
+     * between days/weeks/tabs is served from cache instead of a new request per view.
+     */
     getGCalRange(): { cacheKey: string; timeMin: Date; timeMax: Date } {
         const center = this.currentDate;
         const tabType = this.getViewTabType();
-        if (tabType === 'daily') {
-            return { cacheKey: `daily_${center.format('YYYY-MM-DD')}`, timeMin: center.clone().startOf('day').toDate(), timeMax: center.clone().endOf('day').toDate() };
-        } else if (tabType === 'multiDay') {
-            const days = this.getNDayCount();
-            return { cacheKey: `multi_${center.format('YYYY-MM-DD')}_${days}`, timeMin: center.clone().startOf('day').toDate(), timeMax: center.clone().add(days - 1, 'days').endOf('day').toDate() };
+        let start = center.clone(), end = center.clone();
+        if (tabType === 'multiDay') {
+            end = center.clone().add(this.getNDayCount() - 1, 'days');
         } else if (tabType === 'weekly') {
-            return { cacheKey: `weekly_${center.clone().startOf('week').format('YYYY-MM-DD')}`, timeMin: center.clone().startOf('week').toDate(), timeMax: center.clone().endOf('week').toDate() };
-        } else if (tabType === 'monthly' || tabType === 'list') {
-            return { cacheKey: `monthly_${center.format('YYYY-MM')}`, timeMin: center.clone().startOf('month').toDate(), timeMax: center.clone().endOf('month').toDate() };
+            start = center.clone().startOf('week');
+            end = center.clone().endOf('week');
+        } else if (tabType === 'board') {
+            start = center.clone().subtract(7, 'days');
+            end = center.clone().add(7, 'days');
         }
-        return { cacheKey: `board_${center.format('YYYY-MM-DD')}`, timeMin: center.clone().subtract(7, 'days').toDate(), timeMax: center.clone().add(7, 'days').toDate() };
+        return this.getMonthRange(start, end);
+    }
+
+    getMonthRange(start: any, end: any): { cacheKey: string; timeMin: Date; timeMax: Date } {
+        const from = start.clone().startOf('month');
+        const to = end.clone().endOf('month');
+        return { cacheKey: `months_${from.format('YYYY-MM')}_${to.format('YYYY-MM')}`, timeMin: from.toDate(), timeMax: to.toDate() };
     }
 
     getCalendarEvents(): GCalEvent[] {
@@ -813,8 +974,12 @@ export abstract class DayPlannerBaseView extends ItemView {
     lastDragSnapKey = '';
     /** A phone long-press drag owns the current touch (swipe paging stands down) */
     touchDragActive = false;
+    /** Desktop pointer drag in progress (see beginPointerDrag): re-targeted after every render, cancelled by Esc */
+    activePointerDrag: { refresh(): void; cancel(): void } | null = null;
     /** Phone Board: the single column shown per board mode */
     phoneBoardColumn: Record<'kanban' | 'priority', string> = { kanban: 'today', priority: 'highest' };
+    /** Column ids of the last compact Board render, in display order (swipe / j-k step through these) */
+    phoneBoardColumnIds: string[] = [];
     boardSwitcherScroll: { tabScrollLeft?: number } = {};
 
     /** Compact shell (bottom tabs, date strip, swipes, long-press drag): the combined view on phones and the sidebar view. */
@@ -832,13 +997,33 @@ export abstract class DayPlannerBaseView extends ItemView {
         await this.handleDateClick(dateStr);
     }
 
-    /** Minutes at `y` px below the top of a timeline column, snapped to 15 minutes and clamped to the visible hours. */
-    snapTimelineMinutes(y: number): number {
+    /**
+     * Minutes at `y` px below the top of a timeline column, snapped to 15 minutes. A new block (drawer / all-day task,
+     * inline create) is clamped to the visible hours; moving an existing item (`wholeDay`) only to the day itself, so
+     * one that starts before the first visible hour is not pushed down the moment it is picked up.
+     */
+    snapTimelineMinutes(y: number, wholeDay = false): number {
         const ratio = this.getHourHeight() / 60;
         const startHour = this.plugin.settings.timelineStartHour ?? 0;
         const endHour = this.plugin.settings.timelineEndHour ?? 24;
         const snapped = Math.round((y / ratio) / 15) * 15 + startHour * 60;
-        return Math.min(Math.max(snapped, startHour * 60), endHour * 60 - 30);
+        return wholeDay
+            ? Math.min(Math.max(snapped, 0), 24 * 60 - 15)
+            : Math.min(Math.max(snapped, startHour * 60), endHour * 60 - 30);
+    }
+
+    /**
+     * Pointer distance below a timeline item's true start line, from its data-start-min (set at render) rather than
+     * the card's visible top: a card that starts before the first visible hour is drawn clipped at that hour, and
+     * measuring from there shifted the item on pick-up. Falls back to the card's layout top.
+     */
+    timelineGrabOffset(card: HTMLElement, clientY: number): number {
+        const col = card.offsetParent as HTMLElement | null;
+        const startMin = Number(card.dataset.startMin);
+        if (!col || card.dataset.startMin === undefined || !Number.isFinite(startMin)) return grabOffsetIn(card, clientY);
+        const ratio = this.getHourHeight() / 60;
+        const startLine = col.getBoundingClientRect().top + col.clientTop + (startMin - (this.plugin.settings.timelineStartHour ?? 0) * 60) * ratio;
+        return clientY - startLine;
     }
 
     /** `e` is null for touch drags (no native drag image to hide). */
@@ -880,12 +1065,14 @@ export abstract class DayPlannerBaseView extends ItemView {
 
         this.selectedTaskIds.forEach(id => {
             let startMin = 0;
-            let durationMin = 30;
+            // Untimed items (drawer tasks) preview the block they will get on drop
+            let durationMin = this.plugin.settings.defaultTaskDuration || 60;
             let itemDateStr = primaryDateStr;
             let title = '';
             let priorityBadge = '';
 
             const task = this.tasks.find(t => t.id === id);
+            if (isLockedTask(task)) return; // done / cancelled tasks never move (see moveSelectedTimelineItems)
             if (task) {
                 if (task.startTime && task.endTime) {
                     const [sh, sm] = task.startTime.split(':').map(Number);
@@ -912,18 +1099,25 @@ export abstract class DayPlannerBaseView extends ItemView {
                 }
             }
 
-            const originalEl = rootSearchContainer.querySelector(`[data-task-id="${id}"]`) as HTMLElement;
+            // The visible card only: a cached pane's twin would be dimmed instead, and measuring it forces that hidden pane's layout
+            const originalEl = Array.from(rootSearchContainer.querySelectorAll<HTMLElement>(`[data-task-id="${id}"]`))
+                .find(el => !el.closest('.is-hidden'));
+
+            // The rendered card's own range (data-start-min / data-end-min) is the item's real duration on that day, also
+            // for multi-day events; its offsetHeight is not: cards are clipped to the visible hours
+            if (originalEl?.dataset.startMin !== undefined && originalEl.dataset.endMin !== undefined) {
+                durationMin = Math.max(15, Number(originalEl.dataset.endMin) - Number(originalEl.dataset.startMin));
+            }
 
             const deltaMin = startMin - primaryStartMin;
             const offsetY = deltaMin * ratio;
 
-            let cardHeight = Math.max(25, Math.round(durationMin * ratio));
+            const cardHeight = Math.max(15, Math.round(durationMin * ratio)); // full duration, never the clipped height
             let cardClasses = 'dp-timeline-event selected';
             let bgStyle = '';
             let borderStyle = '';
 
             if (originalEl) {
-                if (originalEl.offsetHeight > 0) cardHeight = originalEl.offsetHeight;
                 cardClasses = originalEl.className;
                 bgStyle = originalEl.style.backgroundImage || ''; // GCal tint is painted as a gradient layer
                 borderStyle = originalEl.style.border || '';
@@ -949,20 +1143,17 @@ export abstract class DayPlannerBaseView extends ItemView {
         });
     }
 
-    updateDragPreview(e: { clientY: number }, currentColumn: HTMLElement, clickOffsetMin: number) {
+    /** `wholeDay`: an existing item is being moved (see snapTimelineMinutes); the drop must use the same value */
+    updateDragPreview(e: { clientY: number }, currentColumn: HTMLElement, clickOffsetMin: number, wholeDay = false) {
         if (!this.activeDragItems || this.activeDragItems.length === 0) return;
 
         const hourHeight = this.getHourHeight();
         const ratio = hourHeight / 60;
         const startHour = this.plugin.settings.timelineStartHour ?? 0;
-        const endHour = this.plugin.settings.timelineEndHour ?? 24;
 
         const rect = currentColumn.getBoundingClientRect();
-        const dropY = e.clientY - rect.top - clickOffsetMin;
-
-        let snappedMinutes = Math.round((dropY / ratio) / 15) * 15 + (startHour * 60);
-        if (snappedMinutes < startHour * 60) snappedMinutes = startHour * 60;
-        if (snappedMinutes > (endHour * 60) - 30) snappedMinutes = (endHour * 60) - 30;
+        // Top = the snapped grab point minus how far below the item's start it was grabbed: no jump on pick-up
+        const snappedMinutes = this.snapTimelineMinutes(e.clientY - rect.top - clickOffsetMin, wholeDay);
 
         const primarySnappedY = (snappedMinutes - (startHour * 60)) * ratio;
 
@@ -997,8 +1188,9 @@ export abstract class DayPlannerBaseView extends ItemView {
             let cardContainer = item.previewContainerEl;
             if (!cardContainer || !cardContainer.parentElement) {
                 cardContainer = document.createElement('div');
-                cardContainer.style.cssText = 'position: absolute; pointer-events: none; z-index: 1000; opacity: 0.85; width: 100%; left: 0;';
+                cardContainer.addClass('dp-drag-preview'); // sized to the hovered column (styles.ts)
                 
+                // Same classes as the card (look 1:1); .dp-drag-preview strips the .selected scale (styles.ts)
                 const previewCard = cardContainer.createDiv({ cls: item.classes });
                 previewCard.style.cssText = `
                     position: absolute !important;
@@ -1014,6 +1206,8 @@ export abstract class DayPlannerBaseView extends ItemView {
 
                 const mainRow = previewCard.createDiv();
                 mainRow.style.cssText = 'display: flex; align-items: center; width: 100%; height: 100%; gap: 6px; overflow: hidden; min-width: 0; padding: 2px 4px;';
+                // The primary card reads out the slot it would land on
+                if (item.id === primaryItem?.id) mainRow.createSpan({ cls: 'dp-drag-time' });
                 const titleSpan = mainRow.createEl('span', { text: item.title });
                 titleSpan.style.cssText = 'flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85em; font-weight: bold;';
                 if (item.priorityBadge) {
@@ -1031,6 +1225,8 @@ export abstract class DayPlannerBaseView extends ItemView {
             const itemTop = primarySnappedY + item.offsetY;
             cardContainer.style.top = `${itemTop}px`;
             cardContainer.style.display = 'block';
+            const timeEl = cardContainer.querySelector('.dp-drag-time');
+            if (timeEl) timeEl.textContent = `${String(Math.floor(snappedMinutes / 60)).padStart(2, '0')}:${String(snappedMinutes % 60).padStart(2, '0')}`;
         });
     }
 
@@ -1055,6 +1251,449 @@ export abstract class DayPlannerBaseView extends ItemView {
         });
     }
 
+    /**
+     * Leaf views on desktop drag with pointer events instead of native HTML5 drag-and-drop: Chromium delivers no key
+     * events during a native drag, so j/k could not page dates mid-drag. Code blocks (inside the editor, whose own
+     * mouse handling must keep working) and mobile (long-press drag) keep their existing paths.
+     */
+    usesPointerMouseDrag(): boolean {
+        return this instanceof DayPlannerBaseView && !Platform.isMobile;
+    }
+
+    /** Mouse / pen drag on a timeline card or drawer card: starts after 4px of travel, so clicks still open the editor. */
+    registerMouseDrag(card: HTMLElement, source: PointerDragSource) {
+        if (!this.usesPointerMouseDrag()) return;
+        card.setAttribute('draggable', 'false'); // the pointer engine replaces native drag-and-drop here
+        card.addEventListener('pointerdown', (e: PointerEvent) => {
+            if (e.pointerType === 'touch' || e.button !== 0 || this.activePointerDrag) return;
+            if ((e.target as HTMLElement).closest('.dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions')) return;
+            const doc = card.ownerDocument;
+            const { pointerId, clientX: startX, clientY: startY } = e;
+            const stop = () => {
+                doc.removeEventListener('pointermove', onMove);
+                doc.removeEventListener('pointerup', stop);
+                doc.removeEventListener('pointercancel', stop);
+            };
+            const onMove = (ev: PointerEvent) => {
+                if (ev.pointerId !== pointerId) return;
+                if ((ev.buttons & 1) === 0) { stop(); return; } // released outside the window: no pointerup came
+                if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < 4) return;
+                stop();
+                this.beginPointerDrag(card, source, startY, ev);
+            };
+            doc.addEventListener('pointermove', onMove);
+            doc.addEventListener('pointerup', stop);
+            doc.addEventListener('pointercancel', stop);
+        });
+    }
+
+    /**
+     * One desktop drag session. Listens on the document (the source card may be re-rendered away mid-drag), hit-tests
+     * the pointer each frame, shows the 15-minute snap preview over timeline columns, a dashed outline on monthly day
+     * cells (single tasks) and on the side drawer (unschedule), auto-scrolls near the timeline's top / bottom edge,
+     * and drops on release. j/k re-render the view under the drag; render() calls refresh() so it re-targets.
+     */
+    private beginPointerDrag(card: HTMLElement, source: PointerDragSource, startY: number, ev: PointerEvent) {
+        const doc = card.ownerDocument;
+        const win = doc.defaultView ?? window;
+        const pointerId = ev.pointerId;
+        let x = ev.clientX;
+        let y = ev.clientY;
+        let grabOffset: number;
+        let previewRoot: HTMLElement;
+
+        if (source.kind === 'timeline') {
+            if (!this.selectedTaskIds.has(source.refId)) {
+                this.selectedTaskIds.clear();
+                this.selectedTaskIds.add(source.refId);
+                source.previewRoot.querySelectorAll('.dp-timeline-event.selected').forEach(el => el.removeClass('selected'));
+                card.addClass('selected');
+            }
+            // Done / cancelled tasks swept into a marquee selection ride along nowhere: drop them from this drag
+            this.tasks.forEach(t => { if (isLockedTask(t) && this.selectedTaskIds.has(t.id)) this.selectedTaskIds.delete(t.id); });
+            grabOffset = this.timelineGrabOffset(card, startY); // from the item's true start line, scale-free
+            previewRoot = source.previewRoot;
+            this.initDragPreview(null, source.refId, grabOffset, previewRoot);
+        } else {
+            this.selectedTaskIds.clear();
+            this.selectedTaskIds.add(source.task.id);
+            grabOffset = 10; // the new block's top sits just above the pointer
+            previewRoot = this.containerEl;
+            this.initDragPreview(null, source.task.id, grabOffset, previewRoot);
+            card.addClass('is-dragging');
+        }
+        // Floating title chip wherever no snap preview is drawn (over the drawer, a day cell, or nothing)
+        const ghostText = this.selectedTaskIds.size > 1 ? `${this.selectedTaskIds.size} items` : (this.activeDragItems[0]?.title ?? '');
+        const ghost = doc.body.createDiv({ cls: 'dp-drag-ghost', text: ghostText });
+        this.activeDragClickOffsetMin = grabOffset;
+        doc.body.addClass('dp-pointer-dragging');
+
+        // Undated drawer cards have no date to clear; everything else can be dropped back into the drawer
+        const canUnschedule = source.kind === 'timeline' || source.origin !== 'undated';
+        // Overdue cards start inside the drawer: only the Undated section clears their date, so a short slip
+        // inside the drawer never unschedules anything. Drags from the timeline / calendar may land anywhere on it.
+        const undatedOnly = source.kind === 'task' && source.origin === 'overdue';
+        let target: PointerDropTarget | null = null;
+        let scroller: HTMLElement | null = null;
+        let frame = 0;
+        let scrollFrame = 0;
+
+        const locate = (): PointerDropTarget | null => {
+            const hit = doc.elementFromPoint(x, y) as HTMLElement | null;
+            if (!hit || !this.containerEl.contains(hit)) return null;
+            const drawer = hit.closest<HTMLElement>('.dp-side-drawer.is-open');
+            if (drawer) {
+                if (!canUnschedule) return null;
+                const undatedSection = drawer.querySelector<HTMLElement>('.dp-drawer-section[data-section="undated"]');
+                if (undatedOnly && !(undatedSection && undatedSection.contains(hit))) return null;
+                // The Undated section lights up as the destination, wherever over the drawer the task is held
+                return { kind: 'drawer', el: undatedSection ?? drawer, dateStr: '' };
+            }
+            const dayHeader = source.kind === 'task' ? hit.closest<HTMLElement>('.dp-grid-header[data-date]') : null;
+            if (dayHeader) return { kind: 'fit', el: dayHeader, dateStr: dayHeader.dataset.date! };
+            const col = hit.closest<HTMLElement>('.dp-weekly-day-col, .dp-timeline-events');
+            // The Daily column carries no data-date (see renderDailyTimeline): it always shows the current date
+            if (col) return { kind: 'timeline', el: col, dateStr: col.dataset.date || this.currentDate.format('YYYY-MM-DD') };
+            const cell = source.kind === 'task' ? hit.closest<HTMLElement>('.dp-grid-cell[data-date]') : null;
+            return cell ? { kind: 'day', el: cell, dateStr: cell.dataset.date! } : null;
+        };
+        const update = () => {
+            frame = 0;
+            const next = locate();
+            if (target && target.kind !== 'timeline' && target.el !== next?.el) target.el.removeClass('dp-drop-target');
+            target = next;
+            if (next?.kind === 'timeline') {
+                scroller = next.el.closest<HTMLElement>('.dp-content');
+                this.updateDragPreview({ clientY: y }, next.el, grabOffset, source.kind === 'timeline');
+            } else {
+                this.activeDragItems.forEach(item => { if (item.previewContainerEl) item.previewContainerEl.style.display = 'none'; });
+                next?.el.addClass('dp-drop-target');
+            }
+            ghost.toggleClass('is-over-timeline', next?.kind === 'timeline'); // the snap preview takes over there
+            if (next?.kind !== 'timeline') placeGhost();
+        };
+        // The chip follows the cursor but stays inside the box it is over: the open drawer (it used to hang past the
+        // drawer's / window's right edge near it) or else the view; narrower boxes also narrow the chip
+        const placeGhost = () => {
+            const drawerRect = this.containerEl.querySelector<HTMLElement>('.dp-side-drawer.is-open')?.getBoundingClientRect();
+            const overDrawer = !!drawerRect && x >= drawerRect.left && x <= drawerRect.right && y >= drawerRect.top && y <= drawerRect.bottom;
+            // Over the unschedule drop zone the chip stays inside its dashed outline, not just inside the drawer
+            const box = target?.kind === 'drawer' ? target.el.getBoundingClientRect()
+                : overDrawer ? drawerRect! : this.containerEl.getBoundingClientRect();
+            ghost.style.maxWidth = `${Math.max(48, Math.min(220, box.width - 8))}px`;
+            const gx = Math.max(box.left + 4, Math.min(x + 14, box.right - ghost.offsetWidth - 4));
+            const gy = Math.max(box.top + 4, Math.min(y + 14, box.bottom - ghost.offsetHeight - 4));
+            ghost.style.transform = `translate(${gx}px, ${gy}px)`;
+        };
+        const schedule = () => { if (!frame) frame = win.requestAnimationFrame(update); };
+
+        const EDGE = 48; // px band at the timeline scroller's top / bottom that auto-scrolls
+        const autoScroll = () => {
+            scrollFrame = win.requestAnimationFrame(autoScroll);
+            if (!scroller?.isConnected) return;
+            const r = scroller.getBoundingClientRect();
+            if (x < r.left || x > r.right || y < r.top - EDGE || y > r.bottom + EDGE) return;
+            const step = y < r.top + EDGE ? -10 : y > r.bottom - EDGE ? 10 : 0;
+            if (step) {
+                scroller.scrollTop += step;
+                schedule();
+            }
+        };
+
+        const onMove = (e: PointerEvent) => {
+            if (e.pointerId !== pointerId) return;
+            if ((e.buttons & 1) === 0) { void finish(false); return; } // released outside the window: cancel, don't drop
+            x = e.clientX;
+            y = e.clientY;
+            schedule();
+        };
+        const onUp = (e: PointerEvent) => { if (e.pointerId === pointerId) void finish(true); };
+        const onCancel = (e: PointerEvent) => { if (e.pointerId === pointerId) void finish(false); };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            e.preventDefault();
+            e.stopPropagation();
+            void finish(false);
+        };
+        const teardown = () => {
+            this.activePointerDrag = null;
+            doc.removeEventListener('pointermove', onMove);
+            doc.removeEventListener('pointerup', onUp);
+            doc.removeEventListener('pointercancel', onCancel);
+            doc.removeEventListener('keydown', onKey, true);
+            doc.removeEventListener('scroll', schedule, true);
+            if (frame) win.cancelAnimationFrame(frame);
+            win.cancelAnimationFrame(scrollFrame);
+            doc.body.removeClass('dp-pointer-dragging');
+            ghost.remove();
+            card.removeClass('is-dragging');
+        };
+        const finish = async (drop: boolean) => {
+            if (frame) {
+                win.cancelAnimationFrame(frame);
+                update(); // land where the pointer is now, not where the last frame left it
+            }
+            const landing = drop ? target : null;
+            teardown();
+            (target as PointerDropTarget | null)?.el.removeClass('dp-drop-target');
+            this.clearDragPreview(previewRoot);
+            // The release would click whatever it ends on (a card opens its editor, a column clears the selection)
+            const swallow = (ce: MouseEvent) => { ce.stopPropagation(); ce.preventDefault(); };
+            doc.addEventListener('click', swallow, { capture: true, once: true });
+            win.setTimeout(() => doc.removeEventListener('click', swallow, { capture: true }), 0);
+
+            // Tasks being dragged, resolved before the selection is cleared (a timeline drag may carry GCal events too)
+            const draggedTasks = source.kind === 'task'
+                ? [source.task]
+                : this.tasks.filter(t => this.selectedTaskIds.has(t.id));
+            if (source.kind === 'task') this.selectedTaskIds.delete(source.task.id);
+            if (!landing) return;
+
+            if (landing.kind === 'drawer') {
+                if (source.kind === 'timeline') {
+                    if (this.selectedTaskIds.size > draggedTasks.length) {
+                        new Notice('Google Calendar events stay on the calendar; only tasks return to Undated.');
+                    }
+                    this.selectedTaskIds.clear();
+                }
+                await this.unscheduleTasks(draggedTasks);
+                return;
+            }
+            if (landing.kind === 'fit') {
+                if (source.kind === 'task') await this.fitTaskIn(source.task, [landing.dateStr]);
+                return;
+            }
+            const minutes = landing.kind === 'timeline'
+                ? this.snapTimelineMinutes(y - landing.el.getBoundingClientRect().top - grabOffset, source.kind === 'timeline')
+                : null;
+            if (source.kind === 'timeline') {
+                if (minutes !== null) await this.moveSelectedTimelineItems(source.refId, source.isGCal, minutes, landing.dateStr);
+            } else {
+                await this.scheduleTask(source.task, landing.dateStr, minutes);
+            }
+        };
+
+        doc.addEventListener('pointermove', onMove);
+        doc.addEventListener('pointerup', onUp);
+        doc.addEventListener('pointercancel', onCancel);
+        doc.addEventListener('keydown', onKey, true);
+        doc.addEventListener('scroll', schedule, true); // wheel-scrolling under a still pointer moves the target slot
+        this.activePointerDrag = {
+            refresh: () => { scroller = null; schedule(); },
+            cancel: () => void finish(false)
+        };
+        update();
+        scrollFrame = win.requestAnimationFrame(autoScroll);
+    }
+
+    /**
+     * Drop of a single task: a timeline slot gives it that date and a block of settings.defaultTaskDuration minutes
+     * (untimed tasks from the drawer or an all-day row); a calendar day changes only the date (any time is kept).
+     * The block stays on its day: it ends at 23:59 at the latest (no wrap past midnight).
+     */
+    async scheduleTask(task: TaskItem, dateStr: string, startMin: number | null) {
+        if (startMin === null && task.date === dateStr) return; // dropped back on its own day
+        const updates: Partial<Omit<TaskItem, 'id' | 'filePath' | 'lineNumber' | 'originalLine'>> = { date: dateStr };
+        if (startMin !== null) {
+            const toTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+            const endMin = Math.min(startMin + (this.plugin.settings.defaultTaskDuration || 60), 24 * 60 - 1);
+            updates.startTime = toTime(startMin);
+            updates.endTime = toTime(endMin);
+        }
+        // Undo notice + background calendar sync come with the view-level updateTaskInFile
+        if (await updateTaskInFile(this.app, task, updates)) await this.refreshTasks();
+    }
+
+    /**
+     * Drop into the side drawer: strips the time and both the scheduled and the due date, so the task is Undated again
+     * (its date falls back scheduled -> due -> note name). A task in a dated note (a daily note) inherits the note's
+     * date from the file name, which no edit to the line can remove: those are left as they are, with a notice.
+     */
+    async unscheduleTasks(tasks: TaskItem[]) {
+        const movable = tasks.filter(t => !fileNameTaskDate(t.filePath));
+        const pinned = tasks.length - movable.length;
+        const changed = await updateTasksInFile(this.app, movable,
+            { date: null, scheduledDate: null, dueDate: null, startTime: null, endTime: null },
+            n => `Moved ${n} tasks to Undated.`);
+        if (pinned > 0) {
+            new Notice(`${pinned} task(s) kept their date: they live in a dated note (e.g. a daily note), whose file name sets it.`);
+        }
+        if (changed > 0) await this.refreshTasks();
+        else this.render(); // nothing moved: still drop the selection highlight
+    }
+
+    /** Overdue triage: give tasks a new date (their times are kept). One Undo for the whole batch. */
+    async moveTasksToDate(tasks: TaskItem[], dateStr: string) {
+        const label = (window as any).moment(dateStr, 'YYYY-MM-DD').format('ddd, MMM D');
+        if (await updateTasksInFile(this.app, tasks, { date: dateStr }, n => `Moved ${n} tasks to ${label}.`)) await this.refreshTasks();
+    }
+
+    /**
+     * First free start (minutes) for a block of settings.defaultTaskDuration on `dateStr`, inside the timeline's
+     * working hours (start / end hour settings) and, for today, not before now. Timed tasks (except cancelled ones
+     * and `exclude`) and timed Google Calendar events count as busy; all-day items do not. Null when nothing fits.
+     */
+    findFreeSlot(dateStr: string, exclude?: TaskItem): number | null {
+        const settings = this.plugin.settings;
+        const duration = settings.defaultTaskDuration || 60;
+        const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+        const busy: Array<[number, number]> = [];
+        this.tasks.forEach(t => {
+            if (t === exclude || t.date !== dateStr || !t.startTime || !t.endTime || t.statusChar === '-') return;
+            busy.push([toMin(t.startTime), toMin(t.endTime)]);
+        });
+        if (settings.enableGoogleCalendar) {
+            this.getCalendarEventsForDate(dateStr).forEach(e => {
+                if (!e.isAllDay && e.startTimeStr && e.endTimeStr) busy.push([toMin(e.startTimeStr), toMin(e.endTimeStr)]);
+            });
+        }
+        busy.sort((a, b) => a[0] - b[0]);
+
+        const now = (window as any).moment();
+        const todayStr = now.format('YYYY-MM-DD');
+        if (dateStr < todayStr) return null; // no free time left in the past
+        const align = (m: number) => Math.ceil(m / 15) * 15;
+        let cursor = (settings.timelineStartHour ?? 0) * 60;
+        if (dateStr === todayStr) cursor = Math.max(cursor, now.hour() * 60 + now.minute());
+        cursor = align(cursor);
+        for (const [start, end] of busy) {
+            if (end <= cursor) continue;
+            if (start - cursor >= duration) break; // the gap before this item fits
+            cursor = align(Math.max(cursor, end));
+        }
+        const dayEnd = Math.min((settings.timelineEndHour ?? 24) * 60, 24 * 60 - 1);
+        return cursor + duration <= dayEnd ? cursor : null;
+    }
+
+    /** "Fit it in": schedule `task` into the first free slot of the first day in `dates` that has one */
+    async fitTaskIn(task: TaskItem, dates: string[]) {
+        const title = cleanTaskTextForDisplay(task.text);
+        for (const dateStr of dates) {
+            const start = this.findFreeSlot(dateStr, task);
+            if (start === null) continue;
+            await this.scheduleTask(task, dateStr, start);
+            const when = (window as any).moment(dateStr, 'YYYY-MM-DD').add(start, 'minutes').format('ddd, MMM D [at] HH:mm');
+            new Notice(`Fitted "${title}" into ${when}.`);
+            return;
+        }
+        const duration = this.plugin.settings.defaultTaskDuration || 60;
+        new Notice(`No free ${duration}-minute slot within working hours ${dates.length > 1 ? `in the next ${dates.length} days` : 'on that day'}.`);
+    }
+
+    // ---- Inline task creation (double-click an empty timeline slot; leaf views on desktop) ----
+    /** The open inline editor: kept across renders (data refreshes rebuild the columns) and re-mounted with its draft */
+    inlineCreate: { dateStr: string; minutes: number; draft: string } | null = null;
+    private inlineCreateTeardown: (() => void) | null = null;
+
+    openInlineCreate(e: MouseEvent) {
+        if (!this.usesPointerMouseDrag()) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('.dp-timeline-event, .dp-resize-handle')) return;
+        const col = target.closest<HTMLElement>('.dp-weekly-day-col, .dp-timeline-events');
+        if (!col) return;
+        e.preventDefault();
+        const ratio = this.getHourHeight() / 60;
+        // The 15-minute slot under the pointer (half a slot up, then the usual nearest-slot snap)
+        const minutes = this.snapTimelineMinutes(e.clientY - col.getBoundingClientRect().top - 7.5 * ratio);
+        this.inlineCreate = { dateStr: col.dataset.date || this.currentDate.format('YYYY-MM-DD'), minutes, draft: '' };
+        this.mountInlineCreate();
+    }
+
+    /** (Re)builds the editor card in the visible column of its day; drops the state when that day is off screen. */
+    mountInlineCreate() {
+        this.inlineCreateTeardown?.();
+        this.inlineCreateTeardown = null;
+        const state = this.inlineCreate;
+        if (!state) return;
+        const col = Array.from(this.containerEl.querySelectorAll<HTMLElement>('.dp-weekly-day-col, .dp-timeline-events'))
+            .find(c => !c.closest('.is-hidden') && (c.dataset.date || this.currentDate.format('YYYY-MM-DD')) === state.dateStr);
+        if (!col) {
+            this.inlineCreate = null;
+            return;
+        }
+
+        const settings = this.plugin.settings;
+        const ratio = this.getHourHeight() / 60;
+        const toTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+        const startTime = toTime(state.minutes);
+        const endTime = toTime(Math.min(state.minutes + (settings.defaultTaskDuration || 60), 24 * 60 - 1));
+
+        const card = col.createDiv({ cls: 'dp-timeline-event dp-inline-create' });
+        card.style.cssText = `top: ${(state.minutes - (settings.timelineStartHour ?? 0) * 60) * ratio}px; height: ${Math.max(30, (settings.defaultTaskDuration || 60) * ratio)}px; left: 2px; width: calc(100% - 4px);`;
+        card.createDiv({ cls: 'dp-inline-create-time', text: `${startTime}–${endTime}` });
+        const input = card.createEl('input', { cls: 'dp-inline-create-input', attr: { type: 'text', placeholder: 'New task', 'aria-label': `New task at ${startTime}` } });
+        input.value = state.draft;
+
+        const doc = card.ownerDocument;
+        const discard = () => {
+            this.inlineCreate = null;
+            this.inlineCreateTeardown?.();
+            this.inlineCreateTeardown = null;
+        };
+        // Any press outside the editor dismisses it (the marquee's preventDefault means focus may never move)
+        const onOutside = (pe: PointerEvent) => { if (!card.contains(pe.target as Node)) discard(); };
+        doc.addEventListener('pointerdown', onOutside, true);
+        this.inlineCreateTeardown = () => {
+            doc.removeEventListener('pointerdown', onOutside, true);
+            card.remove();
+        };
+
+        card.addEventListener('pointerdown', ev => ev.stopPropagation()); // no marquee or drag from inside the editor
+        card.addEventListener('dblclick', ev => ev.stopPropagation());
+        input.addEventListener('input', () => { state.draft = input.value; });
+        input.addEventListener('keydown', (ke: KeyboardEvent) => {
+            if (ke.key !== 'Escape') return;
+            ke.preventDefault();
+            discard();
+        });
+        // Enter (IME-safe: a Hangul syllable still composing is committed first, then submitted)
+        onEnterSubmit(input, () => {
+            const { text, priority } = parseQuickEntry(input.value);
+            input.value = ''; // a second Enter from the IME sequence finds nothing to submit
+            discard();
+            if (!text) return;
+            // Into the default task file like every quick entry, dated and timed by the slot (⏳ date, ⏰ start-end)
+            const filePath = getDefaultTaskFilePath(settings);
+            void (async () => {
+                try {
+                    await createNewTaskInFile(this.app, filePath, text, state.dateStr, startTime, endTime, ' ', priority);
+                } catch (err) {
+                    console.error('Day Planner Pro: inline task creation failed', err);
+                    new Notice(`⚠️ Could not create the task in "${filePath}": ${err instanceof Error ? err.message : String(err)}`);
+                    return;
+                }
+                await this.refreshTasks();
+            })();
+        });
+        input.addEventListener('blur', () => {
+            // Tabbing away discards; a re-render detaches the card instead (it comes back via render → mountInlineCreate)
+            window.setTimeout(() => { if (card.isConnected && this.inlineCreate === state && doc.activeElement !== input) discard(); }, 0);
+        });
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    }
+
+    /** Same editor the timeline cards open on click */
+    openTaskEditor(task: TaskItem) {
+        new TaskEditModal(this.app, task, null, async (data) => {
+            await updateTaskInFile(this.app, task, {
+                text: data.text,
+                statusChar: data.statusChar,
+                priority: data.priority,
+                date: data.date,
+                startTime: data.startTime,
+                endTime: data.endTime,
+                recurrence: data.recurrence,
+                dueDate: data.dueDate,
+                scheduledDate: data.scheduledDate,
+                startDate: data.startDate,
+                completionDate: data.completionDate,
+                cancelledDate: data.cancelledDate
+            });
+            await this.refreshTasks();
+        }).open();
+    }
+
     constructor(leaf: WorkspaceLeaf, plugin: DayPlannerPlugin) {
         super(leaf);
         this.plugin = plugin;
@@ -1064,6 +1703,72 @@ export abstract class DayPlannerBaseView extends ItemView {
         } else {
             this.collapsedColumns = new Set();
         }
+    }
+
+    /**
+     * Marks the moving scroller with .dp-is-scrolling. Wheel-scrolling slides cards under a stationary cursor, and each
+     * hover flip restyles and repaints a card mid-scroll; CSS suspends card hit-testing until the scroll settles.
+     * One capture-phase passive listener covers every scroller, including re-rendered ones. Tagging the scroller rather
+     * than the root keeps each start/stop restyle off the header and the cached panes (whose kept layout it would dirty).
+     */
+    registerScrollIdleClass(rootEl: HTMLElement) {
+        let idleTimer: number | undefined;
+        let scroller: HTMLElement | null = null;
+        this.registerDomEvent(rootEl, 'scroll', (e: Event) => {
+            if (this.touchDragActive) return; // a long-press drag auto-scrolls; its card must keep receiving pointer events
+            if (e.target !== scroller) {
+                scroller?.removeClass('dp-is-scrolling');
+                scroller = e.target as HTMLElement;
+                scroller.addClass('dp-is-scrolling');
+            }
+            window.clearTimeout(idleTimer);
+            idleTimer = window.setTimeout(() => {
+                scroller?.removeClass('dp-is-scrolling');
+                scroller = null;
+            }, 150);
+        }, { capture: true, passive: true });
+    }
+
+    /** Zoom slider popover open (tap toggle); kept on the view so header rebuilds don't close it */
+    zoomPopoverOpen = false;
+    zoomOutsideBound = false;
+
+    /**
+     * Zoom drag: redraws only the timeline content at the new hour height. The header, and with it the slider
+     * under the finger, stays mounted (a full render() would rebuild it and end the drag after one step).
+     */
+    rerenderForZoom(oldHeight: number) {
+        const rootEl = this.containerEl.querySelector('.dp-container') as HTMLDivElement | null;
+        if (!rootEl) return;
+        const newHeight = this.getHourHeight();
+        const selector = '.dp-content, .dp-weekly-scroll-wrapper';
+        const visible = () => Array.from(rootEl.querySelectorAll<HTMLElement>(selector)).filter(el => !el.closest('.is-hidden'));
+        const tops = visible().map(el => el.scrollTop);
+        rootEl.style.setProperty('--dp-hour-height', `${newHeight}px`);
+
+        const self = this as any;
+        if (self.panes) {
+            // Combined / Sidebar: re-render the active pane only; other cached panes become stale
+            self.dataVersion++;
+            const pane = self.panes.get(self.activeTab);
+            if (pane) {
+                pane.version = self.dataVersion;
+                self.renderPaneContent(pane.el);
+            }
+        } else {
+            // Code block: its content-only path keeps the header and filter panel mounted
+            self.contentOnlyRender = true;
+            try {
+                this.render();
+            } finally {
+                self.contentOnlyRender = false;
+            }
+        }
+        // Keep the same hour at the top of the viewport while zooming
+        const ratio = newHeight / (oldHeight || newHeight);
+        visible().forEach((el, i) => {
+            if (tops[i] !== undefined) el.scrollTop = tops[i] * ratio;
+        });
     }
 
     getHourHeight(): number {
@@ -1132,6 +1837,8 @@ export abstract class DayPlannerBaseView extends ItemView {
                 await this.refreshTasks();
             }).open();
         });
+        // Desktop: drag onto a time slot (gets defaultTaskDuration) or back into the side drawer (unschedule)
+        if (!isLockedTask(task)) this.registerMouseDrag(chip, { kind: 'task', task, origin: 'allday' });
         return chip;
     }
 
@@ -1158,8 +1865,11 @@ export abstract class DayPlannerBaseView extends ItemView {
 
         const rootEl = container.createDiv({ cls: 'dp-container' });
         this.renderRoot(rootEl);
-        
-        await this.refreshTasks(null, true);
+        this.registerScrollIdleClass(rootEl);
+
+        // Never await data here: Obsidian awaits onOpen of every visible leaf (10s cap) before firing onLayoutReady,
+        // and the task scan itself waits for onLayoutReady. The shell above is the first paint; tasks fill in after.
+        void this.refreshTasks(null, true);
 
         // 단축키 시스템 등록
         this.keydownHandler = async (e: KeyboardEvent) => {
@@ -1176,18 +1886,44 @@ export abstract class DayPlannerBaseView extends ItemView {
             if (activeView !== this) {
                 return;
             }
+            // Sync: F5, or Ctrl+R (Windows / Linux) / Cmd+R (Mac), while a Dayloom view is the active one
+            const syncKey = e.key === 'F5' || ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'r');
+            if (syncKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!e.repeat) void this.runSync();
+                return;
+            }
+            // Plain keys only: Ctrl / Cmd / Alt chords (Cmd+P, Ctrl+J, ...) belong to Obsidian
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            // Escape clears the selection (a running card drag or marquee handles Escape itself, before this)
+            if (e.key === 'Escape') {
+                if (this.selectedTaskIds.size > 0) {
+                    e.preventDefault();
+                    this.selectedTaskIds.clear();
+                    this.render();
+                }
+                return;
+            }
 
             const key = e.key.toLowerCase();
 
-            if (key === 't') {
+            if (key === '?' || key === 'h') {
+                e.preventDefault();
+                ShortcutHelpModal.toggle(this.app, this.plugin); // a second press closes it instead of stacking another
+            } else if (key === 't') {
                 e.preventDefault();
                 await this.goToToday();
-            } else if (key === 'p' || key === 'k') {
+            } else if ((key === 'j' || key === 'k') && this.useCompactLayout() && this.getViewTabType() === 'board') {
                 e.preventDefault();
-                await this.navigateWithSlide(-1);
-            } else if (key === 'n' || key === 'j') {
+                this.navigateBoardTab(key === 'j' ? 1 : -1);
+            } else if (key === 'j' || key === 'k') {
+                // Also mid-drag (pointer drags keep key events flowing): render() re-targets the drag afterwards
                 e.preventDefault();
-                await this.navigateWithSlide(1);
+                await this.navigateWithSlide(key === 'j' ? 1 : -1);
+            } else if (key === 's') {
+                e.preventDefault();
+                if (this instanceof DayPlannerCombinedView) await this.toggleSideDrawer();
             } else if (key === 'd') {
                 e.preventDefault();
                 if (this instanceof DayPlannerCombinedView) {
@@ -1239,24 +1975,25 @@ export abstract class DayPlannerBaseView extends ItemView {
         if (this.keydownHandler) {
             document.removeEventListener('keydown', this.keydownHandler);
         }
+        this.activePointerDrag?.cancel();
         return super.onClose();
     }
 
     /**
      * [성능 개선 버전] 로컬 파일 점진적 캐싱 업데이트 및 구글 캘린더 읽기 동기화
      */
-    async refreshTasks(targetFile?: any, forceFetchGCal: boolean = false) {
+    async refreshTasks(targetFile?: any, forceFetchGCal: boolean = false, skipIfUnchanged: boolean = false) {
         try {
             const plugin = this.plugin as any;
             
             if (!plugin.tasksCache) {
-                plugin.tasksCache = await scanVaultTasks(this.app);
+                // Shared, layout-ready-gated scan: views restored at startup no longer scan during boot
+                await plugin.ensureTasksCache();
                 plugin.lastScanTime = Date.now();
             }
 
             if (targetFile instanceof TFile && targetFile.extension === 'md') {
-                const content = await this.app.vault.read(targetFile);
-                const lines = content.split('\n');
+                const lines = isExcludedPath(targetFile.path) ? [] : (await this.app.vault.read(targetFile)).split('\n');
                 const fileTasks: TaskItem[] = [];
                 for (let i = 0; i < lines.length; i++) {
                     const parsed = parseTaskLine(lines[i], targetFile.path, i, plugin.settings.dailyNotesFormat);
@@ -1277,13 +2014,10 @@ export abstract class DayPlannerBaseView extends ItemView {
                 this.tasks = this.tasks.filter(t => t.date === targetDate);
             } else if (self.parentNoteType === 'weekly' && self.parentNoteDate) {
                 const moment = (window as any).moment;
-                const startOfWeek = moment(self.parentNoteDate, 'YYYY-MM-DD').startOf('week');
-                const endOfWeek = moment(self.parentNoteDate, 'YYYY-MM-DD').endOf('week');
-                this.tasks = this.tasks.filter(t => {
-                    if (!t.date) return false;
-                    const d = moment(t.date, 'YYYY-MM-DD');
-                    return d.isSameOrAfter(startOfWeek, 'day') && d.isSameOrBefore(endOfWeek, 'day');
-                });
+                // YYYY-MM-DD compares lexically: no moment parse per vault task on every refresh
+                const startOfWeek = moment(self.parentNoteDate, 'YYYY-MM-DD').startOf('week').format('YYYY-MM-DD');
+                const endOfWeek = moment(self.parentNoteDate, 'YYYY-MM-DD').endOf('week').format('YYYY-MM-DD');
+                this.tasks = this.tasks.filter(t => !!t.date && t.date >= startOfWeek && t.date <= endOfWeek);
             }
             const filters = (this as any).filters;
             if (filters) {
@@ -1293,7 +2027,13 @@ export abstract class DayPlannerBaseView extends ItemView {
                     this.tasks = this.tasks.filter(task => matchFilterGroup(task, parseFilterGroup(filters)));
                 }
             }
-            
+
+            // Background vault refresh: a note edit re-parses its tasks into equal copies (and a view edit already
+            // redrew before its own 'modify' arrives), so skip the full redraw when nothing this view shows changed
+            const signature = taskListSignature(this.tasks);
+            if (skipIfUnchanged && signature === self.renderedTaskSignature) return;
+            self.renderedTaskSignature = signature;
+
             await this.syncGCalRange(forceFetchGCal);
 
             this.plugin.updateStatusBar();
@@ -1305,10 +2045,11 @@ export abstract class DayPlannerBaseView extends ItemView {
     }
 
     /**
-     * Loads GCal events for the current tab's range from the in-memory range cache.
-     * awaitMissing=false (tab switches) never blocks on the network: a missing range is fetched in the background.
+     * Cache-first GCal loading: never blocks rendering on the network. Cached events (in memory, or restored from disk
+     * at startup) paint immediately; a missing, stale or force-refreshed range is fetched in the background and
+     * re-rendered only if it changed. The neighbouring months are prefetched so paging stays instant.
      */
-    async syncGCalRange(forceFetch: boolean, awaitMissing: boolean = true) {
+    async syncGCalRange(forceFetch: boolean) {
         if (!this.plugin.settings.enableGoogleCalendar ||
             !this.plugin.settings.googleCalendars ||
             this.plugin.settings.googleCalendars.length === 0) return;
@@ -1322,12 +2063,16 @@ export abstract class DayPlannerBaseView extends ItemView {
             else this.render();
         };
 
-        if ((!entry && awaitMissing) || forceFetch) {
-            // First load of this range or explicit GCal change: wait for fresh events
-            await this.plugin.fetchGCalRange(cacheKey, timeMin, timeMax);
-        } else if (!entry || Date.now() - entry.fetchedAt > GCAL_CACHE_TTL_MS) {
-            // Missing (non-blocking) or stale: render what is cached now, revalidate in background, re-render only on change
+        if (forceFetch || !entry || Date.now() - entry.fetchedAt > GCAL_CACHE_TTL_MS) {
             this.plugin.fetchGCalRange(cacheKey, timeMin, timeMax).then(rerenderOnChange);
+        }
+        const moment = (window as any).moment;
+        for (const offset of [-1, 1]) {
+            const month = moment(timeMin).add(offset, 'month');
+            const neighbour = this.getMonthRange(month, month);
+            if (!this.plugin.gcalRanges.has(neighbour.cacheKey)) {
+                this.plugin.fetchGCalRange(neighbour.cacheKey, neighbour.timeMin, neighbour.timeMax);
+            }
         }
     }
 
@@ -1401,12 +2146,31 @@ export abstract class DayPlannerBaseView extends ItemView {
                     sliderContainer = (headerActions ?? viewContent).createDiv({ cls: 'dp-zoom-slider-floating' });
                     headerActions?.prepend(sliderContainer);
                     
-                    sliderContainer.createSpan({ 
-                        text: '🔍', 
+                    const zoomToggle = sliderContainer.createSpan({
+                        text: '🔍',
                         title: 'Timeline Zoom'
                     });
+                    // Touch has no hover: a tap toggles the slider open/closed (state survives header rebuilds)
+                    const container = sliderContainer;
+                    zoomToggle.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.zoomPopoverOpen = !this.zoomPopoverOpen;
+                        container.toggleClass('is-open', this.zoomPopoverOpen);
+                        triggerHaptic('selection');
+                    });
+                    if (!this.zoomOutsideBound) {
+                        this.zoomOutsideBound = true;
+                        this.registerDomEvent(document, 'pointerdown', (e: PointerEvent) => {
+                            if (!this.zoomPopoverOpen) return;
+                            const own = this.containerEl.querySelector('.dp-zoom-slider-floating');
+                            if (own?.contains(e.target as Node)) return;
+                            this.zoomPopoverOpen = false;
+                            own?.removeClass('is-open');
+                        });
+                    }
+                    const popover = sliderContainer.createDiv({ cls: 'dp-zoom-popover' });
 
-                    const slider = sliderContainer.createEl('input', {
+                    const slider = popover.createEl('input', {
                         type: 'range',
                         cls: 'dp-zoom-slider'
                     });
@@ -1420,23 +2184,28 @@ export abstract class DayPlannerBaseView extends ItemView {
                     slider.addEventListener('pointerup', () => {
                         slider.blur();
                     });
-                    
-                    const valueSpan = sliderContainer.createSpan({
+                    // Keep Obsidian's drawer/back-swipe gestures from claiming a horizontal slider drag
+                    slider.addEventListener('touchstart', (e) => e.stopPropagation(), { passive: true });
+                    slider.addEventListener('touchmove', (e) => e.stopPropagation(), { passive: true });
+
+                    const valueSpan = popover.createSpan({
                         cls: 'dp-zoom-value',
                         text: `${this.getHourHeight()}px`
                     });
 
                     slider.addEventListener('input', async () => {
                         try {
+                            const oldHeight = this.getHourHeight();
                             const newHeight = parseInt(slider.value, 10);
                             valueSpan.setText(`${newHeight}px`);
-                            
+
                             const isCodeBlock = (this as any).updateCodeBlockInFile !== undefined;
-                            
+
                             if (isCodeBlock) {
                                 (this as any).hourHeight = newHeight;
-                                this.render();
-                                (this as any).updateCodeBlockInFile((this as any).viewType, (this as any).filters);
+                                this.rerenderForZoom(oldHeight);
+                                // Debounced: rewriting the source remounts the block, which would end the drag
+                                (this as any).debouncedUpdateCodeBlock((this as any).viewType, (this as any).filters);
                             } else {
                                 const isDaily = this.getViewType() === 'day-planner-pro-daily';
                                 const separate = this.plugin.settings.separateViewHeights;
@@ -1451,6 +2220,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                                     this.plugin.settings.timelineHourHeight = newHeight;
                                     this.plugin.settings.timelineHourHeightDaily = newHeight;
                                 }
+                                this.rerenderForZoom(oldHeight);
                                 await this.plugin.saveSettings();
                                 
                                 const targetTypes = separate 
@@ -1460,6 +2230,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                                 targetTypes.forEach(viewType => {
                                     this.app.workspace.getLeavesOfType(viewType).forEach(leaf => {
                                         const view = leaf.view as any;
+                                        if (view === this) return; // already redrawn above, header untouched
                                         if (view && typeof view.render === 'function') {
                                             try {
                                                 view.render();
@@ -1484,12 +2255,16 @@ export abstract class DayPlannerBaseView extends ItemView {
                 if (valueSpan) {
                     valueSpan.setText(`${this.getHourHeight()}px`);
                 }
+                sliderContainer.toggleClass('is-open', !!this.zoomPopoverOpen);
                 sliderContainer.style.display = 'flex';
             } else {
                 if (sliderContainer) {
                     sliderContainer.style.display = 'none';
                 }
             }
+            // A drag survives re-renders (j/k paging, data refresh): re-attach its preview to the new columns
+            this.activePointerDrag?.refresh();
+            if (this.inlineCreate) this.mountInlineCreate(); // re-mount an open inline editor with its draft
         } catch (error) {
             console.error("Day Planner Pro: Error in render:", error);
             new Notice("Error rendering view: " + (error instanceof Error ? error.message : String(error)));
@@ -1507,40 +2282,22 @@ export abstract class DayPlannerBaseView extends ItemView {
     /**
      * 사이드바 너비를 고려한 완전 반응형 멀티레이아웃 렌더링 내비게이터 헤더
      */
-    renderNavHeader(parent: HTMLDivElement, showTabs: boolean = false): { nav: HTMLDivElement, dateLabel: string } {
+    renderNavHeader(parent: HTMLDivElement, showTabs: boolean = false): { dateLabel: string } {
+        // One row: [date pill] ... [🔍 zoom] [< 📅 Today >] [Sync] [+]. Zoom / Board mode toggle are prepended later.
         const headerTop = parent.createDiv({ cls: 'dp-header-top' });
-        
-        headerTop.createDiv({ 
-            cls: 'dp-title', 
-            text: 'Day Planner Pro 🗓️' 
-        });
-
-        const nav = parent.createDiv({ cls: 'dp-nav' });
-        
-        const navBtns = nav.createDiv({ cls: 'dp-nav-buttons-group' });
-        const prevBtn = navBtns.createEl('button', { text: '<' });
-        prevBtn.addEventListener('click', async () => {
-            triggerHaptic('selection');
-            await this.navigateWithSlide(-1);
-        });
-
-        const todayBtn = navBtns.createEl('button', { text: 'Today' });
-        todayBtn.addEventListener('click', () => {
-            triggerHaptic('selection');
-            void this.goToToday();
-        });
-
-        const nextBtn = navBtns.createEl('button', { text: '>' });
-        nextBtn.addEventListener('click', async () => {
-            triggerHaptic('selection');
-            await this.navigateWithSlide(1);
-        });
+        const compact = this.useCompactLayout();
 
         // Header date: text + note links come from the declarative getHeaderDateInfo() mapping
         const info = getHeaderDateInfo(this.currentDate, this.getViewTabType(), this.getNDayCount());
-        const dateEl = nav.createDiv({ cls: 'dp-nav-date' });
+        const dateEl = headerTop.createDiv({ cls: 'dp-nav-date' });
+        if (compact) dateEl.addClass('dp-header-date-compact');
+        setIcon(dateEl.createSpan({ cls: 'dp-nav-date-icon' }), 'calendar');
         const addSegment = (text: string, noteType?: 'daily' | 'weekly') => {
-            const seg = dateEl.createSpan({ cls: noteType ? 'dp-nav-date-link' : 'dp-nav-date-static', text });
+            const seg = dateEl.createSpan({ cls: noteType ? 'dp-nav-date-link' : 'dp-nav-date-static' });
+            // A trailing "(Wk 41)" / "(4 days)" is secondary: same segment (same note link), muted span
+            const [, primary, secondary] = text.match(/^(.*?)\s*(\([^()]*\))?$/) ?? [, text];
+            if (primary) seg.createSpan({ cls: 'dp-nav-date-main', text: primary });
+            if (secondary) seg.createSpan({ cls: 'dp-nav-date-sub', text: secondary });
             if (noteType) {
                 seg.title = `Open ${noteType} note`;
                 seg.addEventListener('click', () => this.openNoteForDate(info.noteDate, noteType));
@@ -1548,36 +2305,50 @@ export abstract class DayPlannerBaseView extends ItemView {
         };
         addSegment(info.mainText, info.isClickable ? info.noteType : undefined);
         if (info.subText) addSegment(info.subText, info.subNoteType);
+        if (info.isClickable && info.noteType) {
+            // The whole pill is the hit target: padding and icon open the main note, segments handle their own clicks
+            dateEl.addClass('is-clickable');
+            dateEl.addEventListener('click', (e) => {
+                if (!(e.target as HTMLElement).closest('.dp-nav-date-link')) this.openNoteForDate(info.noteDate, info.noteType!);
+            });
+        }
         const dateLabel = info.subText ? `${info.mainText} ${info.subText}` : info.mainText;
 
         const headerActions = headerTop.createDiv({ cls: 'dp-header-actions' });
-        headerActions.style.cssText = 'display:flex; gap:4px; align-items:center;';
+
+        // Board always shows today: no date navigation. Compact keeps only the icon-only 📅 (swipe and j/k page dates)
+        if (this.getViewTabType() !== 'board') {
+            const navHost = compact ? headerActions : headerActions.createDiv({ cls: 'dp-nav-buttons-group' });
+            if (!compact) {
+                const prevBtn = navHost.createEl('button', { text: '<', cls: 'dp-nav-arrow', attr: { 'aria-label': 'Previous' } });
+                prevBtn.addEventListener('click', async () => {
+                    triggerHaptic('selection');
+                    await this.navigateWithSlide(-1);
+                });
+            }
+
+            const todayBtn = navHost.createEl('button', { attr: { 'aria-label': 'Today' } });
+            todayBtn.createSpan({ cls: 'dp-btn-icon', text: '📅' });
+            todayBtn.createSpan({ cls: 'dp-btn-label', text: ' Today' }); // hidden in the compact shell (icon-only)
+            todayBtn.addEventListener('click', () => {
+                triggerHaptic('selection');
+                void this.goToToday();
+            });
+
+            if (!compact) {
+                const nextBtn = navHost.createEl('button', { text: '>', cls: 'dp-nav-arrow', attr: { 'aria-label': 'Next' } });
+                nextBtn.addEventListener('click', async () => {
+                    triggerHaptic('selection');
+                    await this.navigateWithSlide(1);
+                });
+            }
+        }
 
         if (this.plugin.settings.enableGoogleCalendar) {
-            const syncBtn = headerActions.createEl('button', { 
-                text: '🔄 Sync'
-            });
-            syncBtn.addEventListener('click', async () => {
-                new Notice('🔄 Syncing Google Calendar events & Tasks...');
-                const { cacheKey, timeMin, timeMax } = this.getGCalRange();
-                await this.plugin.fetchGCalRange(cacheKey, timeMin, timeMax);
-
-                // Sync tasks to Google Calendar if target calendar is configured
-                const targetCalendarId = this.plugin.settings.taskSyncCalendarId || this.plugin.settings.googleCalendars.find(c => c.enabled && c.id)?.id;
-                if (targetCalendarId) {
-                    try {
-                        const syncRes = await syncAllTasksToGCal(this.plugin, targetCalendarId);
-                        new Notice(`✅ Sync complete! GCal events updated. Tasks (Created: ${syncRes.created}, Updated: ${syncRes.updated})`);
-                    } catch (err) {
-                        console.error('Task sync error:', err);
-                        new Notice(`⚠️ GCal events updated, but task sync encountered an error.`);
-                    }
-                } else {
-                    new Notice('✅ Google Calendar events refreshed!');
-                }
-
-                await this.refreshTasks();
-            });
+            const syncBtn = headerActions.createEl('button', { attr: { 'aria-label': 'Sync' } });
+            syncBtn.createSpan({ cls: 'dp-btn-icon', text: '🔄' });
+            syncBtn.createSpan({ cls: 'dp-btn-label', text: ' Sync' }); // hidden in the compact shell (icon-only)
+            syncBtn.addEventListener('click', () => void this.runSync());
 
             syncBtn.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
@@ -1589,8 +2360,11 @@ export abstract class DayPlannerBaseView extends ItemView {
         }
 
         if ((this as any).filters !== undefined) {
+            // Active rule count on the button: with the panel closed, it is the only sign that a filter is applied
+            const countRules = (g: FilterGroup): number => (g.children ?? []).reduce((n, c) => n + (isFilterGroup(c) ? countRules(c) : 1), 0);
+            const ruleCount = countRules((this as any).filters as FilterGroup);
             const filterBtn = headerActions.createEl('button', {
-                text: '🔍 Filter'
+                text: ruleCount > 0 ? `🔍 Filter · ${ruleCount}` : '🔍 Filter'
             });
             if ((this as any).showFilterPanel) {
                 filterBtn.style.backgroundColor = 'var(--background-modifier-border-hover)';
@@ -1652,9 +2426,70 @@ export abstract class DayPlannerBaseView extends ItemView {
             }
         });
 
+        // Shortcut help for mouse users (leaf views on desktop layouts; hideable in settings, ? and h keep working)
+        if (this instanceof DayPlannerBaseView && !this.useCompactLayout() && this.plugin.settings.showShortcutButton !== false) {
+            const helpBtn = headerActions.createEl('button', {
+                cls: 'dp-help-btn',
+                attr: { 'aria-label': 'Keyboard Shortcuts (?)' }
+            });
+            setFirstIcon(helpBtn, ['circle-help', 'help-circle']);
+            if (!helpBtn.querySelector('svg')) helpBtn.setText('?');
+            helpBtn.addEventListener('click', () => ShortcutHelpModal.toggle(this.app, this.plugin));
+        }
 
+        // Side drawer toggle sits at the trailing edge, next to the drawer it opens (desktop date-based tabs only)
+        if (this instanceof DayPlannerCombinedView && this.hasSideDrawer()) {
+            const view = this; // keeps the narrowed type inside the listener
+            const drawerBtn = headerActions.createEl('button', {
+                cls: `dp-drawer-toggle${view.isSideDrawerOpen() ? ' is-active' : ''}`,
+                attr: { 'aria-label': 'Toggle side drawer (S)' }
+            });
+            setFirstIcon(drawerBtn, ['panel-right', 'sidebar-right', 'layout-sidebar-right']);
+            drawerBtn.addEventListener('click', () => void view.toggleSideDrawer());
+        }
 
-        return { nav, dateLabel };
+        return { dateLabel };
+    }
+
+    /** A sync is running: repeated F5 / Ctrl+R (key auto-repeat) or button clicks don't stack another one */
+    syncInProgress = false;
+
+    /**
+     * Sync button, F5 and Ctrl/Cmd+R: rescans the vault's tasks and, with Google Calendar on, refetches this view's
+     * events and pushes tasks to the sync calendar, with progress and result notices.
+     */
+    async runSync() {
+        if (this.syncInProgress) return;
+        this.syncInProgress = true;
+        try {
+            if (!this.plugin.settings.enableGoogleCalendar) {
+                new Notice('🔄 Rescanning vault tasks...');
+                await this.refreshTasks('force');
+                new Notice('✅ Tasks refreshed.');
+                return;
+            }
+            new Notice('🔄 Syncing Google Calendar events & Tasks...');
+            const { cacheKey, timeMin, timeMax } = this.getGCalRange();
+            await this.plugin.fetchGCalRange(cacheKey, timeMin, timeMax);
+
+            // Sync tasks to Google Calendar if target calendar is configured
+            const targetCalendarId = this.plugin.settings.taskSyncCalendarId || this.plugin.settings.googleCalendars.find(c => c.enabled && c.id)?.id;
+            if (targetCalendarId) {
+                try {
+                    const syncRes = await syncAllTasksToGCal(this.plugin, targetCalendarId);
+                    new Notice(`✅ Sync complete! GCal events updated. Tasks (Created: ${syncRes.created}, Updated: ${syncRes.updated}, Repaired: ${syncRes.repaired}, Removed: ${syncRes.removed}, Up to date: ${syncRes.upToDate})`);
+                } catch (err) {
+                    console.error('Task sync error:', err);
+                    new Notice(`⚠️ GCal events updated, but task sync encountered an error.`);
+                }
+            } else {
+                new Notice('✅ Google Calendar events refreshed!');
+            }
+
+            await this.refreshTasks('force');
+        } finally {
+            this.syncInProgress = false;
+        }
     }
 
     abstract getViewTabType(): 'daily' | 'weekly' | 'multiDay' | 'monthly' | 'board' | 'list';
@@ -1753,102 +2588,111 @@ export abstract class DayPlannerBaseView extends ItemView {
     }
 
     /**
-     * 마키 다중 선택(Marquee selection) 핸들러 - 이제 Task 뿐 아니라 구글 캘린더 일정도 한 번에 포괄 선택합니다.
+     * Timeline interaction map (mouse / pen; touch keeps native scrolling and the phone long-press drag):
+     *   - press on a card            → card drag (registerMouseDrag; the multi-selection moves along)
+     *   - press on empty space       → this marquee: a drag selects every card the box touches (Ctrl / Cmd / Shift add
+     *                                  to the selection), a plain click clears the selection
+     *   - double-click empty space   → inline task creation (openInlineCreate, a dblclick on the pane)
+     *   - Escape                     → cancels a card drag (beginPointerDrag) or the marquee, else clears the selection
+     * The marquee owns every press on empty space, so the columns have no click handlers of their own: one used to
+     * receive the click that ends a marquee drag (the box has pointer-events: none) and wipe the fresh selection.
+     * Tasks and Google Calendar events are selected alike.
      */
     registerMarqueeSelection(eventsCol: HTMLElement, getTimedEvents: () => HTMLElement[]) {
-        let isSelecting = false;
+        let marquee: HTMLElement | null = null;
         let startX = 0;
         let startY = 0;
-        let marquee: HTMLElement | null = null;
+        let moved = false;
+        let hadSelection = false;
+        const doc = eventsCol.ownerDocument;
 
-        // Pointer events cover mouse + pen; touch is left to native scrolling
-        const onMouseDown = (e: PointerEvent) => {
+        const onDown = (e: PointerEvent) => {
             if (e.button !== 0 || e.pointerType === 'touch') return;
             const target = e.target as HTMLElement;
-            if (target.closest('.dp-timeline-event') || target.closest('button') || target.closest('.dp-custom-cb') || target.closest('.dp-task-link-btn') || target.closest('.dp-resize-handle')) {
-                return;
-            }
-
+            if (target.closest('.dp-timeline-event, button, input, .dp-custom-cb, .dp-task-link-btn, .dp-resize-handle')) return;
             e.preventDefault();
 
-            isSelecting = true;
+            moved = false;
+            hadSelection = this.selectedTaskIds.size > 0;
             const rect = eventsCol.getBoundingClientRect();
             startX = e.clientX - rect.left;
             startY = e.clientY - rect.top;
-
             marquee = eventsCol.createDiv({ cls: 'dp-selection-marquee' });
             marquee.style.left = `${startX}px`;
             marquee.style.top = `${startY}px`;
             marquee.style.width = '0px';
             marquee.style.height = '0px';
 
-            if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
-                this.selectedTaskIds.clear();
-            }
+            if (!e.ctrlKey && !e.metaKey && !e.shiftKey) this.selectedTaskIds.clear();
 
-            document.addEventListener('pointermove', onMouseMove);
-            document.addEventListener('pointerup', onMouseUp);
-            document.addEventListener('pointercancel', onMouseUp);
+            doc.addEventListener('pointermove', onMove);
+            doc.addEventListener('pointerup', onUp);
+            doc.addEventListener('pointercancel', onUp);
+            doc.addEventListener('keydown', onKey, true);
         };
 
-        const onMouseMove = (e: PointerEvent) => {
-            if (!isSelecting || !marquee) return;
-
+        const onMove = (e: PointerEvent) => {
+            if (!marquee) return;
             const rect = eventsCol.getBoundingClientRect();
             const currentX = e.clientX - rect.left;
             const currentY = e.clientY - rect.top;
-
-            const x = Math.min(startX, currentX);
-            const y = Math.min(startY, currentY);
             const width = Math.abs(startX - currentX);
             const height = Math.abs(startY - currentY);
-
-            marquee.style.left = `${x}px`;
-            marquee.style.top = `${y}px`;
+            if (width > 2 || height > 2) moved = true;
+            marquee.style.left = `${Math.min(startX, currentX)}px`;
+            marquee.style.top = `${Math.min(startY, currentY)}px`;
             marquee.style.width = `${width}px`;
             marquee.style.height = `${height}px`;
 
-            const marqueeClientRect = marquee.getBoundingClientRect();
-
-            const eventEls = getTimedEvents();
-            eventEls.forEach(el => {
+            const box = marquee.getBoundingClientRect();
+            const additive = e.ctrlKey || e.metaKey || e.shiftKey;
+            getTimedEvents().forEach(el => {
                 const taskId = el.getAttribute('data-task-id');
                 if (!taskId) return;
-
-                const elClientRect = el.getBoundingClientRect();
-
-                const isOverlapping = !(
-                    elClientRect.right < marqueeClientRect.left ||
-                    elClientRect.left > marqueeClientRect.right ||
-                    elClientRect.bottom < marqueeClientRect.top ||
-                    elClientRect.top > marqueeClientRect.bottom
-                );
-
-                if (isOverlapping) {
+                const r = el.getBoundingClientRect();
+                const overlaps = !(r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom);
+                if (overlaps) {
                     this.selectedTaskIds.add(taskId);
                     el.addClass('selected');
-                } else {
-                    if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
-                        this.selectedTaskIds.delete(taskId);
-                        el.removeClass('selected');
-                    }
+                } else if (!additive) {
+                    this.selectedTaskIds.delete(taskId);
+                    el.removeClass('selected');
                 }
             });
         };
 
-        const onMouseUp = () => {
-            isSelecting = false;
-            if (marquee) {
-                marquee.remove();
-                marquee = null;
+        const end = () => {
+            marquee?.remove();
+            marquee = null;
+            doc.removeEventListener('pointermove', onMove);
+            doc.removeEventListener('pointerup', onUp);
+            doc.removeEventListener('pointercancel', onUp);
+            doc.removeEventListener('keydown', onKey, true);
+        };
+
+        const onUp = () => {
+            end();
+            if (moved) {
+                // The release still produces a click (the box ignores the pointer): it must not reach anything else
+                const swallow = (ce: MouseEvent) => { ce.stopPropagation(); ce.preventDefault(); };
+                doc.addEventListener('click', swallow, { capture: true, once: true });
+                window.setTimeout(() => doc.removeEventListener('click', swallow, { capture: true }), 0);
             }
-            document.removeEventListener('pointermove', onMouseMove);
-            document.removeEventListener('pointerup', onMouseUp);
-            document.removeEventListener('pointercancel', onMouseUp);
+            // Repaint only when the selection changed, and on the next tick: re-rendering inside pointerup detached the
+            // column before its click / dblclick fired, so a double-click to create never arrived
+            if (moved || hadSelection) window.setTimeout(() => this.render(), 0);
+        };
+
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape') return;
+            e.preventDefault();
+            e.stopPropagation();
+            end();
+            this.selectedTaskIds.clear();
             this.render();
         };
 
-        eventsCol.addEventListener('pointerdown', onMouseDown);
+        eventsCol.addEventListener('pointerdown', onDown);
     }
 
     /**
@@ -2040,6 +2884,7 @@ export abstract class DayPlannerBaseView extends ItemView {
 
         for (const taskId of this.selectedTaskIds) {
             const task = this.tasks.find(t => t.id === taskId);
+            if (isLockedTask(task)) continue; // a marquee may have swept done / cancelled tasks in: they stay put
             if (task && task.startTime && task.endTime) {
                 const [tsh, tsm] = task.startTime.split(':').map(Number);
                 const [teh, tem] = task.endTime.split(':').map(Number);
@@ -2144,7 +2989,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         const updatePreview = () => {
             const hit = document.elementFromPoint(lastX, lastY) as HTMLElement | null;
             column = hit?.closest<HTMLElement>('.dp-weekly-day-col, .dp-timeline-events') ?? column;
-            if (column) this.updateDragPreview({ clientY: lastY }, column, grabOffset);
+            if (column) this.updateDragPreview({ clientY: lastY }, column, grabOffset, true);
         };
         const autoScroll = () => {
             if (!dragging) return;
@@ -2199,12 +3044,12 @@ export abstract class DayPlannerBaseView extends ItemView {
             if (!moved || !target) return;
             const rect = target.getBoundingClientRect();
             const dateStr = target.getAttribute('data-date') || this.currentDate.format('YYYY-MM-DD');
-            await this.moveSelectedTimelineItems(refId, isGCal, this.snapTimelineMinutes(lastY - rect.top - grabOffset), dateStr);
+            await this.moveSelectedTimelineItems(refId, isGCal, this.snapTimelineMinutes(lastY - rect.top - grabOffset, true), dateStr);
         };
 
         card.addEventListener('pointerdown', (e: PointerEvent) => {
             if (e.pointerType !== 'touch' || !e.isPrimary || dragging) return;
-            if ((e.target as HTMLElement).closest('.dp-custom-cb, .dp-task-link-btn, .dp-resize-handle')) return;
+            if ((e.target as HTMLElement).closest('.dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions')) return;
             pointerId = e.pointerId;
             startX = lastX = e.clientX;
             startY = lastY = e.clientY;
@@ -2223,7 +3068,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                     previewRoot.querySelectorAll('.dp-timeline-event.selected').forEach(el => el.removeClass('selected'));
                     card.addClass('selected');
                 }
-                grabOffset = startY - card.getBoundingClientRect().top;
+                grabOffset = this.timelineGrabOffset(card, startY);
                 this.initDragPreview(null, refId, grabOffset, previewRoot); // light haptic
                 updatePreview();
                 frame = requestAnimationFrame(autoScroll);
@@ -2253,12 +3098,15 @@ export abstract class DayPlannerBaseView extends ItemView {
         const ratio = hourHeight / 60; // pixel / minute 비율
 
         const scrollKey = `${this.getViewType()}:${dateStr}:daily`;
-        parent.addEventListener('scroll', () => {
+        // Property handler: the pane outlives its re-renders, so addEventListener stacked one more listener per render,
+        // all of them running on every scroll frame (and writing this offset into earlier dates' keys)
+        parent.ondblclick = (e) => this.openInlineCreate(e); // property, not addEventListener: the pane outlives renders
+        parent.onscroll = () => {
             this.savedScrollPositions[scrollKey] = {
                 scrollTop: parent.scrollTop,
                 scrollLeft: parent.scrollLeft
             };
-        });
+        };
 
         const startHour = this.plugin.settings.timelineStartHour ?? 0;
         const endHour = this.plugin.settings.timelineEndHour ?? 24;
@@ -2282,13 +3130,6 @@ export abstract class DayPlannerBaseView extends ItemView {
         // 마키 다중 선택 타겟을 .dp-timeline-event 전체로 확장 (구글 일정 포괄 선택 가능)
         this.registerMarqueeSelection(eventsCol, () => {
             return Array.from(eventsCol.querySelectorAll('.dp-timeline-event')) as HTMLElement[];
-        });
-
-        eventsCol.addEventListener('click', (e) => {
-            if (e.target === eventsCol) {
-                this.selectedTaskIds.clear();
-                this.render();
-            }
         });
 
         eventsCol.addEventListener('contextmenu', (e: MouseEvent) => {
@@ -2361,12 +3202,16 @@ export abstract class DayPlannerBaseView extends ItemView {
                 }
             };
             updateIndicator();
-            const intervalId = window.setInterval(updateIndicator, 60000);
+            // Every render mounts a new indicator: stop this timer once its line is gone, or one leaks per render
+            const intervalId = window.setInterval(() => {
+                if (!indicator.isConnected) window.clearInterval(intervalId);
+                else updateIndicator();
+            }, 60000);
             this.registerInterval(intervalId);
         }
 
-        const timedItems: Array<{ 
-            type: 'task' | 'gcal'; 
+        const timedItems: Array<{
+            type: 'task' | 'gcal';
             refId: string;
             calendarId?: string;
             text: string; 
@@ -2460,6 +3305,10 @@ export abstract class DayPlannerBaseView extends ItemView {
             const eventCard = eventsCol.createDiv({ cls: cardCls });
             eventCard.style.cssText = customStyle;
             eventCard.setAttribute('data-task-id', item.refId);
+            // The item's real range on this day (the card itself is clipped to the visible hours): drag previews use it
+            eventCard.dataset.startMin = String(item.startMin);
+            eventCard.dataset.endMin = String(item.endMin);
+            const locked = isLockedTask(item.taskRef); // done / cancelled: no drag, resize or long-press
 
             if (item.type === 'gcal') {
                 eventCard.setAttribute('draggable', 'true');
@@ -2467,15 +3316,15 @@ export abstract class DayPlannerBaseView extends ItemView {
                 this.addResizeListeners(eventCard, item as any, 'top');
                 this.addResizeListeners(eventCard, item as any, 'bottom');
 
-                const summaryDiv = eventCard.createDiv();
+                const summaryDiv = eventCard.createDiv({ cls: 'dp-event-title' });
                 summaryDiv.setText(item.text);
                 
                 if (item.location) {
-                    const locDiv = eventCard.createDiv();
+                    const locDiv = eventCard.createDiv({ cls: 'dp-event-meta' });
                     locDiv.setText(`📍 ${item.location}`);
                 }
                 if (item.description) {
-                    const descDiv = eventCard.createDiv();
+                    const descDiv = eventCard.createDiv({ cls: 'dp-event-meta' });
                     descDiv.setText(item.description);
                 }
 
@@ -2499,8 +3348,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                         eventCard.addClass('selected');
                     }
 
-                    const cardRect = eventCard.getBoundingClientRect();
-                    const clickOffsetMin = e.clientY - cardRect.top;
+                    const clickOffsetMin = this.timelineGrabOffset(eventCard, e.clientY);
                     this.activeDragClickOffsetMin = clickOffsetMin;
 
                     e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -2518,14 +3366,14 @@ export abstract class DayPlannerBaseView extends ItemView {
                     this.clearDragPreview(eventsCol);
                 });
             } else {
-                eventCard.setAttribute('draggable', 'true');
+                eventCard.setAttribute('draggable', String(!locked));
 
-                if (item.taskRef) {
+                if (item.taskRef && !locked) {
                     this.addResizeListeners(eventCard, item as any, 'top');
                     this.addResizeListeners(eventCard, item as any, 'bottom');
                 }
 
-                const mainRow = eventCard.createDiv();
+                const mainRow = eventCard.createDiv({ cls: 'dp-event-main' });
 
                 if (item.taskRef) {
                     createCustomCheckbox(mainRow, item.taskRef, async (newStatus) => {
@@ -2537,7 +3385,8 @@ export abstract class DayPlannerBaseView extends ItemView {
                 }
 
                 const displayTitle = cleanTaskTextForDisplay(item.text);
-                const labelSpan = mainRow.createEl('span', { 
+                const labelSpan = mainRow.createEl('span', {
+                    cls: 'dp-task-text',
                     text: `${displayTitle}` 
                 });
 
@@ -2615,8 +3464,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                         eventCard.addClass('selected');
                     }
 
-                    const cardRect = eventCard.getBoundingClientRect();
-                    const clickOffsetMin = e.clientY - cardRect.top;
+                    const clickOffsetMin = this.timelineGrabOffset(eventCard, e.clientY);
                     this.activeDragClickOffsetMin = clickOffsetMin;
 
                     e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -2633,12 +3481,13 @@ export abstract class DayPlannerBaseView extends ItemView {
                     this.clearDragPreview(eventsCol);
                 });
             }
-            if (this.useCompactLayout()) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', eventsCol);
+            if (this.useCompactLayout() && !locked) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', eventsCol);
+            if (!locked) this.registerMouseDrag(eventCard, { kind: 'timeline', refId: item.refId, isGCal: item.type === 'gcal', previewRoot: eventsCol });
         });
 
         eventsCol.addEventListener('dragover', (e) => {
             e.preventDefault();
-            this.updateDragPreview(e, eventsCol, this.activeDragClickOffsetMin);
+            this.updateDragPreview(e, eventsCol, this.activeDragClickOffsetMin, true);
         });
         eventsCol.addEventListener('drop', async (e) => {
             e.preventDefault();
@@ -2648,7 +3497,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             try {
                 const { primaryTaskId, clickOffsetMin, isGCal } = JSON.parse(dataStr);
                 const gridRect = eventsCol.getBoundingClientRect();
-                await this.moveSelectedTimelineItems(primaryTaskId, isGCal, this.snapTimelineMinutes(e.clientY - gridRect.top - clickOffsetMin), dateStr);
+                await this.moveSelectedTimelineItems(primaryTaskId, isGCal, this.snapTimelineMinutes(e.clientY - gridRect.top - clickOffsetMin, true), dateStr);
             } catch (err) {
                 console.error('Daily drop error:', err);
             }
@@ -2681,10 +3530,14 @@ export abstract class DayPlannerBaseView extends ItemView {
     renderWeeklyView(parent: HTMLDivElement, daysCount: number = 7, startFromCurrentDate: boolean = false) {
         parent.empty();
         
+        parent.ondblclick = (e) => this.openInlineCreate(e); // property, not addEventListener: the pane outlives renders
         const scrollWrapper = parent.createDiv({ cls: 'dp-weekly-scroll-wrapper' });
         const container = scrollWrapper.createDiv({ cls: 'dp-weekly-container' });
-        const dayColumnTemplate = `48px repeat(${daysCount}, minmax(120px, 1fr))`;
-        container.style.minWidth = `${Math.max(520, 120 * daysCount + 48)}px`;
+        // 84px day columns: a 7-day week fits ~640px, so it keeps fitting beside the open side drawer. Narrow cards
+        // collapse to a single bold title line (container query on .dp-timeline-event in styles.ts)
+        const DAY_COL_MIN = 84;
+        const dayColumnTemplate = `48px repeat(${daysCount}, minmax(${DAY_COL_MIN}px, 1fr))`;
+        container.style.minWidth = `${Math.max(360, DAY_COL_MIN * daysCount + 48)}px`;
 
         const headerGrid = container.createDiv({ cls: 'dp-weekly-header-grid' });
         headerGrid.style.gridTemplateColumns = dayColumnTemplate;
@@ -2737,7 +3590,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             const isToday = loopDay.isSame((window as any).moment(), 'day');
             
             const cellHeader = headerGrid.createDiv({ 
-                cls: `dp-grid-header ${isToday ? 'today' : ''}`, 
+                cls: `dp-grid-header ${isToday ? 'today' : ''}${weekendCls(loopDay)}`, 
                 text: `${loopDay.format('ddd')} (${loopDay.format('M/D')})`
             });
             
@@ -2745,6 +3598,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             if (isToday) {
                 cellHeader.style.cssText += ' border: 2px solid var(--interactive-accent); font-weight: bold;';
             }
+            cellHeader.dataset.date = loopDayStr; // "Fit it in" drop target for a dragged task
             cellHeader.addEventListener('click', () => {
                 this.handleDateClick(loopDayStr);
             });
@@ -2764,7 +3618,7 @@ export abstract class DayPlannerBaseView extends ItemView {
             const untimedTasks = dayTasks.filter(t => !t.startTime || !t.endTime);
             const untimedAllDayGCal = dayGCal.filter(e => e.isAllDay);
 
-            const cell = allDayGrid.createDiv({ cls: 'dp-allday-cell' });
+            const cell = allDayGrid.createDiv({ cls: `dp-allday-cell${weekendCls(loopDay)}` });
 
             untimedAllDayGCal.forEach(e => this.renderAllDayEventChip(e, loopDayStr, cell));
             untimedTasks.sort((a, b) => a.text.localeCompare(b.text));
@@ -2810,7 +3664,7 @@ export abstract class DayPlannerBaseView extends ItemView {
 
             const isToday = loopDay.isSame((window as any).moment(), 'day');
 
-            const dayCol = daysWrapper.createDiv({ cls: `dp-weekly-day-col ${isToday ? 'today' : ''}` });
+            const dayCol = daysWrapper.createDiv({ cls: `dp-weekly-day-col ${isToday ? 'today' : ''}${weekendCls(loopDay)}` });
             dayCol.style.cssText = 'flex: 1; position: relative; border-right: 1px solid var(--background-modifier-border); box-sizing: border-box;';
             dayCol.setAttribute('data-date', loopDayStr);
 
@@ -2868,7 +3722,7 @@ export abstract class DayPlannerBaseView extends ItemView {
 
             dayCol.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                this.updateDragPreview(e, dayCol, this.activeDragClickOffsetMin);
+                this.updateDragPreview(e, dayCol, this.activeDragClickOffsetMin, true);
             });
             dayCol.addEventListener('drop', async (e) => {
                 e.preventDefault();
@@ -2878,16 +3732,9 @@ export abstract class DayPlannerBaseView extends ItemView {
                 try {
                     const { primaryTaskId, clickOffsetMin, isGCal } = JSON.parse(dataStr);
                     const rect = dayCol.getBoundingClientRect();
-                    await this.moveSelectedTimelineItems(primaryTaskId, isGCal, this.snapTimelineMinutes(e.clientY - rect.top - clickOffsetMin), loopDayStr);
+                    await this.moveSelectedTimelineItems(primaryTaskId, isGCal, this.snapTimelineMinutes(e.clientY - rect.top - clickOffsetMin, true), loopDayStr);
                 } catch (err) {
                     console.error('Weekly drop error:', err);
-                }
-            });
-
-            dayCol.addEventListener('click', (e) => {
-                if (e.target === dayCol) {
-                    this.selectedTaskIds.clear();
-                    this.render();
                 }
             });
 
@@ -2907,7 +3754,10 @@ export abstract class DayPlannerBaseView extends ItemView {
                     }
                 };
                 updateIndicator();
-                const intervalId = window.setInterval(updateIndicator, 60000);
+                const intervalId = window.setInterval(() => {
+                    if (!indicator.isConnected) window.clearInterval(intervalId);
+                    else updateIndicator();
+                }, 60000);
                 this.registerInterval(intervalId);
             }
 
@@ -3006,6 +3856,10 @@ export abstract class DayPlannerBaseView extends ItemView {
                 const eventCard = dayCol.createDiv({ cls: cardCls });
                 eventCard.style.cssText = customStyle;
                 eventCard.setAttribute('data-task-id', item.refId);
+                // The item's real range on this day (the card itself is clipped to the visible hours): drag previews use it
+                eventCard.dataset.startMin = String(item.startMin);
+                eventCard.dataset.endMin = String(item.endMin);
+                const locked = isLockedTask(item.taskRef); // done / cancelled: no drag, resize or long-press
                 eventCard.style.fontSize = '0.75em';
                 eventCard.style.padding = '4px';
 
@@ -3015,15 +3869,15 @@ export abstract class DayPlannerBaseView extends ItemView {
                     this.addResizeListeners(eventCard, item as any, 'top');
                     this.addResizeListeners(eventCard, item as any, 'bottom');
 
-                    const summaryDiv = eventCard.createDiv();
+                    const summaryDiv = eventCard.createDiv({ cls: 'dp-event-title' });
                     summaryDiv.setText(item.text);
                     
                     if (item.location) {
-                        const locDiv = eventCard.createDiv();
+                        const locDiv = eventCard.createDiv({ cls: 'dp-event-meta' });
                         locDiv.setText(`📍 ${item.location}`);
                     }
                     if (item.description) {
-                        const descDiv = eventCard.createDiv();
+                        const descDiv = eventCard.createDiv({ cls: 'dp-event-meta' });
                         descDiv.setText(item.description);
                     }
 
@@ -3047,8 +3901,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                             eventCard.addClass('selected');
                         }
 
-                        const cardRect = eventCard.getBoundingClientRect();
-                        const clickOffsetMin = e.clientY - cardRect.top;
+                        const clickOffsetMin = this.timelineGrabOffset(eventCard, e.clientY);
                         this.activeDragClickOffsetMin = clickOffsetMin;
 
                         e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -3066,14 +3919,14 @@ export abstract class DayPlannerBaseView extends ItemView {
                         this.clearDragPreview(daysWrapper);
                     });
                 } else {
-                    eventCard.setAttribute('draggable', 'true');
+                    eventCard.setAttribute('draggable', String(!locked));
 
-                    if (item.taskRef) {
+                    if (item.taskRef && !locked) {
                         this.addResizeListeners(eventCard, item as any, 'top');
                         this.addResizeListeners(eventCard, item as any, 'bottom');
                     }
 
-                    const mainRow = eventCard.createDiv();
+                    const mainRow = eventCard.createDiv({ cls: 'dp-event-main' });
 
                     if (item.taskRef) {
                         createCustomCheckbox(mainRow, item.taskRef, async (newStatus) => {
@@ -3086,7 +3939,8 @@ export abstract class DayPlannerBaseView extends ItemView {
 
                     const displayTitle = cleanTaskTextForDisplay(item.text);
                     const priorityPrefix = (item.taskRef && item.taskRef.priority !== 'normal') ? { highest: '🔺', high: '⏫', medium: '🔼', low: '🔽', lowest: '⏬' }[item.taskRef.priority] + ' ' : '';
-                    const textSpan = mainRow.createEl('span', { 
+                    const textSpan = mainRow.createEl('span', {
+                        cls: 'dp-task-text',
                         text: ` ${priorityPrefix}${displayTitle}` 
                     });
 
@@ -3156,8 +4010,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                             eventCard.addClass('selected');
                         }
 
-                        const cardRect = eventCard.getBoundingClientRect();
-                        const clickOffsetMin = e.clientY - cardRect.top;
+                        const clickOffsetMin = this.timelineGrabOffset(eventCard, e.clientY);
                         this.activeDragClickOffsetMin = clickOffsetMin;
 
                         e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -3174,7 +4027,8 @@ export abstract class DayPlannerBaseView extends ItemView {
                         this.clearDragPreview(daysWrapper);
                     });
                 }
-                if (this.useCompactLayout()) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', daysWrapper);
+                if (this.useCompactLayout() && !locked) this.registerLongPressDrag(eventCard, item.refId, item.type === 'gcal', daysWrapper);
+                if (!locked) this.registerMouseDrag(eventCard, { kind: 'timeline', refId: item.refId, isGCal: item.type === 'gcal', previewRoot: daysWrapper });
             });
         }
 
@@ -3189,7 +4043,7 @@ export abstract class DayPlannerBaseView extends ItemView {
     renderMonthlyCalendar(parent: HTMLDivElement) {
         parent.empty();
         
-        // Phone: 7 columns only (no week numbers), 2 chips per day, and a tap on a day opens it in the Daily tab
+        // Phone: 7 columns only (no week numbers), chips fitted to the cell height (+N), a tap opens the day in Daily
         const phone = this.useCompactLayout();
         const scrollWrapper = parent.createDiv({ cls: 'dp-monthly-scroll-wrapper' });
         const container = scrollWrapper.createDiv({ cls: `dp-monthly-container${phone ? ' dp-monthly-compact' : ''}` });
@@ -3216,7 +4070,7 @@ export abstract class DayPlannerBaseView extends ItemView {
 
         const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
         for (let i = 0; i < 7; i++) {
-            headerGrid.createDiv({ cls: 'dp-grid-header', text: weekdays[i] });
+            headerGrid.createDiv({ cls: `dp-grid-header${i === 0 ? ' is-sunday' : i === 6 ? ' is-saturday' : ''}`, text: weekdays[i] });
         }
 
         const grid = container.createDiv({ cls: 'dp-grid-calendar' });
@@ -3274,8 +4128,9 @@ export abstract class DayPlannerBaseView extends ItemView {
                 const loopDayStr = loopDay.format('YYYY-MM-DD');
                 const isCurrentMonth = loopDay.month() === startOfMonth.month();
                 const isToday = loopDay.isSame((window as any).moment(), 'day');
-                const cell = cells.createDiv({ cls: `dp-grid-cell ${isToday ? 'today' : ''}` });
-                
+                const cell = cells.createDiv({ cls: `dp-grid-cell ${isToday ? 'today' : ''}${weekendCls(loopDay)}` });
+                cell.dataset.date = loopDayStr; // drop target for drawer tasks (date only)
+
                 if (!isCurrentMonth) cell.style.opacity = '0.3';
 
                 const cellNum = cell.createDiv({ cls: 'dp-grid-cell-num', text: String(loopDay.date()) });
@@ -3297,16 +4152,13 @@ export abstract class DayPlannerBaseView extends ItemView {
                 });
 
                 const dayGCal = gcalByDate.get(loopDayStr) || [];
-                const chipLimit = phone ? 2 : Infinity;
-                let chipCount = 0;
-
                 dayGCal.forEach(e => {
-                    if (chipCount++ >= chipLimit) return;
                     let customStyle = '';
                     if (e.color) {
                         customStyle = `background-color: ${e.color}1c !important; border-left: 3px solid ${e.color} !important;`;
                     }
-                    const timePrefix = e.startTimeStr ? `${e.startTimeStr} ` : '';
+                    // Compact cells are ~45px wide: the time would leave room for only 1–2 title characters
+                    const timePrefix = e.startTimeStr && !phone ? `${e.startTimeStr} ` : '';
                     const locationSuffix = e.location ? ` (📍 ${e.location})` : '';
                     const displayText = `${timePrefix}${e.summary}${locationSuffix}`;
 
@@ -3324,7 +4176,6 @@ export abstract class DayPlannerBaseView extends ItemView {
                 });
 
                 dayTasks.forEach(task => {
-                    if (chipCount++ >= chipLimit) return;
                     let itemClass = 'dp-grid-task-item';
                     if (task.statusChar === 'x') itemClass += ' completed';
                     else if (task.statusChar === '-') itemClass += ' cancelled';
@@ -3334,7 +4185,7 @@ export abstract class DayPlannerBaseView extends ItemView {
                     const priorityPrefix = task.priority !== 'normal' ? { highest: '🔺', high: '⏫', medium: '🔼', low: '🔽', lowest: '⏬' }[task.priority] + ' ' : '';
                     const textSpan = item.createSpan({
                         cls: 'dp-task-text',
-                        text: `${task.startTime ? `${task.startTime} ` : ''}${priorityPrefix}${displayTitle}`
+                        text: `${task.startTime && !phone ? `${task.startTime} ` : ''}${priorityPrefix}${displayTitle}`
                     });
 
                     const taskColor = this.plugin.settings.taskColor || '#ff9f1c';
@@ -3374,9 +4225,9 @@ export abstract class DayPlannerBaseView extends ItemView {
                         });
                         modal.open();
                     });
+                    // Desktop: drag onto another day (date only) or back into the side drawer (unschedule)
+                    if (!isLockedTask(task)) this.registerMouseDrag(item, { kind: 'task', task, origin: 'month' });
                 });
-                const hiddenCount = dayGCal.length + dayTasks.length - chipLimit;
-                if (hiddenCount > 0) listWrapper.createDiv({ cls: 'dp-grid-more', text: `+${hiddenCount}` });
 
                 cell.addEventListener('dblclick', (e) => {
                     if (e.target !== cell && e.target !== listWrapper) return;
@@ -3391,7 +4242,35 @@ export abstract class DayPlannerBaseView extends ItemView {
             }
         }
         grid.appendChild(cells);
+        if (phone) this.fitMonthlyChips(grid);
         this.playNavSlide(container, scrollWrapper); // month pagination / Today slide
+    }
+
+    /**
+     * Compact Monthly: each cell shows as many chips as its list height fits (cells never scroll), the rest as +N.
+     * Refits whenever the grid resizes (rotation, keyboard, pane shown again); a hidden pane (height 0) keeps its fit.
+     */
+    fitMonthlyChips(grid: HTMLElement) {
+        const CHIP = 16, GAP = 2, MORE = 12; // compact chip height, list gap and +N line (styles.ts, .dp-monthly-compact)
+        const fit = () => {
+            const lists = Array.from(grid.querySelectorAll<HTMLElement>('.dp-grid-task-list'));
+            const heights = lists.map(list => list.clientHeight); // all reads first: one layout pass, then only writes
+            lists.forEach((list, i) => {
+                if (heights[i] === 0) return;
+                list.querySelector(':scope > .dp-grid-more')?.remove();
+                const chips = Array.from(list.querySelectorAll<HTMLElement>(':scope > .dp-grid-task-item'));
+                let shown = Math.floor((heights[i] + GAP) / (CHIP + GAP));
+                if (shown < chips.length) shown = Math.max(0, Math.floor((heights[i] - MORE) / (CHIP + GAP))); // room for +N
+                chips.forEach((chip, j) => chip.toggleClass('dp-chip-overflow', j >= shown));
+                if (shown < chips.length) list.createDiv({ cls: 'dp-grid-more', text: `+${chips.length - shown}` });
+            });
+        };
+        // Fires once after the first layout, then on every size change; stops with the grid it measures
+        const observer = new ResizeObserver(() => {
+            if (!grid.isConnected) observer.disconnect();
+            else fit();
+        });
+        observer.observe(grid);
     }
 
     /**
@@ -3438,14 +4317,16 @@ export abstract class DayPlannerBaseView extends ItemView {
         headerActions.prepend(toggleRow);
         const kanbanToggle = toggleRow.createEl('button', {
             cls: `dp-board-toggle-btn ${this.kanbanViewMode === 'kanban' ? 'active' : ''}`,
-            text: '🗂️ Kanban',
-            attr: { title: 'Standard Kanban' }
+            attr: { title: 'Standard Kanban', 'aria-label': 'Kanban' }
         });
+        kanbanToggle.createSpan({ cls: 'dp-btn-icon', text: '🗂️' });
+        kanbanToggle.createSpan({ cls: 'dp-btn-label', text: ' Kanban' });
         const priorityToggle = toggleRow.createEl('button', {
             cls: `dp-board-toggle-btn ${this.kanbanViewMode === 'priority' ? 'active' : ''}`,
-            text: '🎯 Priority',
-            attr: { title: 'Priority Focus' }
+            attr: { title: 'Priority Focus', 'aria-label': 'Priority' }
         });
+        priorityToggle.createSpan({ cls: 'dp-btn-icon', text: '🎯' });
+        priorityToggle.createSpan({ cls: 'dp-btn-label', text: ' Priority' });
 
         const switchMode = (mode: 'kanban' | 'priority') => {
             if (this.kanbanViewMode === mode) return;
@@ -3472,6 +4353,7 @@ export abstract class DayPlannerBaseView extends ItemView {
         const mode = this.kanbanViewMode;
         const activeId = columns.some(c => c.id === this.phoneBoardColumn[mode]) ? this.phoneBoardColumn[mode] : columns[0].id;
         const activeIdx = columns.findIndex(c => c.id === activeId);
+        this.phoneBoardColumnIds = columns.map(c => c.id);
 
         const switcher = createDiv({ cls: 'dp-board-col-switcher' });
         board.before(switcher);
@@ -3492,7 +4374,33 @@ export abstract class DayPlannerBaseView extends ItemView {
             });
         });
         keepActiveTabInView(switcher, this.boardSwitcherScroll);
+        // Column changed (tap, swipe, j/k): center the new pill. Scrolls only the switcher, unlike scrollIntoView,
+        // which would also nudge the overflow-hidden ancestors of the view.
+        const activeBtn = switcher.querySelector<HTMLElement>(':scope > .dp-tab.active');
+        if (this.navDirection && activeBtn && switcher.clientWidth > 0) {
+            const left = activeBtn.offsetLeft - (switcher.clientWidth - activeBtn.offsetWidth) / 2;
+            switcher.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
+        }
         return columns.filter(c => c.id === activeId);
+    }
+
+    /** Compact Board: step to the neighbouring column (stops at both ends). Returns false when nothing changed. */
+    navigateBoardTab(step: 1 | -1): boolean {
+        if (!this.useCompactLayout() || this.getViewTabType() !== 'board') return false;
+        const ids = this.phoneBoardColumnIds;
+        const mode = this.kanbanViewMode;
+        const idx = Math.max(0, ids.indexOf(this.phoneBoardColumn[mode]));
+        const next = idx + step;
+        if (next < 0 || next >= ids.length) return false;
+        triggerHaptic('selection');
+        this.phoneBoardColumn[mode] = ids[next];
+        this.navDirection = step > 0 ? 'next' : 'prev';
+        try {
+            this.render();
+        } finally {
+            this.navDirection = null;
+        }
+        return true;
     }
 
     /**
@@ -4330,7 +5238,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     activeTab: 'daily' | 'weekly' | 'multiDay' | 'monthly' | 'board' | 'list' = 'daily';
 
     getViewType(): string { return 'day-planner-pro-view'; }
-    getDisplayText(): string { return 'Day Planner Pro (Combined View)'; }
+    getDisplayText(): string { return 'Dayloom'; }
     getIcon(): string { return 'calendar-glyph'; }
     getViewTabType() { return this.activeTab; }
     useCompactLayout() { return Platform.isPhone; }
@@ -4430,6 +5338,142 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             rootEl.appendChild(tabsContainer); // bottom bar stays the last row, below panes created after it
             this.registerSwipeNavigation(rootEl);
         }
+
+        rootEl.toggleClass('dp-drawer-open', this.isSideDrawerOpen());
+        if (this.hasSideDrawer()) {
+            renderSideDrawer(rootEl, this);
+            this.trackHeaderHeight(rootEl, header);
+        } else {
+            this.headerResizeObserver?.disconnect();
+        }
+    }
+
+    // ---- Desktop side drawer (shell and panel registry: drawer.ts) ----
+    drawerScrollTop = 0;
+    /** Drawer section folding (Overdue / Undated), kept here because the drawer is rebuilt on every render:
+     *  manual overrides (valid while the section stays empty / non-empty) and the state last drawn */
+    drawerSectionOverrides = new Map<string, { collapsed: boolean; empty: boolean }>();
+    drawerSectionState = new Map<string, boolean>();
+    private headerResizeObserver: ResizeObserver | null = null;
+
+    /** Desktop combined view only, beside the date-based tabs a task can be dropped onto */
+    hasSideDrawer(): boolean {
+        return !this.useCompactLayout() && !Platform.isMobile && SIDE_DRAWER_TABS.includes(this.activeTab);
+    }
+
+    isSideDrawerOpen(): boolean {
+        return this.hasSideDrawer() && this.plugin.settings.sideDrawerOpen !== false;
+    }
+
+    /** Header button, `s`, and the command. Flips classes only: the drawer slides, the panes reflow once, nothing re-renders. */
+    async toggleSideDrawer(open = !this.isSideDrawerOpen()) {
+        if (!this.hasSideDrawer()) {
+            new Notice('The side drawer is available in the Daily, N-day, Weekly and Monthly views of Dayloom on desktop.');
+            return;
+        }
+        this.plugin.settings.sideDrawerOpen = open;
+        const rootEl = this.containerEl.querySelector<HTMLElement>('.dp-container');
+        rootEl?.toggleClass('dp-drawer-open', open);
+        rootEl?.querySelector(':scope > .dp-side-drawer')?.toggleClass('is-open', open);
+        rootEl?.querySelector('.dp-drawer-toggle')?.toggleClass('is-active', open);
+        await this.plugin.saveSettings();
+    }
+
+    /** The drawer hangs below the header, whose height changes with wrapping and zoom: mirror it into --dp-header-h */
+    private trackHeaderHeight(rootEl: HTMLElement, header: HTMLElement) {
+        this.headerResizeObserver?.disconnect();
+        this.headerResizeObserver = new ResizeObserver(() => rootEl.style.setProperty('--dp-header-h', `${header.offsetHeight}px`));
+        this.headerResizeObserver.observe(header);
+    }
+
+    /**
+     * Compact drawer card: checkbox, title, priority (+ the missed date for Overdue). Click edits; drag schedules,
+     * and an Overdue card dropped on the Undated section loses its date (see beginPointerDrag).
+     */
+    renderDrawerTaskCard(list: HTMLElement, task: TaskItem, section: DrawerSectionId) {
+        const card = list.createDiv({ cls: 'dp-drawer-card' });
+        card.dataset.drawerTaskId = task.id; // not data-task-id: drag previews copy the styling of [data-task-id] cards
+        card.title = task.filePath;
+        createCustomCheckbox(card, task, async (newStatus) => {
+            await updateTaskInFile(this.app, task, { statusChar: newStatus });
+            await this.refreshTasks();
+        });
+        card.createSpan({ cls: 'dp-drawer-card-title', text: cleanTaskTextForDisplay(task.text) });
+        if (section === 'overdue' && task.date) {
+            card.createSpan({ cls: 'dp-drawer-card-date', text: (window as any).moment(task.date, 'YYYY-MM-DD').format('MMM D') });
+        }
+        if (task.priority !== 'normal') card.createSpan({ cls: 'dp-badge dp-badge-priority', text: PRIORITY_EMOJI[task.priority] });
+        card.addEventListener('click', (e) => {
+            if ((e.target as HTMLElement).closest('.dp-custom-cb, .dp-drawer-card-actions')) return;
+            this.openTaskEditor(task);
+        });
+
+        // Keyboard: Tab to a card, Enter edits, f fits it into the first free slot of the next two weeks
+        card.tabIndex = 0;
+        card.addEventListener('keydown', (e) => {
+            if (e.target !== card || e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.openTaskEditor(task);
+            } else if (e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                e.stopPropagation();
+                void this.fitTaskIn(task, this.upcomingDates(14));
+            }
+        });
+
+        if (section === 'overdue') {
+            // Triage on hover: new date (time kept) or back to Undated
+            const moment = (window as any).moment;
+            const actions = card.createDiv({ cls: 'dp-drawer-card-actions' });
+            const addAction = (label: string, tooltip: string, run: () => Promise<void>) => {
+                const btn = actions.createEl('button', { cls: 'dp-drawer-card-action', text: label, attr: { 'aria-label': tooltip } });
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    void run();
+                });
+            };
+            const day = (offset: number) => moment().add(offset, 'days').format('YYYY-MM-DD');
+            const label = (offset: number) => moment().add(offset, 'days').format('ddd, MMM D');
+            addAction('Today', `Move to today (${label(0)})`, () => this.moveTasksToDate([task], day(0)));
+            addAction('Tmrw', `Move to tomorrow (${label(1)})`, () => this.moveTasksToDate([task], day(1)));
+            addAction('+1 wk', `Move to next week (${label(7)})`, () => this.moveTasksToDate([task], day(7)));
+            addAction('Undate', 'Clear the date (move to Undated)', () => this.unscheduleTasks([task]));
+        }
+        this.registerMouseDrag(card, { kind: 'task', task, origin: section });
+    }
+
+    /** `count` dates starting today (Fit-it-in search window) */
+    upcomingDates(count: number): string[] {
+        const today = (window as any).moment();
+        return Array.from({ length: count }, (_, i) => today.clone().add(i, 'days').format('YYYY-MM-DD'));
+    }
+
+    // ---- Drawer quick capture: draft and focus survive the drawer being rebuilt on each render ----
+    drawerCaptureDraft = '';
+    drawerCaptureFocused = false;
+
+    /** Creates an undated task in the default task file from a quick-capture line (priority emoji → priority) */
+    async captureUndatedTask(raw: string) {
+        const { text, priority } = parseQuickEntry(raw);
+        if (!text) return;
+        const filePath = getDefaultTaskFilePath(this.plugin.settings);
+        try {
+            await createNewTaskInFile(this.app, filePath, text, null, null, null, ' ', priority);
+        } catch (err) {
+            console.error('Day Planner Pro: quick capture failed', err);
+            new Notice(`⚠️ Could not create the task in "${filePath}": ${err instanceof Error ? err.message : String(err)}`);
+            return;
+        }
+        new Notice(fileNameTaskDate(filePath)
+            ? `Task created in "${filePath}". Its file name gives it a date, so it shows on that day, not under Undated.`
+            : `Task created in "${filePath}".`);
+        await this.refreshTasks();
+    }
+
+    async onClose() {
+        this.headerResizeObserver?.disconnect();
+        return super.onClose();
     }
 
     /** Phone Daily / 2-Day: the current week as M/D pills; the day(s) on screen are highlighted, a tap shows that day. */
@@ -4444,10 +5488,10 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         for (let i = 0; i < 7; i++) {
             const day = weekStart.clone().add(i, 'days');
             const dateStr = day.format('YYYY-MM-DD');
-            const pill = strip.createEl('button', { cls: 'dp-date-pill' });
+            const pill = strip.createEl('button', { cls: `dp-date-pill${weekendCls(day)}` });
             pill.toggleClass('is-shown', shown.has(dateStr));
             pill.toggleClass('is-today', dateStr === todayStr);
-            pill.createSpan({ cls: 'dp-date-pill-dow', text: day.format('dd') });
+            pill.createSpan({ cls: 'dp-date-pill-dow', text: day.format('ddd') });
             pill.createSpan({ cls: 'dp-date-pill-date', text: day.format('M/D') });
             pill.addEventListener('click', () => this.focusDay(dateStr));
         }
@@ -4457,7 +5501,9 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     async focusDay(dateStr: string) {
         if (!this.useCompactLayout()) return super.focusDay(dateStr);
         const target = (window as any).moment(dateStr, 'YYYY-MM-DD');
-        if (this.activeTab !== 'daily') {
+        // Daily and 2-Day own the date strip: a tap moves the day / the 2-day window's start, staying in that tab.
+        // Only other tabs (Monthly cells) hand the day over to the Daily tab.
+        if (this.activeTab !== 'daily' && this.activeTab !== 'multiDay') {
             const fromMonthly = this.activeTab === 'monthly';
             this.currentDate = target;
             this.dataVersion++; // new date: every cached pane is stale
@@ -4486,23 +5532,26 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
     /**
      * Phone: a horizontal swipe on the active view pages dates (Daily / 2-Day: 1 day, Monthly / List: 1 month) through
      * navigateWithSlide. The touch is only claimed once it is clearly horizontal, so vertical scrolling stays native;
-     * touches starting at the screen edges or inside horizontally scrollable children are left alone.
+     * touches inside horizontally scrollable children are left alone. Edge swipes belong to the planner too: listeners
+     * run in the capture phase and the horizontal moves of a claimed swipe never reach Obsidian's sidebar gestures.
      */
     registerSwipeNavigation(rootEl: HTMLElement) {
         if (this.swipeBound) return;
         this.swipeBound = true;
-        const EDGE = 24;     // px from the screen edge reserved for Obsidian's sidebar gestures
         const LOCK = 10;     // px of travel before the gesture axis is decided
         const MIN_DIST = 60; // px of horizontal travel that pages
         let start: { x: number; y: number } | null = null;
         let axis: 'x' | 'y' | null = null;
         let dx = 0;
+        const claim = (e: TouchEvent) => {
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        };
 
         this.registerDomEvent(rootEl, 'touchstart', (e: TouchEvent) => {
             start = null;
-            if (e.touches.length !== 1 || !['daily', 'multiDay', 'monthly', 'list'].includes(this.activeTab)) return;
+            if (e.touches.length !== 1 || !['daily', 'multiDay', 'monthly', 'list', 'board'].includes(this.activeTab)) return;
             const touch = e.touches[0];
-            if (touch.clientX < EDGE || touch.clientX > window.innerWidth - EDGE) return;
             const target = e.target as HTMLElement;
             if (!target.closest('.day-planner-view-pane') || target.closest('input, textarea, select, .dp-resize-handle')) return;
             for (let el: HTMLElement | null = target; el && el !== rootEl; el = el.parentElement) {
@@ -4511,7 +5560,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             start = { x: touch.clientX, y: touch.clientY };
             axis = null;
             dx = 0;
-        }, { passive: true });
+        }, { passive: true, capture: true });
 
         this.registerDomEvent(rootEl, 'touchmove', (e: TouchEvent) => {
             if (!start) return;
@@ -4523,18 +5572,23 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             if (axis === 'y') { start = null; return; } // vertical scroll: hands off
             if (axis === 'x') {
                 if (e.cancelable) e.preventDefault(); // no diagonal scroll drift while paging
-                e.stopPropagation();                  // keep Obsidian's own swipe gestures out of it
+                claim(e);                             // Obsidian's sidebar / back-swipe gestures never see it
             }
-        }, { passive: false });
+        }, { passive: false, capture: true });
 
+        // touchend / touchcancel always propagate: the end of a touch sequence must reach every listener. Swallowing it
+        // left Obsidian's gesture recognizer mid-gesture (it saw touchstart, never the end), and it then blocked the
+        // next vertical scroll. Withholding the horizontal touchmoves alone already keeps the sidebars shut.
         this.registerDomEvent(rootEl, 'touchend', () => {
             const page = !!start && axis === 'x' && Math.abs(dx) >= MIN_DIST && !this.touchDragActive;
             start = null;
             if (!page) return;
+            // Board pages columns (haptic fired inside, only when the column actually changes)
+            if (this.activeTab === 'board') { this.navigateBoardTab(dx < 0 ? 1 : -1); return; }
             triggerHaptic('selection');
             void this.navigateWithSlide(dx < 0 ? 1 : -1); // swipe left → next
-        });
-        this.registerDomEvent(rootEl, 'touchcancel', () => { start = null; });
+        }, { capture: true });
+        this.registerDomEvent(rootEl, 'touchcancel', () => { start = null; }, { capture: true });
     }
 
     /** Keep-alive view panes: each tab renders once, then is only shown/hidden until its data goes stale. */
@@ -4562,14 +5616,19 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             current.scroll = scrollers.map(el => [el, el.scrollTop, el.scrollLeft] as [HTMLElement, number, number]);
         }
         this.activeTab = tab;
-        await this.syncGCalRange(false, false);
+        await this.syncGCalRange(false);
         this.isTabSwitch = true;
         try {
             this.render();
         } finally {
             this.isTabSwitch = false;
         }
+        await this.paneActivation; // callers (e.g. focusDay's zoom-in) act on the pane once it is actually shown
     }
+
+    /** Settles when the pane of the latest tab switch is shown and rendered (see mountActivePane). */
+    paneActivation: Promise<void> = Promise.resolve();
+    private paneActivationToken = 0;
 
     /** Only the header chrome and tracker bar are rebuilt; cached panes stay mounted. */
     rebuildRoot(rootEl: HTMLDivElement) {
@@ -4584,13 +5643,30 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             this.panes.clear();
             this.paneRoot = rootEl;
         }
+        const token = ++this.paneActivationToken;
+        if (!this.isTabSwitch) {
+            this.activatePane(rootEl);
+            return;
+        }
+        // Tab switch: showing a pane means laying it out (and rendering it when stale), which on Weekly is hundreds of
+        // nodes. Doing that before the first paint delayed the pill slide; the header and pill commit first, and the
+        // pane follows right after that paint while the compositor already runs the slide.
+        this.paneActivation = new Promise<void>(resolve => {
+            requestAnimationFrame(() => window.setTimeout(() => {
+                // Superseded by a newer switch or a data render, which activated its own pane
+                if (token === this.paneActivationToken && this.paneRoot === rootEl && rootEl.isConnected) this.activatePane(rootEl);
+                resolve();
+            }, 0));
+        });
+    }
+
+    private activatePane(rootEl: HTMLDivElement) {
         let pane = this.panes.get(this.activeTab);
         if (!pane) {
-            pane = {
-                el: rootEl.createDiv({ cls: `dp-content day-planner-view-pane day-planner-pane-${this.activeTab}` }),
-                version: -1,
-                scroll: []
-            };
+            const el = rootEl.createDiv({ cls: `dp-content day-planner-view-pane day-planner-pane-${this.activeTab}` });
+            // Created after the tracker / bottom nav when deferred: keep those as the trailing rows
+            rootEl.insertBefore(el, rootEl.querySelector(':scope > .dp-current-task-bar, :scope > .dp-bottom-nav'));
+            pane = { el, version: -1, scroll: [] };
             this.panes.set(this.activeTab, pane);
         }
         // Strict mutual exclusion: exactly one pane is shown (with the reveal if it was hidden), every other one hidden
@@ -4628,12 +5704,12 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
 }
 
 /**
- * 2. Sidebar Day Planner Pro: the combined view's compact shell (5 bottom tabs, date strip, one-column Board,
+ * 2. Dayloom Compact: the combined view's compact shell (5 bottom tabs, date strip, one-column Board,
  * compact Monthly) in a narrow sidebar leaf, on every platform.
  */
 export class DayPlannerDailyView extends DayPlannerCombinedView {
     getViewType(): string { return 'day-planner-pro-daily'; }
-    getDisplayText(): string { return 'Sidebar Day Planner Pro'; }
+    getDisplayText(): string { return 'Dayloom Compact'; }
     getIcon(): string { return 'calendar-clock'; }
     useCompactLayout() { return true; }
 }
@@ -4773,7 +5849,8 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
     onload() {
         this.containerEl.empty();
         const rootEl = this.containerEl.createDiv({ cls: 'dp-container dp-codeblock-container' });
-        
+        this.registerScrollIdleClass(rootEl);
+
         this.containerEl.style.height = this.heightStr;
         this.containerEl.style.position = 'relative';
         this.containerEl.style.overflow = 'hidden';
@@ -4790,14 +5867,15 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
             }
         });
 
-        this.registerEvent(this.plugin.app.metadataCache.on('resolved', async () => {
-            await this.refreshContentOnly();
-        }));
+        // Vault edits arrive through the plugin's coalesced refresh (after the task cache is updated), not on every
+        // metadataCache 'resolved', which fired a full redraw of each block per indexing pass while typing
+        this.plugin.codeBlockRenderers.add(this);
 
         this.refreshTasks();
     }
 
     onunload() {
+        this.plugin.codeBlockRenderers.delete(this);
         window.clearTimeout(this.filterRefreshTimer);
         this.detachFilterDismissListeners();
         if (this.filtersDirty && this.app.workspace.getActiveFile()?.path === this.ctx?.sourcePath) {
@@ -4807,10 +5885,10 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
         super.onunload();
     }
 
-    async refreshContentOnly() {
+    async refreshContentOnly(skipIfUnchanged = false) {
         this.contentOnlyRender = true;
         try {
-            await this.refreshTasks();
+            await this.refreshTasks(null, false, skipIfUnchanged);
         } finally {
             this.contentOnlyRender = false;
         }
@@ -4841,7 +5919,8 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
         if (this.filterDismissCleanup) return;
         const doc = this.containerEl.ownerDocument;
         // Modals/menus opened from inside the block are rendered outside it in the DOM.
-        const inPopup = (t: EventTarget | null) => t instanceof Element && !!t.closest('.modal-container, .menu');
+        // ... and so is Obsidian's suggestion popover (path suggestions in the filter editor)
+        const inPopup = (t: EventTarget | null) => t instanceof Element && !!t.closest('.modal-container, .menu, .suggestion-container');
         const inBlock = (t: EventTarget | null) => t instanceof Node && this.containerEl.contains(t);
 
         const onPointerDown = (e: PointerEvent) => {
@@ -4996,427 +6075,263 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
         }
     }
 
+    /** Rule whose editor row is open under the filter bar (null: none) */
+    filterEditingId: string | null = null;
+
+    /**
+     * Inline filter panel, in the shape of Obsidian's own filters: one wrapping bar (match mode, a chip per rule,
+     * "+ Filter") and, for the chip being edited, a single editor row below it. Nested groups (older notes, or
+     * "+ Filter → Group") render inline as bracketed chip groups instead of stacked boxes. It edits the same
+     * FilterGroup tree as before, so the YAML written into the note (updateCodeBlockInFile) is unchanged.
+     */
     renderFilterPanel(parent: HTMLElement): HTMLElement | null {
         if (!this.showFilterPanel) return null;
 
         const panel = parent.createDiv({ cls: 'dp-filter-panel' });
-        panel.style.cssText = 'padding: 4px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px;';
         this.filterPanelEl = panel;
         this.attachFilterDismissListeners();
 
-        this.renderFilterGroup(panel, this.filters, true);
+        this.renderFilterBar(panel, this.filters, null);
+        const editing = this.filterEditingId ? this.findFilterRule(this.filters, this.filterEditingId) : null;
+        if (editing) this.renderFilterRuleEditor(panel, editing.rule);
+        else this.filterEditingId = null;
         return panel;
     }
 
-    renderFilterGroup(parent: HTMLElement, group: FilterGroup, isRoot: boolean) {
-        const groupDiv = parent.createDiv({ cls: 'dp-filter-group' });
-        groupDiv.style.cssText = isRoot 
-            ? 'padding: 12px; border: 2px solid var(--interactive-accent); border-radius: 8px; background-color: var(--background-secondary-alt); display: flex; flex-direction: column; gap: 10px;' 
-            : 'margin-left: 24px; padding: 12px; border: 1.5px solid var(--background-modifier-border-hover); border-radius: 8px; background-color: rgba(var(--mono-rgb-100), 0.015); margin-top: 12px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 10px;';
+    findFilterRule(group: FilterGroup, id: string): { rule: FilterRule; parent: FilterGroup } | null {
+        for (const child of group.children ?? []) {
+            if (isFilterGroup(child)) {
+                const found = this.findFilterRule(child, id);
+                if (found) return found;
+            } else if (child.id === id) {
+                return { rule: child, parent: group };
+            }
+        }
+        return null;
+    }
 
-        // Mode row
-        const modeRow = groupDiv.createDiv();
-        modeRow.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap;';
-        
-        const modeSelect = modeRow.createEl('select');
-        modeSelect.style.cssText = 'padding: 2px 4px; border-radius: 4px; border: 1px solid var(--background-modifier-border); background-color: var(--background-primary); font-size: 0.85em; cursor: pointer;';
-        
-        const modes = [
-            { value: 'all', label: 'All the following are true' },
-            { value: 'any', label: 'Any of the following are true' },
-            { value: 'none', label: 'None of the following are true' }
-        ];
-        modes.forEach(m => {
-            const opt = modeSelect.createEl('option', { value: m.value, text: m.label });
-            if (m.value === group.mode) opt.selected = true;
-        });
-        modeSelect.addEventListener('change', async () => {
-            group.mode = modeSelect.value as any;
+    /** The root bar, or (with `parentGroup`) a nested group drawn inline as a bracketed chip group */
+    renderFilterBar(container: HTMLElement, group: FilterGroup, parentGroup: FilterGroup | null) {
+        const nested = parentGroup !== null;
+        const bar = container.createDiv({ cls: nested ? 'dp-filter-chip-group' : 'dp-filter-bar' });
+
+        const mode = bar.createEl('select', { cls: 'dropdown dp-filter-mode', attr: { 'aria-label': 'Match mode' } });
+        ([['all', nested ? 'all of' : 'Match all'], ['any', nested ? 'any of' : 'Match any'], ['none', nested ? 'none of' : 'Match none']] as const)
+            .forEach(([value, label]) => {
+                const opt = mode.createEl('option', { value, text: label });
+                if (value === group.mode) opt.selected = true;
+            });
+        mode.addEventListener('change', () => {
+            group.mode = mode.value as FilterGroup['mode'];
             this.onFilterChanged();
         });
 
-        if (!isRoot) {
-            const delGroupBtn = modeRow.createEl('button', { text: '🗑️' });
-            delGroupBtn.style.cssText = 'padding: 2px 4px; font-size: 0.85em; background: none; border: none; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; margin-left: auto;';
-            delGroupBtn.addEventListener('mouseenter', () => delGroupBtn.style.opacity = '1');
-            delGroupBtn.addEventListener('mouseleave', () => delGroupBtn.style.opacity = '0.6');
-            delGroupBtn.addEventListener('click', async () => {
+        (group.children ?? []).forEach(child => {
+            if (isFilterGroup(child)) this.renderFilterBar(bar, child, group);
+            else this.renderFilterChip(bar, child, group);
+        });
+
+        const add = bar.createEl('button', {
+            cls: 'dp-filter-add',
+            text: nested ? '+' : '+ Filter',
+            attr: { 'aria-label': nested ? 'Add a filter to this group' : 'Add a filter' }
+        });
+        add.addEventListener('click', (e) => this.openAddFilterMenu(e, group));
+
+        if (nested) {
+            const remove = bar.createEl('button', { cls: 'dp-filter-chip-remove', attr: { 'aria-label': 'Remove this group' } });
+            setIcon(remove, 'x');
+            remove.addEventListener('click', () => {
                 this.removeNodeFromGroup(this.filters, group.id!);
                 this.onFilterChanged(true);
             });
+        } else if (!(group.children?.length)) {
+            bar.createSpan({ cls: 'dp-filter-empty', text: 'No filters: every item is shown.' });
         }
+    }
 
-        const childrenDiv = groupDiv.createDiv();
-        childrenDiv.style.cssText = 'display: flex; flex-direction: column; gap: 6px;';
-
-        if (group.children) {
-            group.children.forEach((child) => {
-                if (child.kind === 'group' || (child as any).children !== undefined) {
-                    this.renderFilterGroup(childrenDiv, child as FilterGroup, false);
-                } else {
-                    this.renderFilterRuleRow(childrenDiv, child as FilterRule, group);
-                }
-            });
-        }
-
-        const btnsRow = groupDiv.createDiv();
-        btnsRow.style.cssText = 'display: flex; gap: 12px; margin-top: 6px;';
-        
-        const addRuleBtn = btnsRow.createEl('button', { text: '➕ Add filter' });
-        addRuleBtn.style.cssText = 'padding: 4px 8px; border-radius: 4px; border: 1px solid var(--background-modifier-border); background-color: var(--background-primary); font-size: 0.8em; cursor: pointer; font-weight: bold;';
-        addRuleBtn.addEventListener('click', async () => {
-            if (!group.children) group.children = [];
-            group.children.push({
-                kind: 'rule',
-                id: Math.random().toString(36).substring(2, 9),
-                type: 'text',
-                operator: 'contains',
-                value: ''
-            });
-            this.onFilterChanged(true);
+    renderFilterChip(bar: HTMLElement, rule: FilterRule, group: FilterGroup) {
+        rule.id ??= randomFilterId();
+        const chip = bar.createDiv({
+            cls: `dp-filter-chip${this.filterEditingId === rule.id ? ' is-editing' : ''}`,
+            attr: { 'data-rule-id': rule.id, role: 'button', tabindex: '0', 'aria-label': `${describeFilterRule(rule)} (click to edit)` }
+        });
+        setFirstIcon(chip.createSpan({ cls: 'dp-filter-chip-icon' }), FILTER_TYPES.find(t => t.type === rule.type)?.icons ?? ['filter']);
+        chip.createSpan({ cls: 'dp-filter-chip-label', text: describeFilterRule(rule) });
+        const toggleEditor = () => {
+            this.filterEditingId = this.filterEditingId === rule.id ? null : rule.id!;
+            this.rebuildFilterPanel();
+        };
+        chip.addEventListener('click', toggleEditor);
+        chip.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggleEditor();
+            }
         });
 
-        const addGroupBtn = btnsRow.createEl('button', { text: '➕ Add filter group' });
-        addGroupBtn.style.cssText = 'padding: 4px 8px; border-radius: 4px; border: 1px solid var(--background-modifier-border); background-color: var(--background-primary); font-size: 0.8em; cursor: pointer; font-weight: bold;';
-        addGroupBtn.addEventListener('click', async () => {
-            if (!group.children) group.children = [];
-            group.children.push({
-                kind: 'group',
-                id: Math.random().toString(36).substring(2, 9),
-                mode: 'all',
-                children: []
-            });
+        const remove = chip.createEl('button', { cls: 'dp-filter-chip-remove', attr: { 'aria-label': 'Remove this filter' } });
+        setIcon(remove, 'x');
+        remove.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const index = group.children?.indexOf(rule) ?? -1;
+            if (index !== -1) group.children!.splice(index, 1);
+            if (this.filterEditingId === rule.id) this.filterEditingId = null;
             this.onFilterChanged(true);
         });
     }
 
-    renderFilterRuleRow(parent: HTMLElement, rule: FilterRule, parentGroup: FilterGroup) {
-        const ruleRow = parent.createDiv();
-        ruleRow.style.cssText = 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;';
-
-        const ruleBox = ruleRow.createDiv({ cls: 'dp-filter-rule-box' });
-        ruleBox.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 4px 10px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background-color: var(--background-primary); flex-grow: 1; flex-wrap: wrap;';
-
-        const typeSelect = ruleBox.createEl('select');
-        typeSelect.style.cssText = 'padding: 2px 6px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background-color: var(--background-primary); font-size: 0.85em; cursor: pointer; color: var(--text-normal);';
-        
-        const types = [
-            { value: 'itemType', label: 'Item Type' },
-            { value: 'folder', label: 'Folder' },
-            { value: 'file', label: 'File' },
-            { value: 'tag', label: 'Tag' },
-            { value: 'status', label: 'Status' },
-            { value: 'priority', label: 'Priority' },
-            { value: 'text', label: 'Text' },
-            { value: 'date', label: 'Date' }
-        ];
-        types.forEach(t => {
-            const opt = typeSelect.createEl('option', { value: t.value, text: t.label });
-            if (t.value === rule.type) opt.selected = true;
-        });
-
-        const opSelect = ruleBox.createEl('select');
-        opSelect.style.cssText = 'padding: 2px 6px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background-color: var(--background-primary); font-size: 0.85em; cursor: pointer; color: var(--text-normal);';
-        
-        const updateOperators = () => {
-            opSelect.empty();
-            let ops: { value: string; label: string }[] = [];
-            if (rule.type === 'priority') {
-                ops = [
-                    { value: 'equals', label: 'is' },
-                    { value: 'notEquals', label: 'is not' },
-                    { value: 'isHigher', label: 'is higher than' },
-                    { value: 'isLower', label: 'is lower than' }
-                ];
-            } else if (rule.type === 'status') {
-                ops = [
-                    { value: 'equals', label: 'is' },
-                    { value: 'notEquals', label: 'is not' }
-                ];
-            } else if (rule.type === 'itemType') {
-                ops = [
-                    { value: 'equals', label: 'is' },
-                    { value: 'notEquals', label: 'is not' }
-                ];
-            } else if (rule.type === 'date') {
-                ops = [
-                    { value: 'equals', label: 'is' },
-                    { value: 'notEquals', label: 'is not' },
-                    { value: 'isBefore', label: 'is before' },
-                    { value: 'isAfter', label: 'is after' },
-                    { value: 'isEmpty', label: 'is empty' },
-                    { value: 'isNotEmpty', label: 'is not empty' }
-                ];
-            } else if (rule.type === 'folder' || rule.type === 'file') {
-                ops = [
-                    { value: 'contains', label: 'is located' },
-                    { value: 'notContains', label: 'is not located' }
-                ];
-            } else {
-                ops = [
-                    { value: 'contains', label: 'contains' },
-                    { value: 'notContains', label: 'does not contain' },
-                    { value: 'equals', label: 'equals' },
-                    { value: 'notEquals', label: 'does not equal' },
-                    { value: 'startsWith', label: 'starts with' },
-                    { value: 'endsWith', label: 'ends with' }
-                ];
-            }
-            ops.forEach(op => {
-                const opt = opSelect.createEl('option', { value: op.value, text: op.label });
-                if (op.value === rule.operator) opt.selected = true;
-            });
-            if (ops.length > 0 && !ops.some(op => op.value === rule.operator)) {
-                rule.operator = ops[0].value as any;
-                opSelect.value = rule.operator;
-            }
-        };
-        updateOperators();
-
-        let valInput: HTMLElement;
-        const renderValueInput = () => {
-            if (valInput) valInput.remove();
-            
-            if (rule.type === 'status') {
-                const select = ruleBox.createEl('select');
-                select.style.cssText = 'padding: 2px 6px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background-color: var(--background-primary); font-size: 0.85em; cursor: pointer; color: var(--text-normal);';
-                const statuses = ['todo', 'in-progress', 'completed', 'cancelled'];
-                statuses.forEach(s => {
-                    const opt = select.createEl('option', { value: s, text: s });
-                    if (s === rule.value) opt.selected = true;
-                });
-                select.addEventListener('change', async () => {
-                    rule.value = select.value;
-                    this.onFilterChanged();
-                });
-                valInput = select;
-            } else if (rule.type === 'priority') {
-                const select = ruleBox.createEl('select');
-                select.style.cssText = 'padding: 2px 6px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background-color: var(--background-primary); font-size: 0.85em; cursor: pointer; color: var(--text-normal);';
-                const priorities = ['lowest', 'low', 'normal', 'medium', 'high', 'highest'];
-                priorities.forEach(p => {
-                    const opt = select.createEl('option', { value: p, text: p });
-                    if (p === rule.value) opt.selected = true;
-                });
-                select.addEventListener('change', async () => {
-                    rule.value = select.value;
-                    this.onFilterChanged();
-                });
-                valInput = select;
-            } else if (rule.type === 'itemType') {
-                const select = ruleBox.createEl('select');
-                select.style.cssText = 'padding: 2px 6px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background-color: var(--background-primary); font-size: 0.85em; cursor: pointer; color: var(--text-normal);';
-                const typesList = [
-                    { value: 'task', label: 'Task' },
-                    { value: 'gcal', label: 'GCal Appointment' }
-                ];
-                typesList.forEach(t => {
-                    const opt = select.createEl('option', { value: t.value, text: t.label });
-                    if (t.value === rule.value) opt.selected = true;
-                });
-                select.addEventListener('change', async () => {
-                    rule.value = select.value;
-                    this.onFilterChanged();
-                });
-                valInput = select;
-            } else if (rule.type === 'date') {
-                if (rule.operator === 'isEmpty' || rule.operator === 'isNotEmpty') {
-                    valInput = ruleBox.createDiv();
-                    valInput.style.cssText = 'display:none;';
-                } else {
-                    const dateWrapper = ruleBox.createSpan();
-                    dateWrapper.style.cssText = 'display: inline-flex; align-items: center; gap: 6px;';
-
-                    const select = dateWrapper.createEl('select');
-                    select.style.cssText = 'padding: 2px 6px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background-color: var(--background-primary); font-size: 0.85em; cursor: pointer; color: var(--text-normal);';
-
-                    const dateOptions = [
-                        { value: 'today', label: 'Today' },
-                        { value: 'yesterday', label: 'Yesterday' },
-                        { value: 'tomorrow', label: 'Tomorrow' },
-                        { value: 'this week', label: 'This Week' },
-                        { value: 'this month', label: 'This Month' },
-                        { value: 'this year', label: 'This Year' },
-                        { value: 'custom', label: 'Specific Date...' }
-                    ];
-
-                    const isPredefined = ['today', 'yesterday', 'tomorrow', 'this week', 'this month', 'this year'].includes(rule.value);
-                    const selectedVal = isPredefined ? rule.value : 'custom';
-
-                    dateOptions.forEach(opt => {
-                        const optionEl = select.createEl('option', { value: opt.value, text: opt.label });
-                        if (opt.value === selectedVal) optionEl.selected = true;
-                    });
-
-                    const datePicker = dateWrapper.createEl('input', { type: 'date' });
-                    datePicker.style.cssText = 'padding: 2px 6px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background-color: var(--background-primary); font-size: 0.85em; color: var(--text-normal);';
-
-                    if (selectedVal === 'custom') {
-                        datePicker.style.display = 'inline-block';
-                        const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(rule.value);
-                        datePicker.value = isValidDate ? rule.value : (window as any).moment().format('YYYY-MM-DD');
-                    } else {
-                        datePicker.style.display = 'none';
-                    }
-
-                    select.addEventListener('change', async () => {
-                        if (select.value === 'custom') {
-                            datePicker.style.display = 'inline-block';
-                            const pickerVal = datePicker.value || (window as any).moment().format('YYYY-MM-DD');
-                            rule.value = pickerVal;
-                            datePicker.value = pickerVal;
-                        } else {
-                            datePicker.style.display = 'none';
-                            rule.value = select.value;
-                        }
-                        this.onFilterChanged();
-                    });
-
-                    datePicker.addEventListener('change', async () => {
-                        rule.value = datePicker.value;
-                        this.onFilterChanged();
-                    });
-
-                    valInput = dateWrapper;
-                }
-            } else {
-                const inputWrapper = ruleBox.createDiv();
-                inputWrapper.style.cssText = 'position: relative; flex-grow: 1; display: flex; align-items: center; min-width: 80px;';
-
-                const input = inputWrapper.createEl('input', {
-                    type: 'text',
-                    value: rule.value,
-                    placeholder: rule.type === 'tag' ? 'e.g. urgent' : 'value...'
-                });
-                input.style.cssText = 'padding: 2px 6px; border: 1px solid var(--background-modifier-border); border-radius: 4px; background-color: var(--background-primary); font-size: 0.85em; width: 100%; color: var(--text-normal);';
-
-                if (rule.type === 'folder' || rule.type === 'file') {
-                    // Create suggestion container
-                    const suggContainer = inputWrapper.createDiv({ cls: 'dp-sugg-container' });
-                    suggContainer.style.cssText = 'position: absolute; top: 100%; left: 0; width: 100%; display: none;';
-
-                    const updateSuggestions = () => {
-                        suggContainer.empty();
-                        const query = input.value.toLowerCase().trim();
-                        
-                        let items: string[] = [];
-                        if (rule.type === 'folder') {
-                            items = this.app.vault.getAllLoadedFiles()
-                                .filter(f => (f as any).children !== undefined)
-                                .map(f => f.path)
-                                .filter(p => p && p !== '/');
-                        } else {
-                            items = this.app.vault.getMarkdownFiles()
-                                .filter(f => !isSyncConflictPath(f.path))
-                                .map(f => f.basename);
-                        }
-
-                        const filtered = query === '' 
-                            ? items 
-                            : items.filter(item => item.toLowerCase().includes(query));
-
-                        const uniqueFiltered = Array.from(new Set(filtered)).sort();
-
-                        if (uniqueFiltered.length === 0) {
-                            const noItem = suggContainer.createDiv({ cls: 'dp-sugg-item' });
-                            noItem.style.cssText = 'color: var(--text-muted); cursor: default;';
-                            noItem.setText('No matching items found');
-                            suggContainer.style.display = 'block';
-                            return;
-                        }
-
-                        uniqueFiltered.slice(0, 10).forEach(val => {
-                            const item = suggContainer.createDiv({ cls: 'dp-sugg-item' });
-                            item.setText(val);
-                            
-                            item.addEventListener('mousedown', async (e) => {
-                                e.preventDefault();
-                                input.value = val;
-                                rule.value = val;
-                                suggContainer.style.display = 'none';
-                                this.onFilterChanged();
-                            });
-                        });
-
-                        suggContainer.style.display = 'block';
-                    };
-
-                    input.addEventListener('input', () => {
-                        updateSuggestions();
-                    });
-
-                    input.addEventListener('focus', () => {
-                        updateSuggestions();
-                    });
-
-                    input.addEventListener('blur', () => {
-                        setTimeout(() => {
-                            suggContainer.style.display = 'none';
-                        }, 150);
-                    });
-                }
-
-                input.addEventListener('keydown', async (e) => {
-                    if (e.key === 'Enter') {
-                        input.blur();
-                    }
-                });
-
-                input.addEventListener('blur', async () => {
-                    setTimeout(async () => {
-                        if (rule.value !== input.value) {
-                            rule.value = input.value;
-                            this.onFilterChanged();
-                        }
-                    }, 200);
-                });
-                valInput = inputWrapper;
-            }
-        };
-        renderValueInput();
-
-        typeSelect.addEventListener('change', async () => {
-            rule.type = typeSelect.value as any;
-            if (rule.type === 'status') {
-                rule.operator = 'equals';
-                rule.value = 'todo';
-            } else if (rule.type === 'priority') {
-                rule.operator = 'equals';
-                rule.value = 'normal';
-            } else if (rule.type === 'itemType') {
-                rule.operator = 'equals';
-                rule.value = 'task';
-            } else if (rule.type === 'date') {
-                rule.operator = 'equals';
-                rule.value = 'today';
-            } else {
-                rule.operator = 'contains';
-                rule.value = '';
-            }
-            updateOperators();
-            renderValueInput();
-            this.onFilterChanged();
-        });
-
-        opSelect.addEventListener('change', async () => {
-            rule.operator = opSelect.value as any;
-            renderValueInput();
-            this.onFilterChanged();
-        });
-
-        const delBtn = ruleBox.createEl('button', { text: '🗑️' });
-        delBtn.style.cssText = 'padding: 2px 4px; font-size: 0.85em; background: none; border: none; cursor: pointer; opacity: 0.6; transition: opacity 0.2s; margin-left: auto;';
-        delBtn.addEventListener('mouseenter', () => delBtn.style.opacity = '1');
-        delBtn.addEventListener('mouseleave', () => delBtn.style.opacity = '0.6');
-        delBtn.addEventListener('click', async () => {
-            if (parentGroup.children) {
-                const idx = parentGroup.children.indexOf(rule);
-                if (idx !== -1) {
-                    parentGroup.children.splice(idx, 1);
-                }
-            }
+    /** "+ Filter": pick what to filter by (opens that rule's editor), or add a nested group */
+    openAddFilterMenu(e: MouseEvent, group: FilterGroup) {
+        const menu = new Menu();
+        (menu as any).dom?.addClass('dp-glass-menu'); // `dom` is undocumented; absent when native menus are enabled
+        const add = (node: FilterRule | FilterGroup) => {
+            (group.children ??= []).push(node);
+            if (!isFilterGroup(node)) this.filterEditingId = node.id!;
             this.onFilterChanged(true);
+        };
+        FILTER_TYPES.forEach(t => menu.addItem(item => item.setTitle(t.label).setIcon(t.icons[0]).onClick(() => add(newFilterRule(t.type)))));
+        menu.addSeparator();
+        menu.addItem(item => item.setTitle('Group (match any of…)').setIcon('list').onClick(() =>
+            add({ kind: 'group', id: randomFilterId(), mode: 'any', children: [] })));
+        menu.showAtMouseEvent(e);
+    }
+
+    /** Keeps the chip of the rule being edited in step with its editor row (label and type icon) */
+    refreshFilterChip(rule: FilterRule) {
+        const chip = this.filterPanelEl?.querySelector<HTMLElement>(`[data-rule-id="${rule.id}"]`);
+        if (!chip) return;
+        chip.querySelector('.dp-filter-chip-label')?.setText(describeFilterRule(rule));
+        const icon = chip.querySelector<HTMLElement>('.dp-filter-chip-icon');
+        if (icon) {
+            icon.empty();
+            setFirstIcon(icon, FILTER_TYPES.find(t => t.type === rule.type)?.icons ?? ['filter']);
+        }
+        chip.setAttr('aria-label', `${describeFilterRule(rule)} (click to edit)`);
+    }
+
+    /** One row: [type] [operator] [value] [Done]. Every change filters live; the chip follows. */
+    renderFilterRuleEditor(panel: HTMLElement, rule: FilterRule) {
+        const row = panel.createDiv({ cls: 'dp-filter-editor' });
+        const changed = () => {
+            this.refreshFilterChip(rule);
+            this.onFilterChanged();
+        };
+
+        const typeSelect = row.createEl('select', { cls: 'dropdown', attr: { 'aria-label': 'Filter by' } });
+        FILTER_TYPES.forEach(t => {
+            const opt = typeSelect.createEl('option', { value: t.type, text: t.label });
+            if (t.type === rule.type) opt.selected = true;
         });
+
+        const opSelect = row.createEl('select', { cls: 'dropdown', attr: { 'aria-label': 'Condition' } });
+        const operatorsFor = (type: FilterRule['type']): FilterRule['operator'][] => {
+            if (type === 'priority') return ['equals', 'notEquals', 'isHigher', 'isLower'];
+            if (type === 'status' || type === 'itemType') return ['equals', 'notEquals'];
+            if (type === 'date') return ['equals', 'notEquals', 'isBefore', 'isAfter', 'isEmpty', 'isNotEmpty'];
+            if (type === 'folder' || type === 'file') return ['contains', 'notContains'];
+            return ['contains', 'notContains', 'equals', 'notEquals', 'startsWith', 'endsWith'];
+        };
+        const opLabel = (op: FilterRule['operator']) => {
+            if (rule.type === 'folder') return op === 'notContains' ? 'not in' : 'in';
+            if (rule.type === 'file') return op === 'notContains' ? 'does not match' : 'matches';
+            return FILTER_OP_LABEL[op];
+        };
+        const renderOperators = () => {
+            opSelect.empty();
+            const ops = operatorsFor(rule.type);
+            if (!ops.includes(rule.operator)) rule.operator = ops[0];
+            ops.forEach(op => {
+                const opt = opSelect.createEl('option', { value: op, text: opLabel(op) });
+                if (op === rule.operator) opt.selected = true;
+            });
+        };
+
+        const valueSlot = row.createDiv({ cls: 'dp-filter-editor-value' });
+        const selectValue = (options: Array<[string, string]>) => {
+            const select = valueSlot.createEl('select', { cls: 'dropdown', attr: { 'aria-label': 'Value' } });
+            options.forEach(([value, label]) => {
+                const opt = select.createEl('option', { value, text: label });
+                if (value === rule.value) opt.selected = true;
+            });
+            select.addEventListener('change', () => { rule.value = select.value; changed(); });
+        };
+        const renderValue = () => {
+            valueSlot.empty();
+            if (rule.type === 'status') {
+                selectValue([['todo', 'To do'], ['in-progress', 'In progress'], ['completed', 'Completed'], ['cancelled', 'Cancelled']]);
+            } else if (rule.type === 'priority') {
+                selectValue([['highest', 'Highest 🔺'], ['high', 'High ⏫'], ['medium', 'Medium 🔼'], ['normal', 'Normal'], ['low', 'Low 🔽'], ['lowest', 'Lowest ⏬']]);
+            } else if (rule.type === 'itemType') {
+                selectValue([['task', 'Task'], ['gcal', 'Google Calendar appointment']]);
+            } else if (rule.type === 'date') {
+                if (rule.operator === 'isEmpty' || rule.operator === 'isNotEmpty') return;
+                const presets = ['today', 'yesterday', 'tomorrow', 'this week', 'this month', 'this year'];
+                const select = valueSlot.createEl('select', { cls: 'dropdown', attr: { 'aria-label': 'Date' } });
+                [['today', 'Today'], ['yesterday', 'Yesterday'], ['tomorrow', 'Tomorrow'], ['this week', 'This week'],
+                    ['this month', 'This month'], ['this year', 'This year'], ['custom', 'Specific date…']].forEach(([value, label]) => {
+                    const opt = select.createEl('option', { value, text: label });
+                    if (value === (presets.includes(rule.value) ? rule.value : 'custom')) opt.selected = true;
+                });
+                const picker = valueSlot.createEl('input', { type: 'date', attr: { 'aria-label': 'Specific date' } });
+                const showPicker = !presets.includes(rule.value);
+                picker.toggleClass('dp-hidden', !showPicker);
+                picker.value = /^\d{4}-\d{2}-\d{2}$/.test(rule.value) ? rule.value : (window as any).moment().format('YYYY-MM-DD');
+                select.addEventListener('change', () => {
+                    const custom = select.value === 'custom';
+                    picker.toggleClass('dp-hidden', !custom);
+                    rule.value = custom ? picker.value : select.value;
+                    changed();
+                });
+                picker.addEventListener('change', () => { rule.value = picker.value; changed(); });
+            } else {
+                const input = valueSlot.createEl('input', {
+                    type: 'text',
+                    attr: {
+                        'aria-label': 'Value',
+                        placeholder: rule.type === 'tag' ? 'e.g. urgent' : rule.type === 'folder' ? 'Folder…' : rule.type === 'file' ? 'Note name…' : 'Text…'
+                    }
+                });
+                input.value = rule.value;
+                // Filters live while typing: the content refresh keeps this panel (and the caret) mounted
+                input.addEventListener('input', () => { rule.value = input.value; changed(); });
+                onEnterSubmit(input, () => closeEditor()); // IME-safe: a composing Hangul syllable is committed first
+                if (rule.type === 'folder' || rule.type === 'file') {
+                    attachPathSuggest(this.app, input, rule.type, path => {
+                        // Folder rules compare the folder path; file rules the note name (filename, ".md" optional)
+                        input.value = rule.type === 'file' ? (path.split('/').pop() ?? path).replace(/\.md$/i, '') : path;
+                        rule.value = input.value;
+                        changed();
+                    });
+                }
+                if (!rule.value) window.setTimeout(() => input.focus(), 0); // a fresh rule is ready to type into
+            }
+        };
+
+        const closeEditor = () => {
+            this.filterEditingId = null;
+            this.rebuildFilterPanel();
+        };
+
+        renderOperators();
+        renderValue();
+        typeSelect.addEventListener('change', () => {
+            const fresh = newFilterRule(typeSelect.value as FilterRule['type']);
+            rule.type = fresh.type;
+            rule.operator = fresh.operator;
+            rule.value = fresh.value;
+            renderOperators();
+            renderValue();
+            changed();
+        });
+        opSelect.addEventListener('change', () => {
+            rule.operator = opSelect.value as FilterRule['operator'];
+            renderValue();
+            changed();
+        });
+
+        const done = row.createEl('button', { cls: 'dp-filter-editor-done', text: 'Done' });
+        done.addEventListener('click', closeEditor);
     }
 
     removeNodeFromGroup(group: FilterGroup, targetId: string): boolean {
@@ -5542,7 +6457,7 @@ export class DayPlannerCodeBlockRenderer extends MarkdownRenderChild {
 // Type-side view of the runtime mixin below: the renderer really has these base-view methods on its prototype
 export interface DayPlannerCodeBlockRenderer extends Pick<DayPlannerBaseView,
     'refreshTasks' | 'render' | 'renderNavHeader' | 'renderDailyTimeline' | 'renderCurrentTaskTracker' |
-    'renderWeeklyView' | 'renderMonthlyCalendar' | 'renderKanbanBoard' | 'renderListView'> {}
+    'renderWeeklyView' | 'renderMonthlyCalendar' | 'renderKanbanBoard' | 'renderListView' | 'registerScrollIdleClass'> {}
 
 // Copy all methods from DayPlannerBaseView's prototype to DayPlannerCodeBlockRenderer's prototype dynamically
 for (const key of Object.getOwnPropertyNames(DayPlannerBaseView.prototype)) {

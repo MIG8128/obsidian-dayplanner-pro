@@ -1,7 +1,7 @@
 {
   "name": "obsidian-day-planner-pro",
-  "version": "3.9.0",
-  "description": "An advanced Day Planner plugin with Google Calendar synchronization for Obsidian.",
+  "version": "4.0.0",
+  "description": "Dayloom: an advanced day planner plugin with Google Calendar synchronization for Obsidian.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

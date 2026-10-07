@@ -70,12 +70,24 @@ export interface DayPlannerSettings {
     taskSyncCalendarId: string; // 로컬 태스크를 동기화할 구글 캘린더 ID
     excludePaths: string[]; // 할 일 검색에서 제외할 폴더 및 파일 경로 목록
     dailyNoteTemplate: string; // 데일리 노트 생성 시 사용할 템플릿 파일 경로
-    excludeMatchMode: 'any' | 'all';
+    excludeMatchMode: 'any' | 'all'; // unused since 3.99.11 (rules are exclude / keep chips, see isExcludedPath)
     nDayViewDays: number;
     weeklyNoteTemplate: string; // 주간 노트 생성 시 사용할 템플릿 파일 경로
     collapsedColumns?: string[];
     enableMobileHaptics: boolean; // Vibration feedback on supported mobile devices
+    hideBracketMetadata: boolean; // Hide [key:: value] inline fields (e.g. [gcalId:: ...]) in displayed titles only
+    reminderType: ReminderType; // How start-time reminders are delivered
+    reminderOffsetMinutes: number; // Lead time before startTime, in minutes (0 = at start time)
+    enableReminderSound: boolean; // Two-tone Web Audio chime with each reminder
+    reminderForTasks: boolean; // Remind for timed vault tasks
+    reminderForGCal: boolean; // Remind for timed Google Calendar events
+    sideDrawerOpen: boolean; // Desktop side drawer (Daily / N-day / Weekly / Monthly) shown
+    sideDrawerPanel: string; // Id of the drawer panel on screen (see SIDE_DRAWER_PANELS in drawer.ts)
+    defaultTaskDuration: number; // Minutes an untimed task gets when dropped on the timeline (end = start + this)
+    showShortcutButton: boolean; // Shortcut cheatsheet (?) button in the desktop header; the ? / h keys work regardless
 }
+
+export type ReminderType = 'off' | 'system' | 'notice' | 'auto';
 
 // 기본 설정 값 정의
 export const DEFAULT_SETTINGS: DayPlannerSettings = {
@@ -104,7 +116,17 @@ export const DEFAULT_SETTINGS: DayPlannerSettings = {
     weeklyNoteTemplate: '',
     nDayViewDays: 4,
     collapsedColumns: [],
-    enableMobileHaptics: true
+    enableMobileHaptics: true,
+    hideBracketMetadata: true,
+    reminderType: 'auto',
+    reminderOffsetMinutes: 0,
+    enableReminderSound: true,
+    reminderForTasks: true,
+    reminderForGCal: true,
+    sideDrawerOpen: true,
+    sideDrawerPanel: 'tasks',
+    defaultTaskDuration: 60,
+    showShortcutButton: true
 };
 
 // 뷰 타입 상수 정의

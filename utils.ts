@@ -1,4 +1,4 @@
-import { App, TFile, Notice, Platform } from 'obsidian';
+import { App, TFile, TFolder, TAbstractFile, Notice, Platform, setIcon, AbstractInputSuggest, prepareFuzzySearch, renderMatches } from 'obsidian';
 import { TaskItem, DayPlannerSettings } from './types';
 
 // ---------------------------------------------------------------------------------------------
@@ -101,9 +101,14 @@ export function cleanTaskTextForDisplay(text: string): string {
     cleaned = cleaned.replace(/^\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?\s+/, '');
     cleaned = cleaned.replace(/🔁\s*[^⏳📅🛫⏰✅❌🔺⏫🔼🔽⏬🟢\n]+/g, '');
     cleaned = cleaned.replace(/[🔺⏫🔼🟢🔽⏬]/g, '');
-    cleaned = cleaned.replace(/\[\s*gcalId::\s*[^\]]+\]/ig, '');
+    // Display only: [key:: value] inline fields (gcalId, Dataview fields) are hidden unless the setting is turned off.
+    // Files keep them; parseTaskLine / updateTaskInFile never go through this function.
+    if (scanSettings?.hideBracketMetadata !== false) cleaned = cleaned.replace(/\[[^\[\]]*?::[^\[\]]*\]/g, '');
     return cleaned.replace(/\s+/g, ' ').trim();
 }
+
+/** The sync-tracking tag with its leading space, as written by updateTaskInFile: ` [gcalId:: <id>]`. Hidden in note views only. */
+export const GCAL_ID_TAG_RE = / ?\[\s*gcalId::[^\]\n]*\]/gi;
 
 // 정렬용 헬퍼 함수
 export function compareTasks(a: TaskItem, b: TaskItem): number {
@@ -115,6 +120,13 @@ export function compareTasks(a: TaskItem, b: TaskItem): number {
     const timeA = a.startTime || '23:59';
     const timeB = b.startTime || '23:59';
     return timeA.localeCompare(timeB);
+}
+
+/** Content key of a task list: equal keys render identically (id carries path + line, originalLine every parsed field). */
+export function taskListSignature(tasks: TaskItem[]): string {
+    let key = '';
+    for (const t of tasks) key += `${t.id}\u0000${t.date}\u0000${t.originalLine}\n`;
+    return key;
 }
 
 // 맞춤형 체크박스 생성
@@ -266,6 +278,42 @@ export function scrollToTarget(containerEl: HTMLElement, target: 'now' | 'today'
     return top;
 }
 
+// Daily-note date fallback, memoised per note: strict moment parsing tries up to 6 formats and ran for every dateless
+// task line of the same note during a full scan
+const fileNameDateCache = new Map<string, string | null>();
+function dateFromFileName(filePath: string, dailyNotesFormat?: string): string | null {
+    const key = `${dailyNotesFormat ?? ''}|${filePath}`;
+    const hit = fileNameDateCache.get(key);
+    if (hit !== undefined) return hit;
+
+    const fileName = filePath.split(/[/\\]/).pop()?.replace(/\.md$/, '') || '';
+    let momentDate;
+    const moment = (window as any).moment;
+    if (dailyNotesFormat) {
+        const p = moment(fileName, dailyNotesFormat, true);
+        if (p.isValid()) momentDate = p;
+    }
+    if (!momentDate) {
+        const formats = ['YYYY-MM-DD', 'YYYY.MM.DD', 'YYYYMMDD', 'YYYY년 MM월 DD일', 'YYYY_MM_DD'];
+        for (const fmt of formats) {
+            const p = moment(fileName, fmt, true);
+            if (p.isValid()) {
+                momentDate = p;
+                break;
+            }
+        }
+    }
+    if (!momentDate) {
+        const match = fileName.match(/(\d{4}-\d{2}-\d{2})/);
+        if (match) {
+            momentDate = moment(match[1], 'YYYY-MM-DD', true);
+        }
+    }
+    const date = momentDate && momentDate.isValid() ? momentDate.format('YYYY-MM-DD') : null;
+    fileNameDateCache.set(key, date);
+    return date;
+}
+
 // 마크다운의 한 줄을 분석하여 TaskItem으로 반환
 export function parseTaskLine(line: string, filePath: string, lineNumber: number, dailyNotesFormat?: string): TaskItem | null {
     const checkboxMatch = line.match(/^\s*-\s*\[([^\]])\]\s*(.*)$/);
@@ -341,36 +389,7 @@ export function parseTaskLine(line: string, filePath: string, lineNumber: number
         remainingText = remainingText.replace('🟢', '').trim();
     }
 
-    let date = scheduledDate || dueDate;
-    if (!date) {
-        const fileName = filePath.split(/[/\\]/).pop()?.replace(/\.md$/, '') || '';
-        let momentDate;
-        const moment = (window as any).moment;
-        
-        if (dailyNotesFormat) {
-            const p = moment(fileName, dailyNotesFormat, true);
-            if (p.isValid()) momentDate = p;
-        }
-        if (!momentDate) {
-            const formats = ['YYYY-MM-DD', 'YYYY.MM.DD', 'YYYYMMDD', 'YYYY년 MM월 DD일', 'YYYY_MM_DD'];
-            for (const fmt of formats) {
-                const p = moment(fileName, fmt, true);
-                if (p.isValid()) {
-                    momentDate = p;
-                    break;
-                }
-            }
-        }
-        if (!momentDate) {
-            const match = fileName.match(/(\d{4}-\d{2}-\d{2})/);
-            if (match) {
-                momentDate = moment(match[1], 'YYYY-MM-DD', true);
-            }
-        }
-        if (momentDate && momentDate.isValid()) {
-            date = momentDate.format('YYYY-MM-DD');
-        }
-    }
+    const date = scheduledDate || dueDate || dateFromFileName(filePath, dailyNotesFormat);
 
     // 업무 소요 시각 파싱
     let startTime: string | null = null;
@@ -461,37 +480,136 @@ export function isSyncConflictPath(path: string): boolean {
     return /\.sync-conflict-/i.test(path);
 }
 
-export async function scanVaultTasks(app: App): Promise<TaskItem[]> {
-    const files = app.vault.getMarkdownFiles().filter(f => !isSyncConflictPath(f.path));
-    const tasks: TaskItem[] = [];
+// Settings the scanner reads. Set by the plugin on load and on every save, so exclusions apply from the very first
+// scan (looking the plugin up via app.plugins can return nothing while it is still loading).
+let scanSettings: DayPlannerSettings | null = null;
+export function setScanSettings(settings: DayPlannerSettings) {
+    scanSettings = settings;
+}
 
-    const plugin = (app as any).plugins?.getPlugin('obsidian-day-planner-pro');
-    const excludeLines = (plugin?.settings?.excludePaths || []).filter((p: string) => p.trim().length > 0);
-    const excludeMode = plugin?.settings?.excludeMatchMode || 'any';
+/** The date a task inherits from its note's file name (daily notes), as parseTaskLine falls back to; null if none */
+export function fileNameTaskDate(filePath: string): string | null {
+    return dateFromFileName(filePath, scanSettings?.dailyNotesFormat);
+}
 
-    for (const file of files) {
-        let isExcluded = false;
-        if (excludeLines.length > 0) {
-            if (excludeMode === 'all') {
-                isExcluded = excludeLines.every((excludePath: string) => {
-                    const normalizedExclude = excludePath.replace(/\\/g, '/').toLowerCase();
-                    const normalizedFilePath = file.path.replace(/\\/g, '/').toLowerCase();
-                    return normalizedFilePath.startsWith(normalizedExclude);
-                });
-            } else {
-                isExcluded = excludeLines.some((excludePath: string) => {
-                    const normalizedExclude = excludePath.replace(/\\/g, '/').toLowerCase();
-                    const normalizedFilePath = file.path.replace(/\\/g, '/').toLowerCase();
-                    return normalizedFilePath.startsWith(normalizedExclude);
-                });
-            }
+// NFC: paths synced from iOS/macOS can be NFD, so a typed Korean folder name would otherwise never match
+const normalizePathForMatch = (p: string) =>
+    p.normalize('NFC').replace(/\\/g, '/').replace(/^\.?\/+/, '').replace(/\/+$/, '').toLowerCase();
+
+/** One exclusion rule, compiled: `keep` rules ("!" prefix) re-include what an exclude rule caught */
+interface PathRule { keep: boolean; test: (target: string) => boolean }
+
+/**
+ * Compiles a rule body (already normalized). With "*" it is a pattern: "*" stays within one folder level, "**"
+ * crosses folders, and a match also covers ".md" and everything below a matched folder. Without it, the rule is
+ * that file (with or without ".md") or that folder and everything inside it.
+ */
+export function compilePathRule(raw: string): PathRule | null {
+    const trimmed = raw.trim();
+    const keep = trimmed.startsWith('!');
+    const body = normalizePathForMatch(keep ? trimmed.slice(1) : trimmed);
+    if (!body) return null;
+    if (!body.includes('*')) {
+        return { keep, test: t => t === body || t === `${body}.md` || t.startsWith(`${body}/`) };
+    }
+    const pattern = body
+        .split(/(\*\*|\*)/)
+        .map(part => part === '**' ? '.*' : part === '*' ? '[^/]*' : part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+        .join('');
+    const re = new RegExp(`^${pattern}(?:\\.md)?(?:/.*)?$`);
+    return { keep, test: t => re.test(t) };
+}
+
+let compiledRulesKey: string | null = null;
+let compiledRules: PathRule[] = [];
+
+/**
+ * "Excluded files & folders" (settings): a note is skipped when an exclude rule matches it and no keep ("!") rule
+ * does, so "Archive" + "!Archive/2026" scans only 2026 of the archive. Rules compile once per rule list (this runs
+ * for every note on each scan). The former "match all rules" mode is gone with the group builder it belonged to.
+ */
+export function isExcludedPath(path: string): boolean {
+    const rules = scanSettings?.excludePaths ?? [];
+    if (rules.length === 0) return false;
+    const key = rules.join('\u0000');
+    if (key !== compiledRulesKey) {
+        compiledRules = rules.map(compilePathRule).filter((r): r is PathRule => r !== null);
+        compiledRulesKey = key;
+    }
+    const target = normalizePathForMatch(path);
+    let excluded = false;
+    for (const rule of compiledRules) {
+        if (!rule.test(target)) continue;
+        if (rule.keep) return false;
+        excluded = true;
+    }
+    return excluded;
+}
+
+/**
+ * Vault path type-ahead on a text input: Obsidian's own suggestion popover, fuzzy-ranked like the quick switcher.
+ * `kind` limits it to markdown files, folders, or both. With `onPick` a choice is handed over (and the field
+ * cleared); without it the path is written into the field and an 'input' event lets Setting.onChange save it.
+ * Obsidian builds before 1.4.10 have no AbstractInputSuggest: the field then simply stays a plain text input.
+ */
+export function attachPathSuggest(app: App, inputEl: HTMLInputElement, kind: 'file' | 'folder' | 'any', onPick?: (path: string) => void): void {
+    if (typeof AbstractInputSuggest !== 'function') return;
+
+    class PathSuggest extends AbstractInputSuggest<TAbstractFile> {
+        protected getSuggestions(query: string): TAbstractFile[] {
+            const candidates = app.vault.getAllLoadedFiles().filter(f => {
+                if (isSyncConflictPath(f.path)) return false;
+                if (f instanceof TFolder) return kind !== 'file' && !f.isRoot();
+                return kind !== 'folder' && f instanceof TFile && f.extension === 'md';
+            });
+            const q = query.trim();
+            if (!q) return candidates.sort((a, b) => a.path.length - b.path.length || a.path.localeCompare(b.path)).slice(0, 50);
+            const fuzzy = prepareFuzzySearch(q);
+            return candidates
+                .map(f => ({ f, result: fuzzy(f.path) }))
+                .filter(x => x.result !== null)
+                .sort((a, b) => b.result!.score - a.result!.score)
+                .slice(0, 50)
+                .map(x => x.f);
         }
-        if (isExcluded) continue;
 
-        const plugin = (app as any).plugins?.plugins?.['obsidian-day-planner-pro'];
-        const dailyNotesFormat = plugin?.settings?.dailyNotesFormat;
+        renderSuggestion(file: TAbstractFile, el: HTMLElement): void {
+            el.addClass('dp-path-suggestion');
+            setIcon(el.createSpan({ cls: 'dp-path-suggestion-icon' }), file instanceof TFolder ? 'folder' : 'file-text');
+            const label = el.createSpan({ cls: 'dp-path-suggestion-label' });
+            const q = this.getValue().trim();
+            renderMatches(label, file.path, q ? prepareFuzzySearch(q)(file.path)?.matches ?? null : null);
+        }
 
-        const content = await app.vault.read(file);
+        selectSuggestion(file: TAbstractFile): void {
+            if (onPick) {
+                this.setValue('');
+                onPick(file.path);
+            } else {
+                this.setValue(file.path);
+                inputEl.dispatchEvent(new Event('input'));
+            }
+            this.close();
+        }
+    }
+    new PathSuggest(app, inputEl);
+}
+
+export async function scanVaultTasks(app: App): Promise<TaskItem[]> {
+    const files = app.vault.getMarkdownFiles().filter(f => !isSyncConflictPath(f.path) && !isExcludedPath(f.path));
+    const tasks: TaskItem[] = [];
+    const dailyNotesFormat = scanSettings?.dailyNotesFormat;
+
+    for (let f = 0; f < files.length; f++) {
+        const file = files[f];
+        // Yield to the main thread periodically so large vaults never lock the UI
+        if (f > 0 && f % 50 === 0) await new Promise(resolve => window.setTimeout(resolve, 0));
+        // metadataCache is in memory: notes it indexed without a single checkbox item are skipped with no file read.
+        // Unindexed files (no cache yet) are still read; later re-indexes arrive via metadataCache 'changed'.
+        const cache = app.metadataCache.getFileCache(file);
+        if (cache && !cache.listItems?.some(item => item.task !== undefined)) continue;
+        // cachedRead: served from memory for unchanged files instead of hitting the disk on every full scan
+        const content = await app.vault.cachedRead(file);
         const lines = content.split('\n');
 
         for (let i = 0; i < lines.length; i++) {
@@ -504,10 +622,29 @@ export async function scanVaultTasks(app: App): Promise<TaskItem[]> {
     return tasks;
 }
 
+// Per-note write queue: every read-modify-write the plugin makes (view edits, quick-add, background gcalId write-backs)
+// runs one at a time per note, so rapid edits to the same note can no longer overwrite each other's changes
+const fileWriteQueues = new Map<string, Promise<unknown>>();
+function withFileWriteLock<T>(path: string, fn: () => Promise<T>): Promise<T> {
+    const run = (fileWriteQueues.get(path) ?? Promise.resolve()).catch(() => undefined).then(fn);
+    fileWriteQueues.set(path, run);
+    const clear = () => { if (fileWriteQueues.get(path) === run) fileWriteQueues.delete(path); };
+    run.then(clear, clear);
+    return run;
+}
+
 // 파일 내 할 일 수정 및 동기화 [GCal 자동 연동 코드를 완전히 소거한 순수 파일 동기화로 원복]
-export async function updateTaskInFile(
-    app: App, 
-    task: TaskItem, 
+export function updateTaskInFile(
+    app: App,
+    task: TaskItem,
+    updates: Partial<Omit<TaskItem, 'id' | 'filePath' | 'lineNumber' | 'originalLine'>>
+): Promise<boolean> {
+    return withFileWriteLock(task.filePath, () => updateTaskInFileUnlocked(app, task, updates));
+}
+
+async function updateTaskInFileUnlocked(
+    app: App,
+    task: TaskItem,
     updates: Partial<Omit<TaskItem, 'id' | 'filePath' | 'lineNumber' | 'originalLine'>>
 ): Promise<boolean> {
     const file = app.vault.getAbstractFileByPath(task.filePath);
@@ -526,6 +663,12 @@ export async function updateTaskInFile(
     }
 
     if (targetIndex !== -1) {
+        // The line changed under this task object (e.g. a background sync wrote its gcalId back after the view parsed
+        // it): apply the update on top of the line as it is now, so neither that link nor newer content is lost
+        if (lines[targetIndex] !== task.originalLine) {
+            const onDisk = parseTaskLine(lines[targetIndex], task.filePath, targetIndex, scanSettings?.dailyNotesFormat);
+            if (onDisk) Object.assign(task, onDisk, { id: task.id });
+        }
         const statusCharVal = updates.statusChar !== undefined ? updates.statusChar : task.statusChar;
         const textVal = updates.text !== undefined ? updates.text : task.text;
         const startTimeVal = updates.startTime !== undefined ? updates.startTime : task.startTime;
@@ -658,6 +801,41 @@ export async function updateTaskInFile(
 }
 
 // 대상 태스크 저장 마크다운 파일 경로 결정 헬퍼 함수
+/** settings.defaultTaskFile as a vault path: ".md" ensured, "Day Planner.md" when the setting is empty */
+export function getDefaultTaskFilePath(settings: DayPlannerSettings): string {
+    let path = (settings.defaultTaskFile || '').trim().replace(/^\/+/, '') || 'Day Planner.md';
+    if (!path.toLowerCase().endsWith('.md')) path += '.md';
+    return path;
+}
+
+/**
+ * Enter-to-submit for a one-line input that also works with an IME (Hangul). Enter pressed while a syllable is still
+ * composing only commits it: Chromium on Windows sends that Enter as one keydown flagged isComposing / keyCode 229 and
+ * no second one, so ignoring it meant the user had to press Enter twice. The submit is replayed once the composition
+ * ends instead. The caller clears the field on submit, which makes the macOS sequence (a composing and a plain Enter
+ * keydown) harmless: the second submit finds the field empty.
+ */
+export function onEnterSubmit(input: HTMLInputElement, submit: () => void) {
+    let pending = false;
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+        // During composition e.key may read "Process"; e.code still names the physical key
+        const isEnter = e.key === 'Enter' || e.code === 'Enter' || e.code === 'NumpadEnter';
+        if (!isEnter) return;
+        if (e.isComposing || e.keyCode === 229) {
+            pending = true; // let the IME commit the syllable first (no preventDefault: that could cancel the commit)
+            return;
+        }
+        e.preventDefault();
+        pending = false;
+        submit();
+    });
+    input.addEventListener('compositionend', () => {
+        if (!pending) return;
+        pending = false;
+        window.setTimeout(submit, 0); // the committed syllable is in input.value by then
+    });
+}
+
 export function getTargetTaskFilePath(app: App, settings: DayPlannerSettings, dateStr?: string | null): string {
     const targetDate = dateStr || (window as any).moment().format('YYYY-MM-DD');
     
@@ -680,7 +858,7 @@ export function getTargetTaskFilePath(app: App, settings: DayPlannerSettings, da
 }
 
 // 새 할 일 생성
-export async function createNewTaskInFile(
+export function createNewTaskInFile(
     app: App,
     filePath: string,
     text: string,
@@ -690,9 +868,36 @@ export async function createNewTaskInFile(
     statusChar: string = ' ',
     priority: 'lowest' | 'low' | 'normal' | 'medium' | 'high' | 'highest' = 'normal',
     gcalEventId: string | null = null
-): Promise<void> {
+): Promise<TaskItem | null> {
+    // Same queue as edits: two quick-adds to one note must not both append to the same snapshot (and share a line number)
+    return withFileWriteLock(filePath, () =>
+        createNewTaskInFileUnlocked(app, filePath, text, date, startTime, endTime, statusChar, priority, gcalEventId));
+}
+
+async function createNewTaskInFileUnlocked(
+    app: App,
+    filePath: string,
+    text: string,
+    date: string | null,
+    startTime: string | null,
+    endTime: string | null,
+    statusChar: string,
+    priority: 'lowest' | 'low' | 'normal' | 'medium' | 'high' | 'highest',
+    gcalEventId: string | null
+): Promise<TaskItem | null> {
     let file = app.vault.getAbstractFileByPath(filePath);
     if (!(file instanceof TFile)) {
+        // A default task file in a folder that does not exist yet ("Inbox/Tasks.md"): create the folder first,
+        // vault.create() rejects otherwise and the task was silently lost
+        const slash = filePath.lastIndexOf('/');
+        const folder = slash > 0 ? filePath.slice(0, slash) : '';
+        if (folder && !app.vault.getAbstractFileByPath(folder)) {
+            try {
+                await app.vault.createFolder(folder);
+            } catch {
+                // created concurrently (or by sync) in the meantime
+            }
+        }
         file = await app.vault.create(filePath, '# Day Planner Tasks\n\n');
     }
 
@@ -720,6 +925,8 @@ export async function createNewTaskInFile(
 
     const updatedContent = content.endsWith('\n') ? content + newLine + '\n' : content + '\n' + newLine + '\n';
     await app.vault.modify(file as TFile, updatedContent);
+    // The appended line as a TaskItem (it sits just before the trailing newline), so callers can sync it without a rescan
+    return parseTaskLine(newLine, filePath, updatedContent.split('\n').length - 2, scanSettings?.dailyNotesFormat);
 }
 
 // 에디터에서 해당 라인으로 포커싱 이동
@@ -764,23 +971,18 @@ export function calculateClusteredLayout(timedItems: Array<{
         return (b.endMin - b.startMin) - (a.endMin - a.startMin);
     });
 
+    // Sorted by start, a cluster closes once an item starts at or after the latest end so far: one linear sweep instead
+    // of testing every item against every earlier cluster (and an item bridging two groups now merges them)
     const clusters: typeof timedItems[] = [];
+    let clusterEnd = -Infinity;
     timedItems.forEach(item => {
-        let assignedCluster: typeof timedItems | null = null;
-        for (const cluster of clusters) {
-            const overlaps = cluster.some(cItem => 
-                item.startMin < cItem.endMin && item.endMin > cItem.startMin
-            );
-            if (overlaps) {
-                assignedCluster = cluster;
-                break;
-            }
-        }
-        if (assignedCluster) {
-            assignedCluster.push(item);
+        if (item.startMin >= clusterEnd) {
+            clusters.push([]);
+            clusterEnd = item.endMin;
         } else {
-            clusters.push([item]);
+            clusterEnd = Math.max(clusterEnd, item.endMin);
         }
+        clusters[clusters.length - 1].push(item);
     });
 
     clusters.forEach(cluster => {
