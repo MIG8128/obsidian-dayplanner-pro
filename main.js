@@ -3354,6 +3354,20 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     opacity: 1;
     pointer-events: auto;
 }
+/* Tablets have no hover: the triage pills sit on their own row below the title */
+.is-mobile .dp-drawer-card {
+    flex-wrap: wrap;
+    cursor: default;
+}
+.is-mobile .dp-side-drawer .dp-drawer-card .dp-drawer-card-actions {
+    position: static;
+    flex-basis: 100%;
+    padding: 0 0 0 22px;
+    transform: none;
+    background: none;
+    opacity: 1;
+    pointer-events: auto;
+}
 .dp-side-drawer button.dp-drawer-card-action {
     height: 20px;
     padding: 0 6px;
@@ -3465,6 +3479,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-drawer-card:hover button.dp-priority-trigger.is-empty,
 .dp-drawer-card:focus-within button.dp-priority-trigger.is-empty {
     opacity: 1;
+}
+.is-mobile .dp-side-drawer button.dp-priority-trigger.is-empty {
+    opacity: 0.45;
 }
 .dp-priority-trigger svg {
     width: 13px;
@@ -13579,14 +13596,14 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.syncSearchBar(rootEl);
   }
   hasSideDrawer() {
-    return !this.useCompactLayout() && !import_obsidian6.Platform.isMobile && SIDE_DRAWER_TABS.includes(this.activeTab);
+    return !this.useCompactLayout() && SIDE_DRAWER_TABS.includes(this.activeTab);
   }
   isSideDrawerOpen() {
     return this.hasSideDrawer() && this.plugin.settings.sideDrawerOpen !== false;
   }
   async toggleSideDrawer(open = !this.isSideDrawerOpen()) {
     if (!this.hasSideDrawer()) {
-      new import_obsidian6.Notice("The side drawer is available in Dayloom on desktop.");
+      new import_obsidian6.Notice("The side drawer is available in Dayloom on desktop and tablet.");
       return;
     }
     this.plugin.settings.sideDrawerOpen = open;
