@@ -4576,7 +4576,21 @@ function getNextRecurrenceDate(dateStr, recurrence) {
   }
   return m.add(1, "days").format("YYYY-MM-DD");
 }
+var displayTextCache = /* @__PURE__ */ new Map();
+var DISPLAY_TEXT_CACHE_MAX = 5e3;
 function cleanTaskTextForDisplay(text) {
+  const hideMeta = scanSettings?.hideBracketMetadata !== false;
+  const key = (hideMeta ? "1" : "0") + text;
+  const hit = displayTextCache.get(key);
+  if (hit !== void 0)
+    return hit;
+  const result = cleanTaskTextUncached(text, hideMeta);
+  if (displayTextCache.size >= DISPLAY_TEXT_CACHE_MAX)
+    displayTextCache.clear();
+  displayTextCache.set(key, result);
+  return result;
+}
+function cleanTaskTextUncached(text, hideMeta) {
   let cleaned = text;
   cleaned = cleaned.replace(/\[\s*startTime::\s*[^\]]+\]/ig, "");
   cleaned = cleaned.replace(/startTime::\s*\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?/ig, "");
@@ -4587,7 +4601,7 @@ function cleanTaskTextForDisplay(text) {
   cleaned = cleaned.replace(/^\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?\s+/, "");
   cleaned = cleaned.replace(/🔁\s*[^⏳📅🛫⏰✅❌🔺⏫🔼🔽⏬🟢\n]+/g, "");
   cleaned = cleaned.replace(/[🔺⏫🔼🟢🔽⏬]/g, "");
-  if (scanSettings?.hideBracketMetadata !== false)
+  if (hideMeta)
     cleaned = cleaned.replace(/\[[^\[\]]*?::[^\[\]]*\]/g, "");
   return cleaned.replace(/\s+/g, " ").trim();
 }
@@ -4994,10 +5008,13 @@ async function scanVaultTasks(app) {
   const files = app.vault.getMarkdownFiles().filter((f) => !isSyncConflictPath(f.path) && !isExcludedPath(f.path));
   const tasks = [];
   const dailyNotesFormat = scanSettings?.dailyNotesFormat;
+  let sliceStart = performance.now();
   for (let f = 0; f < files.length; f++) {
     const file = files[f];
-    if (f > 0 && f % 50 === 0)
+    if (performance.now() - sliceStart > 12) {
       await new Promise((resolve) => window.setTimeout(resolve, 0));
+      sliceStart = performance.now();
+    }
     const cache = app.metadataCache.getFileCache(file);
     if (cache && !cache.listItems?.some((item) => item.task !== void 0))
       continue;
@@ -9113,6 +9130,48 @@ function debounce(func, wait) {
     timeout = setTimeout(later, wait);
   };
 }
+var RELATIVE_DATE_VALUES = /* @__PURE__ */ new Set(["today", "yesterday", "tomorrow", "this week", "this month", "this year"]);
+var relativeRangesKey = "";
+var relativeRanges = /* @__PURE__ */ new Map();
+var strictDateValidity = /* @__PURE__ */ new Map();
+function relativeDateRange(val) {
+  const moment = window.moment;
+  const now = new Date();
+  const key = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}|${moment.locale()}`;
+  if (key !== relativeRangesKey) {
+    relativeRangesKey = key;
+    relativeRanges.clear();
+  }
+  const hit = relativeRanges.get(val);
+  if (hit)
+    return hit;
+  const fmt = (m) => m.format("YYYY-MM-DD");
+  let range;
+  if (val === "yesterday")
+    range = [fmt(moment().subtract(1, "day")), fmt(moment().subtract(1, "day"))];
+  else if (val === "tomorrow")
+    range = [fmt(moment().add(1, "day")), fmt(moment().add(1, "day"))];
+  else if (val === "this week")
+    range = [fmt(moment().startOf("week")), fmt(moment().endOf("week"))];
+  else if (val === "this month")
+    range = [fmt(moment().startOf("month")), fmt(moment().endOf("month"))];
+  else if (val === "this year")
+    range = [fmt(moment().startOf("year")), fmt(moment().endOf("year"))];
+  else
+    range = [fmt(moment()), fmt(moment())];
+  relativeRanges.set(val, range);
+  return range;
+}
+function isStrictValidDate(dateStr) {
+  let valid = strictDateValidity.get(dateStr);
+  if (valid === void 0) {
+    valid = !!window.moment(dateStr, "YYYY-MM-DD", true).isValid();
+    if (strictDateValidity.size >= 5e3)
+      strictDateValidity.clear();
+    strictDateValidity.set(dateStr, valid);
+  }
+  return valid;
+}
 function matchFilterRule(task, rule) {
   const type = rule.type;
   const op = rule.operator;
@@ -9156,7 +9215,6 @@ function matchFilterRule(task, rule) {
     taskValue = task.text.toLowerCase();
   } else if (type === "date") {
     const itemDate = task.date || "";
-    const moment = window.moment;
     if (op === "isEmpty") {
       return !itemDate;
     }
@@ -9166,53 +9224,18 @@ function matchFilterRule(task, rule) {
     if (!itemDate) {
       return false;
     }
-    if (val === "today" || val === "yesterday" || val === "tomorrow" || val === "this week" || val === "this month" || val === "this year") {
-      const refDate = moment();
-      if (val === "yesterday")
-        refDate.subtract(1, "day");
-      if (val === "tomorrow")
-        refDate.add(1, "day");
-      const itemMoment = moment(itemDate, "YYYY-MM-DD", true);
-      if (!itemMoment.isValid())
+    if (RELATIVE_DATE_VALUES.has(val)) {
+      if (!isStrictValidDate(itemDate))
         return false;
-      if (val === "this week") {
-        if (op === "equals")
-          return itemMoment.isSame(moment(), "week");
-        if (op === "notEquals")
-          return !itemMoment.isSame(moment(), "week");
-        if (op === "isBefore")
-          return itemDate < moment().startOf("week").format("YYYY-MM-DD");
-        if (op === "isAfter")
-          return itemDate > moment().endOf("week").format("YYYY-MM-DD");
-      } else if (val === "this month") {
-        if (op === "equals")
-          return itemMoment.isSame(moment(), "month");
-        if (op === "notEquals")
-          return !itemMoment.isSame(moment(), "month");
-        if (op === "isBefore")
-          return itemDate < moment().startOf("month").format("YYYY-MM-DD");
-        if (op === "isAfter")
-          return itemDate > moment().endOf("month").format("YYYY-MM-DD");
-      } else if (val === "this year") {
-        if (op === "equals")
-          return itemMoment.isSame(moment(), "year");
-        if (op === "notEquals")
-          return !itemMoment.isSame(moment(), "year");
-        if (op === "isBefore")
-          return itemDate < moment().startOf("year").format("YYYY-MM-DD");
-        if (op === "isAfter")
-          return itemDate > moment().endOf("year").format("YYYY-MM-DD");
-      } else {
-        const targetStr = refDate.format("YYYY-MM-DD");
-        if (op === "equals")
-          return itemDate === targetStr;
-        if (op === "notEquals")
-          return itemDate !== targetStr;
-        if (op === "isBefore")
-          return itemDate < targetStr;
-        if (op === "isAfter")
-          return itemDate > targetStr;
-      }
+      const [first, last] = relativeDateRange(val);
+      if (op === "equals")
+        return itemDate >= first && itemDate <= last;
+      if (op === "notEquals")
+        return !(itemDate >= first && itemDate <= last);
+      if (op === "isBefore")
+        return itemDate < first;
+      if (op === "isAfter")
+        return itemDate > last;
       return false;
     }
     if (op === "equals")
@@ -9255,19 +9278,13 @@ function matchFilterGroup(task, group) {
   if (group.children) {
     if (group.children.length === 0)
       return true;
-    const matches = group.children.map((child) => {
-      if (child.kind === "group" || child.children !== void 0) {
-        return matchFilterGroup(task, child);
-      } else {
-        return matchFilterRule(task, child);
-      }
-    });
+    const matches = (child) => child.kind === "group" || child.children !== void 0 ? matchFilterGroup(task, child) : matchFilterRule(task, child);
     if (group.mode === "all")
-      return matches.every((m) => m === true);
+      return group.children.every(matches);
     if (group.mode === "any")
-      return matches.some((m) => m === true);
+      return group.children.some(matches);
     if (group.mode === "none")
-      return !matches.some((m) => m === true);
+      return !group.children.some(matches);
     return true;
   } else if (group.rules) {
     if (group.rules.length === 0)
@@ -9282,7 +9299,37 @@ function matchFilterGroup(task, group) {
   }
   return true;
 }
+var eventSpanCache = /* @__PURE__ */ new Map();
+var EVENT_SPAN_CACHE_MAX = 5e3;
+function getEventDaySpan(e) {
+  const key = `${e.isAllDay ? 1 : 0}|${e.start}|${e.end}|${e.dateStr}|${new Date().getTimezoneOffset()}`;
+  const hit = eventSpanCache.get(key);
+  if (hit)
+    return hit;
+  const moment = window.moment;
+  const span = {
+    dates: computeSpannedDates(e),
+    startDay: e.isAllDay ? "" : moment(e.start).format("YYYY-MM-DD"),
+    endDay: e.isAllDay ? "" : moment(e.end).format("YYYY-MM-DD")
+  };
+  if (eventSpanCache.size >= EVENT_SPAN_CACHE_MAX)
+    eventSpanCache.clear();
+  eventSpanCache.set(key, span);
+  return span;
+}
+function eventTimesOnDate(e, dateStr) {
+  if (e.isAllDay)
+    return { startTimeStr: e.startTimeStr, endTimeStr: e.endTimeStr };
+  const span = getEventDaySpan(e);
+  return {
+    startTimeStr: dateStr === span.startDay ? e.startTimeStr : "00:00",
+    endTimeStr: dateStr === span.endDay ? e.endTimeStr : "24:00"
+  };
+}
 function getSpannedDates(e) {
+  return getEventDaySpan(e).dates;
+}
+function computeSpannedDates(e) {
   const dates = [];
   const moment = window.moment;
   if (e.isAllDay) {
@@ -9331,7 +9378,6 @@ function matchGCalEventRule(event, rule) {
       return !tags.includes(cleanVal);
     return false;
   } else if (type === "date") {
-    const moment = window.moment;
     const spanned = getSpannedDates(event);
     if (spanned.length === 0)
       return false;
@@ -9343,31 +9389,8 @@ function matchGCalEventRule(event, rule) {
     if (op === "isNotEmpty") {
       return true;
     }
-    if (val === "today" || val === "yesterday" || val === "tomorrow" || val === "this week" || val === "this month" || val === "this year") {
-      let startRange;
-      let endRange;
-      if (val === "yesterday") {
-        const d = moment().subtract(1, "day").format("YYYY-MM-DD");
-        startRange = d;
-        endRange = d;
-      } else if (val === "tomorrow") {
-        const d = moment().add(1, "day").format("YYYY-MM-DD");
-        startRange = d;
-        endRange = d;
-      } else if (val === "this week") {
-        startRange = moment().startOf("week").format("YYYY-MM-DD");
-        endRange = moment().endOf("week").format("YYYY-MM-DD");
-      } else if (val === "this month") {
-        startRange = moment().startOf("month").format("YYYY-MM-DD");
-        endRange = moment().endOf("month").format("YYYY-MM-DD");
-      } else if (val === "this year") {
-        startRange = moment().startOf("year").format("YYYY-MM-DD");
-        endRange = moment().endOf("year").format("YYYY-MM-DD");
-      } else {
-        const d = moment().format("YYYY-MM-DD");
-        startRange = d;
-        endRange = d;
-      }
+    if (RELATIVE_DATE_VALUES.has(val)) {
+      const [startRange, endRange] = relativeDateRange(val);
       if (op === "equals") {
         return spanned.some((d) => d >= startRange && d <= endRange);
       }
@@ -9413,19 +9436,13 @@ function matchGCalEventGroup(event, group) {
   if (group.children) {
     if (group.children.length === 0)
       return true;
-    const matches = group.children.map((child) => {
-      if (child.kind === "group" || child.children !== void 0) {
-        return matchGCalEventGroup(event, child);
-      } else {
-        return matchGCalEventRule(event, child);
-      }
-    });
+    const matches = (child) => child.kind === "group" || child.children !== void 0 ? matchGCalEventGroup(event, child) : matchGCalEventRule(event, child);
     if (group.mode === "all")
-      return matches.every((m) => m === true);
+      return group.children.every(matches);
     if (group.mode === "any")
-      return matches.some((m) => m === true);
+      return group.children.some(matches);
     if (group.mode === "none")
-      return !matches.some((m) => m === true);
+      return !group.children.some(matches);
     return true;
   } else if (group.rules) {
     if (group.rules.length === 0)
@@ -9456,6 +9473,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     super(leaf);
     this.tasks = [];
     this.collapsedColumns = /* @__PURE__ */ new Set();
+    this.gcalDayIndex = null;
     this.savedScrollPositions = {};
     this.autoScrolledViews = /* @__PURE__ */ new Set();
     this.scrollToTodayRequested = false;
@@ -9521,15 +9539,9 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
       });
     } else if (self.parentNoteType === "weekly" && self.parentNoteDate) {
       const moment = window.moment;
-      const startOfWeek = moment(self.parentNoteDate, "YYYY-MM-DD").startOf("week");
-      const endOfWeek = moment(self.parentNoteDate, "YYYY-MM-DD").endOf("week");
-      cache = cache.filter((e) => {
-        const spanned = this.getSpannedDatesForEvent(e);
-        return spanned.some((dateStr) => {
-          const d = moment(dateStr, "YYYY-MM-DD");
-          return d.isSameOrAfter(startOfWeek, "day") && d.isSameOrBefore(endOfWeek, "day");
-        });
-      });
+      const startOfWeek = moment(self.parentNoteDate, "YYYY-MM-DD").startOf("week").format("YYYY-MM-DD");
+      const endOfWeek = moment(self.parentNoteDate, "YYYY-MM-DD").endOf("week").format("YYYY-MM-DD");
+      cache = cache.filter((e) => this.getSpannedDatesForEvent(e).some((dateStr) => dateStr >= startOfWeek && dateStr <= endOfWeek));
     }
     const terms = searchTerms(this.searchQuery ?? "");
     if (terms.length > 0) {
@@ -9546,7 +9558,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
       if (filters.children && filters.children.length > 0) {
         return cache.filter((e) => matchGCalEventGroup(e, filters));
       } else if (filters.rules && filters.rules.length > 0) {
-        return cache.filter((e) => matchGCalEventGroup(e, parseFilterGroup(filters)));
+        const group = parseFilterGroup(filters);
+        return cache.filter((e) => matchGCalEventGroup(e, group));
       }
     }
     return cache;
@@ -9579,33 +9592,31 @@ ${e.calendarName ?? ""}`.toLowerCase();
     return getSpannedDates(e);
   }
   getCalendarEventsForDate(dateStr) {
-    const events = [];
-    const moment = window.moment;
-    this.getCalendarEvents().forEach((e) => {
-      const spanned = this.getSpannedDatesForEvent(e);
-      if (spanned.includes(dateStr)) {
-        let effStartTimeStr = e.startTimeStr;
-        let effEndTimeStr = e.endTimeStr;
-        if (!e.isAllDay) {
-          const startMom = moment(e.start).startOf("day");
-          const endMom = moment(e.end).startOf("day");
-          const targetMom = moment(dateStr, "YYYY-MM-DD").startOf("day");
-          const isStartDay = targetMom.isSame(startMom, "day");
-          const isEndDay = targetMom.isSame(endMom, "day");
-          if (!isStartDay)
-            effStartTimeStr = "00:00";
-          if (!isEndDay)
-            effEndTimeStr = "24:00";
-        }
-        events.push({
-          ...e,
-          dateStr,
-          startTimeStr: effStartTimeStr,
-          endTimeStr: effEndTimeStr
+    const self = this;
+    const cacheKey = this.getGCalRange().cacheKey;
+    const source = this.plugin.gcalRanges.get(cacheKey)?.events;
+    const key = [cacheKey, self.parentNoteType, self.parentNoteDate, self.searchQuery ?? "", JSON.stringify(self.filters ?? null)].join("\0");
+    let index = self.gcalDayIndex;
+    if (!index || index.key !== key || index.events !== source) {
+      const byDate = /* @__PURE__ */ new Map();
+      this.getCalendarEvents().forEach((e) => {
+        this.getSpannedDatesForEvent(e).forEach((d) => {
+          const list = byDate.get(d);
+          if (list)
+            list.push(e);
+          else
+            byDate.set(d, [e]);
         });
-      }
-    });
-    return events;
+      });
+      const built = { key, events: source, byDate };
+      index = built;
+      self.gcalDayIndex = built;
+      void Promise.resolve().then(() => {
+        if (self.gcalDayIndex === built)
+          self.gcalDayIndex = null;
+      });
+    }
+    return (index.byDate.get(dateStr) ?? []).map((e) => ({ ...e, dateStr, ...eventTimesOnDate(e, dateStr) }));
   }
   applyAutoScroll(scroller, scrollKey, viewKind, target, fallbackTop = () => 0) {
     this.autoScrolledViews ?? (this.autoScrolledViews = /* @__PURE__ */ new Set());
@@ -10722,7 +10733,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
         if (filters.children && filters.children.length > 0) {
           this.tasks = this.tasks.filter((task) => matchFilterGroup(task, filters));
         } else if (filters.rules && filters.rules.length > 0) {
-          this.tasks = this.tasks.filter((task) => matchFilterGroup(task, parseFilterGroup(filters)));
+          const group = parseFilterGroup(filters);
+          this.tasks = this.tasks.filter((task) => matchFilterGroup(task, group));
         }
       }
       this.unsearchedTasks = this.tasks;
@@ -11269,12 +11281,15 @@ ${e.calendarName ?? ""}`.toLowerCase();
       marquee.style.width = `${width}px`;
       marquee.style.height = `${height}px`;
       const box = marquee.getBoundingClientRect();
+      const hits = [];
       getTimedEvents().forEach((el) => {
         const taskId = el.dataset.taskId ?? el.dataset.selectId ?? el.dataset.drawerTaskId;
         if (!taskId)
           return;
         const r = el.getBoundingClientRect();
-        const overlaps = !(r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom);
+        hits.push({ el, taskId, overlaps: !(r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom) });
+      });
+      hits.forEach(({ el, taskId, overlaps }) => {
         if (overlaps) {
           this.selectedTaskIds.add(taskId);
           el.addClass("selected");
@@ -13237,27 +13252,12 @@ ${e.calendarName ?? ""}`.toLowerCase();
         if (dateStr >= startStr && dateStr <= endStr) {
           if (!daysMap.has(dateStr))
             daysMap.set(dateStr, []);
-          let effStartTimeStr = event.startTimeStr;
-          let effEndTimeStr = event.endTimeStr;
-          if (!event.isAllDay) {
-            const moment = window.moment;
-            const startMom = moment(event.start).startOf("day");
-            const endMom = moment(event.end).startOf("day");
-            const targetMom = moment(dateStr, "YYYY-MM-DD").startOf("day");
-            const isStartDay = targetMom.isSame(startMom, "day");
-            const isEndDay = targetMom.isSame(endMom, "day");
-            if (!isStartDay)
-              effStartTimeStr = "00:00";
-            if (!isEndDay)
-              effEndTimeStr = "24:00";
-          }
           daysMap.get(dateStr).push({
             type: "event",
             event: {
               ...event,
               dateStr,
-              startTimeStr: effStartTimeStr,
-              endTimeStr: effEndTimeStr
+              ...eventTimesOnDate(event, dateStr)
             }
           });
         }
@@ -15218,6 +15218,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.codeBlockRenderers = /* @__PURE__ */ new Set();
     this.notifiedReminders = /* @__PURE__ */ new Set();
     this.notifiedRemindersDate = "";
+    this.statusBarKey = "";
     this.audioCtx = null;
   }
   requestViewRefresh() {
@@ -15584,7 +15585,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
             continue;
           due.push({
             key: `task:${t2.filePath}:${t2.text}:${t2.startTime}`,
-            title: cleanTaskTextForDisplay(t2.text),
+            title: () => cleanTaskTextForDisplay(t2.text),
             start: moment(`${todayStr} ${t2.startTime}`, "YYYY-MM-DD HH:mm")
           });
         }
@@ -15597,7 +15598,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
       for (const e of this.gcalCache) {
         if (e.isAllDay || e.dateStr !== todayStr)
           continue;
-        due.push({ key: `gcal:${e.calendarId}:${e.id}:${e.start}`, title: e.summary || "(No title)", start: moment(e.start) });
+        due.push({ key: `gcal:${e.calendarId}:${e.id}:${e.start}`, title: () => e.summary || "(No title)", start: moment(e.start) });
       }
     }
     const nowMs = now.valueOf();
@@ -15608,7 +15609,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
         continue;
       this.notifiedReminders.add(r.key);
       const mins = Math.round((startMs - nowMs) / 6e4);
-      const channel = this.deliverReminder(type, r.title, r.start.format("HH:mm"), mins <= 0 ? "Starting now" : `Starts in ${formatMinutesNice(mins)}`);
+      const channel = this.deliverReminder(type, r.title(), r.start.format("HH:mm"), mins <= 0 ? "Starting now" : `Starts in ${formatMinutesNice(mins)}`);
       if (channel === "notice")
         chime = true;
     }
@@ -15732,6 +15733,11 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
         }
       }
     }
+    const hideMeta = this.settings.hideBracketMetadata !== false;
+    const statusKey = activeTask ? `a|${activeTask.text}|${activeTask.startTime}|${activeTask.endTime}|${activeTask.statusChar}|${currentMinutes}|${hideMeta}` : nextTask ? `n|${nextTask.text}|${nextTask.startTime}|${nextTask.endTime}|${minNextDiff}|${hideMeta}` : "done";
+    if (statusKey === this.statusBarKey)
+      return;
+    this.statusBarKey = statusKey;
     const getProgressColor = (percent, statusChar) => {
       if (statusChar === "x") {
         return "#10b981";
