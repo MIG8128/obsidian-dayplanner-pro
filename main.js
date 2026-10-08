@@ -8739,8 +8739,7 @@ function renderSideDrawer(rootEl, view) {
       return;
     e.preventDefault();
     e.stopPropagation();
-    view.selectedTaskIds.clear();
-    view.applySelectionState();
+    view.dismissSelection();
   });
   const modes = drawer.createDiv({ cls: "dp-drawer-modes", attr: { role: "tablist", "aria-label": t("drawer.modes") } });
   modes.style.setProperty("--dp-mode-count", String(SIDE_DRAWER_PANELS.length));
@@ -9775,6 +9774,13 @@ ${e.calendarName ?? ""}`.toLowerCase();
       this.render();
     });
   }
+  dismissSelection() {
+    this.clearTouchActive();
+    this.selectedTaskIds.clear();
+    this.selectionZone = null;
+    this.containerEl.querySelectorAll(".dp-touch-lifted, .is-dragging").forEach((el) => el.removeClass("dp-touch-lifted", "is-dragging"));
+    this.applySelectionState();
+  }
   deleteSelectedItems() {
     const ids = this.selectedTaskIds;
     const tasks = (this.plugin.tasksCache ?? this.tasks).filter((task) => ids.has(task.id));
@@ -9815,14 +9821,34 @@ ${e.calendarName ?? ""}`.toLowerCase();
     this.touchActive = { refId, viewKey: this.touchViewKey() };
     card.addClass("is-touch-active");
     const doc = card.ownerDocument;
-    const dismiss = (e) => {
-      const hit = e.target?.closest?.(".dp-timeline-event");
-      if (hit?.dataset.taskId === refId)
-        return;
-      this.clearTouchActive();
+    const isOutside = (e) => {
+      const target = e.target;
+      if (target?.closest?.(".dp-timeline-event")?.dataset.taskId === refId)
+        return false;
+      return !target?.closest?.(".dp-selection-bar, .modal-container");
     };
-    doc.addEventListener("pointerdown", dismiss, true);
-    this.touchActiveDismiss = () => doc.removeEventListener("pointerdown", dismiss, true);
+    let tapStart = null;
+    const onDown = (e) => {
+      tapStart = null;
+      if (!isOutside(e))
+        return;
+      if (e.pointerType === "touch")
+        tapStart = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      else
+        this.dismissSelection();
+    };
+    const onUp = (e) => {
+      const start = tapStart;
+      tapStart = null;
+      if (start && start.id === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) <= 10)
+        this.dismissSelection();
+    };
+    doc.addEventListener("pointerdown", onDown, true);
+    doc.addEventListener("pointerup", onUp, true);
+    this.touchActiveDismiss = () => {
+      doc.removeEventListener("pointerdown", onDown, true);
+      doc.removeEventListener("pointerup", onUp, true);
+    };
   }
   clearTouchActive() {
     this.touchActiveDismiss?.();
@@ -10322,6 +10348,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       e.preventDefault();
       e.stopPropagation();
       void finish(false);
+      this.dismissSelection();
     };
     const teardown = () => {
       this.activePointerDrag = null;
@@ -10823,6 +10850,29 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const rootEl = container.createDiv({ cls: "dp-container" });
     this.renderRoot(rootEl);
     this.registerScrollIdleClass(rootEl);
+    let emptyTap = null;
+    const isEmptySpace = (target) => !target.closest("[data-task-id], [data-select-id], [data-drawer-task-id], .dp-selection-bar, .dp-inline-create, button, input, textarea, select, a, [contenteditable], .dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-tab, .dp-day-pill, .dp-kanban-col-toggle, .dp-priority-trigger");
+    rootEl.addEventListener("pointerdown", (e) => {
+      emptyTap = null;
+      if (!e.isPrimary || this.selectedTaskIds.size === 0 && !this.touchActive)
+        return;
+      const target = e.target;
+      if (!isEmptySpace(target))
+        return;
+      const scrolls = target.scrollHeight > target.clientHeight || target.scrollWidth > target.clientWidth;
+      if (scrolls && (e.offsetX > target.clientWidth || e.offsetY > target.clientHeight))
+        return;
+      if (e.pointerType === "touch")
+        emptyTap = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      else if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey)
+        this.dismissSelection();
+    });
+    rootEl.addEventListener("pointerup", (e) => {
+      const start = emptyTap;
+      emptyTap = null;
+      if (start && start.id === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) <= 10)
+        this.dismissSelection();
+    });
     rootEl.addEventListener("click", (e) => {
       if (!(e.ctrlKey || e.metaKey) || e.button !== 0)
         return;
@@ -10873,10 +10923,9 @@ ${e.calendarName ?? ""}`.toLowerCase();
         return;
       }
       if (e.key === "Escape") {
-        if (this.selectedTaskIds.size > 0) {
+        if (this.selectedTaskIds.size > 0 || this.touchActive || this.containerEl.querySelector(".selected, .is-touch-active, .dp-selection-bar")) {
           e.preventDefault();
-          this.selectedTaskIds.clear();
-          this.render();
+          this.dismissSelection();
         } else if (this instanceof DayPlannerCombinedView && this.searchQuery) {
           e.preventDefault();
           this.closeSearch();
@@ -11584,8 +11633,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       e.preventDefault();
       e.stopPropagation();
       end();
-      this.selectedTaskIds.clear();
-      this.render();
+      this.dismissSelection();
     };
     eventsCol.addEventListener("pointerdown", onDown);
   }
@@ -11652,11 +11700,26 @@ ${e.calendarName ?? ""}`.toLowerCase();
           label.setText(`${displayTitle} (${tempStart}-${tempEnd})`);
         }
       };
-      const onPointerUp = async (upEvent) => {
-        handle.releasePointerCapture(upEvent.pointerId);
+      const doc = handle.ownerDocument;
+      const detachResize = (pointerId) => {
+        if (handle.hasPointerCapture(pointerId))
+          handle.releasePointerCapture(pointerId);
         handle.removeEventListener("pointermove", onPointerMove);
         handle.removeEventListener("pointerup", onPointerUp);
         handle.removeEventListener("pointercancel", onPointerUp);
+        doc.removeEventListener("keydown", onResizeKey, true);
+      };
+      const onResizeKey = (ke) => {
+        if (ke.key !== "Escape")
+          return;
+        ke.preventDefault();
+        ke.stopPropagation();
+        detachResize(e.pointerId);
+        this.dismissSelection();
+        this.render();
+      };
+      const onPointerUp = async (upEvent) => {
+        detachResize(upEvent.pointerId);
         this.clearTouchActive();
         const deltaY = upEvent.clientY - startY;
         const deltaMin = Math.round(deltaY / ratio2 / 15) * 15;
@@ -11710,6 +11773,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       handle.addEventListener("pointermove", onPointerMove);
       handle.addEventListener("pointerup", onPointerUp);
       handle.addEventListener("pointercancel", onPointerUp);
+      doc.addEventListener("keydown", onResizeKey, true);
     });
   }
   async moveSelectedTimelineItems(primaryTaskId, isGCal, snappedMinutes, targetDateStr) {
