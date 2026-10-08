@@ -2471,42 +2471,59 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     }
 }
 
-/* Touch devices (Obsidian sets .is-mobile on <body>): Google Calendar-style dot handles instead of the full-width bars,
-   which covered titles on narrow cards. Start time at the top-left, end time at the bottom-right, so even a short card
-   keeps the two apart; each is an 8px dot inside a 24px touch target. */
-.is-mobile .dp-resize-handle,
-.is-mobile .dp-resize-handle:hover,
-.is-mobile .dp-resize-handle.dp-small-handle,
-.is-mobile .dp-resize-handle.dp-small-handle:hover {
-    width: 8px;
-    height: 8px;
-    box-sizing: border-box;
-    border-radius: 50%;
-    transform: none;
-    background-color: var(--background-primary);
-    border: 2px solid var(--interactive-accent);
-    box-shadow: 0 0 0 1px var(--dp-glass-border), 0 1px 3px rgba(0, 0, 0, 0.25);
+/* Touch devices (Obsidian sets .is-mobile on <body>): no resize handles on idle cards. A long-press makes a card
+   touch-active (position & resize mode, see setTouchActive): its top / bottom bars appear, styled like the desktop
+   bars, each with a 24px-tall touch target reaching into the card (the card clips anything outside it). */
+.is-mobile .dp-timeline-event:not(.is-touch-active) > .dp-resize-handle {
+    display: none;
 }
-.is-mobile .dp-resize-handle.top,
-.is-mobile .dp-resize-handle.dp-small-handle.top {
-    top: 2px;
-    left: 2px;
+/* A tablet with a trackpad or mouse attached: the desktop bars on hover, since a mouse cannot long-press */
+@media (any-pointer: fine) {
+    .is-mobile .dp-timeline-event:not(.is-touch-active):hover > .dp-resize-handle {
+        display: block;
+    }
 }
-.is-mobile .dp-resize-handle.bottom,
-.is-mobile .dp-resize-handle.dp-small-handle.bottom {
-    top: auto;
-    bottom: 2px;
-    left: auto;
-    right: 2px;
+.is-mobile .dp-timeline-event.is-touch-active {
+    touch-action: none; /* a finger on the active card drags it instead of scrolling the timeline */
 }
-.is-mobile .dp-resize-handle::after,
-.is-mobile .dp-resize-handle.dp-small-handle::after {
-    top: -8px;
+.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle,
+.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle:hover {
+    width: 36px;
+    height: 5px;
+    border-radius: 3px;
+    background-color: var(--interactive-accent);
+    box-shadow: 0 0 0 1px var(--dp-glass-border), 0 1px 4px rgba(0, 0, 0, 0.25);
+    animation: dp-touch-handle-in 0.16s ease-out;
+}
+.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle.top::after {
+    top: -3px;
+    bottom: -16px;
+    left: -24px;
+    right: -24px;
+}
+.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle.bottom::after {
+    top: -16px;
+    bottom: -3px;
+    left: -24px;
+    right: -24px;
+}
+/* Short cards: smaller targets, so the body between them can still be dragged */
+.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle.dp-small-handle.top::after {
     bottom: -8px;
-    left: -8px;
-    right: -8px;
 }
-/* The checkbox and the open-note arrow stay tappable where the top dot's touch target reaches them */
+.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle.dp-small-handle.bottom::after {
+    top: -8px;
+}
+@keyframes dp-touch-handle-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle {
+        animation: none;
+    }
+}
+/* The checkbox and the open-note arrow stay tappable where the top bar's touch target reaches them */
 .is-mobile .dp-timeline-event .dp-custom-cb,
 .is-mobile .dp-timeline-event .dp-task-link-btn {
     position: relative;
@@ -9572,6 +9589,8 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     this.activeDragItems = [];
     this.lastDragSnapKey = "";
     this.touchDragActive = false;
+    this.touchActive = null;
+    this.touchActiveDismiss = null;
     this.activePointerDrag = null;
     this.phoneBoardColumn = { kanban: "today", priority: "highest" };
     this.phoneBoardColumnIds = [];
@@ -9778,6 +9797,40 @@ ${e.calendarName ?? ""}`.toLowerCase();
   async performDelete(tasks, events) {
     this.selectedTaskIds.clear();
     await deletePlannerItems(this.plugin, tasks, events);
+  }
+  touchViewKey() {
+    return `${this.getViewTabType()}|${this.currentDate ? this.currentDate.format("YYYY-MM-DD") : ""}`;
+  }
+  isTouchActive(refId) {
+    const active = this.touchActive;
+    if (!active || active.refId !== refId)
+      return false;
+    if (active.viewKey === this.touchViewKey())
+      return true;
+    this.clearTouchActive();
+    return false;
+  }
+  setTouchActive(card, refId) {
+    this.clearTouchActive();
+    this.touchActive = { refId, viewKey: this.touchViewKey() };
+    card.addClass("is-touch-active");
+    const doc = card.ownerDocument;
+    const dismiss = (e) => {
+      const hit = e.target?.closest?.(".dp-timeline-event");
+      if (hit?.dataset.taskId === refId)
+        return;
+      this.clearTouchActive();
+    };
+    doc.addEventListener("pointerdown", dismiss, true);
+    this.touchActiveDismiss = () => doc.removeEventListener("pointerdown", dismiss, true);
+  }
+  clearTouchActive() {
+    this.touchActiveDismiss?.();
+    this.touchActiveDismiss = null;
+    if (!this.touchActive)
+      return;
+    this.touchActive = null;
+    this.containerEl.querySelectorAll(".dp-timeline-event.is-touch-active").forEach((el) => el.removeClass("is-touch-active"));
   }
   useCompactLayout() {
     return false;
@@ -10044,7 +10097,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const SLOP = 8;
     card.setAttribute("draggable", "false");
     this.attachMousePenDrag(card, source);
-    let holdTimer = 0, pointerId = -1, lifted = false;
+    const refId = source.kind === "timeline" ? source.refId : null;
+    let holdTimer = 0, pointerId = -1, lifted = false, armed = false;
     let startX = 0, startY = 0, lastX = 0, lastY = 0;
     const detach = () => {
       window.clearTimeout(holdTimer);
@@ -10053,45 +10107,58 @@ ${e.calendarName ?? ""}`.toLowerCase();
       card.removeEventListener("pointerup", detach);
       card.removeEventListener("pointercancel", detach);
     };
+    const lift = (fromHold) => {
+      detach();
+      if (!card.isConnected || this.activePointerDrag)
+        return;
+      lifted = true;
+      card.addClass("dp-touch-lifted");
+      if (fromHold && refId)
+        this.setTouchActive(card, refId);
+      const at = new PointerEvent("pointermove", { pointerId, pointerType: "touch", clientX: lastX, clientY: lastY, buttons: 1, isPrimary: true });
+      this.beginPointerDrag(card, source, startY, at, {
+        dropRequiresMove: fromHold,
+        onEnd: (moved) => {
+          lifted = false;
+          card.removeClass("dp-touch-lifted");
+          if (moved || !fromHold)
+            this.clearTouchActive();
+        }
+      });
+      if (fromHold)
+        triggerHaptic("lift");
+    };
     const onMove = (e) => {
       if (e.pointerId !== pointerId)
         return;
       lastX = e.clientX;
       lastY = e.clientY;
-      if (Math.hypot(lastX - startX, lastY - startY) > SLOP)
+      if (Math.hypot(lastX - startX, lastY - startY) <= SLOP)
+        return;
+      if (armed)
+        lift(false);
+      else
         detach();
     };
     card.addEventListener("pointerdown", (e) => {
       if (e.pointerType !== "touch" || !e.isPrimary || this.activePointerDrag)
         return;
+      armed = false;
       if (e.target.closest(".dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions, .dp-priority-trigger"))
         return;
       detach();
       pointerId = e.pointerId;
       startX = lastX = e.clientX;
       startY = lastY = e.clientY;
+      armed = !!refId && this.isTouchActive(refId);
       card.addEventListener("pointermove", onMove);
       card.addEventListener("pointerup", detach);
       card.addEventListener("pointercancel", detach);
-      holdTimer = window.setTimeout(() => {
-        detach();
-        if (!card.isConnected || this.activePointerDrag)
-          return;
-        lifted = true;
-        card.addClass("dp-touch-lifted");
-        const at = new PointerEvent("pointermove", { pointerId, pointerType: "touch", clientX: lastX, clientY: lastY, buttons: 1, isPrimary: true });
-        this.beginPointerDrag(card, source, startY, at, {
-          dropRequiresMove: true,
-          onEnd: () => {
-            lifted = false;
-            card.removeClass("dp-touch-lifted");
-          }
-        });
-        triggerHaptic("lift");
-      }, HOLD_MS);
+      if (!armed)
+        holdTimer = window.setTimeout(() => lift(true), HOLD_MS);
     });
     card.addEventListener("touchmove", (e) => {
-      if (lifted && e.cancelable)
+      if ((lifted || armed) && e.cancelable)
         e.preventDefault();
     }, { passive: false });
     card.addEventListener("contextmenu", (e) => {
@@ -10269,7 +10336,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       doc.body.removeClass("dp-pointer-dragging");
       ghost.remove();
       card.removeClass("is-dragging");
-      opts.onEnd?.();
+      opts.onEnd?.(movedSinceStart);
     };
     const finish = async (drop) => {
       if (frame) {
@@ -10884,6 +10951,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       document.removeEventListener("keydown", this.keydownHandler);
     }
     this.activePointerDrag?.cancel();
+    this.clearTouchActive();
     return super.onClose();
   }
   async refreshTasks(targetFile, forceFetchGCal = false, skipIfUnchanged = false) {
@@ -11589,6 +11657,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         handle.removeEventListener("pointermove", onPointerMove);
         handle.removeEventListener("pointerup", onPointerUp);
         handle.removeEventListener("pointercancel", onPointerUp);
+        this.clearTouchActive();
         const deltaY = upEvent.clientY - startY;
         const deltaMin = Math.round(deltaY / ratio2 / 15) * 15;
         let newStartMin = originalStartMin;
@@ -11749,6 +11818,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     let holdTimer = 0, frame = 0, pointerId = -1;
     let startX = 0, startY = 0, lastX = 0, lastY = 0, grabOffset = 0;
     let dragging = false, moved = false, suppressClick = false;
+    let armed = false;
     let column = null;
     const updatePreview = () => {
       const hit = document.elementFromPoint(lastX, lastY);
@@ -11790,9 +11860,13 @@ ${e.calendarName ?? ""}`.toLowerCase();
       lastY = e.clientY;
       const dist = Math.hypot(lastX - startX, lastY - startY);
       if (!dragging) {
-        if (dist > SLOP)
+        if (dist <= SLOP)
+          return;
+        if (!armed) {
           detach();
-        return;
+          return;
+        }
+        lift(false);
       }
       moved = moved || dist > SLOP;
       updatePreview();
@@ -11816,6 +11890,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       endDrag();
       if (!moved || !target)
         return;
+      this.clearTouchActive();
       const rect = target.getBoundingClientRect();
       const dateStr = target.getAttribute("data-date") || this.currentDate.format("YYYY-MM-DD");
       await this.moveSelectedTimelineItems(refId, isGCal, this.snapTimelineMinutes(lastY - rect.top - grabOffset, true), dateStr);
@@ -11823,6 +11898,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     card.addEventListener("pointerdown", (e) => {
       if (e.pointerType !== "touch" || !e.isPrimary || dragging)
         return;
+      armed = false;
       if (e.target.closest(".dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions, .dp-priority-trigger"))
         return;
       pointerId = e.pointerId;
@@ -11830,29 +11906,38 @@ ${e.calendarName ?? ""}`.toLowerCase();
       startY = lastY = e.clientY;
       moved = false;
       column = null;
+      armed = this.isTouchActive(refId);
       card.addEventListener("pointermove", onMove);
       card.addEventListener("pointerup", onUp);
       card.addEventListener("pointercancel", onCancel);
-      holdTimer = window.setTimeout(() => {
-        holdTimer = 0;
-        dragging = true;
-        this.touchDragActive = true;
-        if (!this.selectedTaskIds.has(refId)) {
-          this.selectedTaskIds.clear();
-          this.selectedTaskIds.add(refId);
-          previewRoot.querySelectorAll(".dp-timeline-event.selected").forEach((el) => el.removeClass("selected"));
-          card.addClass("selected");
-        }
-        grabOffset = this.timelineGrabOffset(card, startY);
-        this.initDragPreview(null, refId, grabOffset, previewRoot);
-        card.addClass("dp-touch-lifted");
-        triggerHaptic("lift");
-        updatePreview();
-        frame = requestAnimationFrame(autoScroll);
-      }, HOLD_MS);
+      if (!armed) {
+        holdTimer = window.setTimeout(() => {
+          holdTimer = 0;
+          lift(true);
+        }, HOLD_MS);
+      }
     });
+    const lift = (fromHold) => {
+      dragging = true;
+      this.touchDragActive = true;
+      if (!this.selectedTaskIds.has(refId)) {
+        this.selectedTaskIds.clear();
+        this.selectedTaskIds.add(refId);
+        previewRoot.querySelectorAll(".dp-timeline-event.selected").forEach((el) => el.removeClass("selected"));
+        card.addClass("selected");
+      }
+      grabOffset = this.timelineGrabOffset(card, startY);
+      this.initDragPreview(null, refId, grabOffset, previewRoot);
+      card.addClass("dp-touch-lifted");
+      if (fromHold) {
+        this.setTouchActive(card, refId);
+        triggerHaptic("lift");
+      }
+      updatePreview();
+      frame = requestAnimationFrame(autoScroll);
+    };
     card.addEventListener("touchmove", (e) => {
-      if (dragging && e.cancelable)
+      if ((dragging || armed) && e.cancelable)
         e.preventDefault();
     }, { passive: false });
     card.addEventListener("contextmenu", (e) => {
@@ -12033,6 +12118,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
       const eventCard = eventsCol.createDiv({ cls: cardCls });
       eventCard.style.cssText = customStyle;
       eventCard.setAttribute("data-task-id", item.refId);
+      if (this.isTouchActive(item.refId))
+        eventCard.addClass("is-touch-active");
       eventCard.dataset.startMin = String(item.startMin);
       eventCard.dataset.endMin = String(item.endMin);
       const locked = isLockedTask(item.taskRef);
@@ -12478,6 +12565,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
         const eventCard = dayCol.createDiv({ cls: cardCls });
         eventCard.style.cssText = customStyle;
         eventCard.setAttribute("data-task-id", item.refId);
+        if (this.isTouchActive(item.refId))
+          eventCard.addClass("is-touch-active");
         eventCard.dataset.startMin = String(item.startMin);
         eventCard.dataset.endMin = String(item.endMin);
         const locked = isLockedTask(item.taskRef);
