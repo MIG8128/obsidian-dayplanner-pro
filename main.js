@@ -976,6 +976,39 @@ var STYLES = `
     border-bottom: 2px solid var(--background-modifier-border);
     padding-bottom: 6px;
 }
+/* Fold chevron at the far left, before the title: [chevron] Title ........ [count] */
+.dp-kanban-col-header {
+    gap: 6px;
+}
+.dp-kanban-column:not(.collapsed) .dp-kanban-col-title {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.dp-kanban-col-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin-left: -4px;
+    border-radius: var(--radius-s, 4px);
+    color: var(--text-muted);
+    opacity: 0.6;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+.dp-kanban-column.collapsed .dp-kanban-col-toggle {
+    margin-left: 0;
+}
+.dp-kanban-col-toggle:hover {
+    opacity: 1;
+    background-color: var(--background-modifier-hover);
+}
+.dp-kanban-col-toggle svg {
+    width: 14px;
+    height: 14px;
+}
 .dp-kanban-col-count {
     background-color: var(--background-modifier-border);
     font-size: 0.8em;
@@ -2438,18 +2471,66 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     }
 }
 
-/* Touch devices: finger-sized hit areas (Obsidian sets .is-mobile on <body>) */
-.is-mobile .dp-resize-handle::after {
-    top: -12px;
-    bottom: -12px;
-    left: -16px;
-    right: -16px;
+/* Touch devices (Obsidian sets .is-mobile on <body>): Google Calendar-style dot handles instead of the full-width bars,
+   which covered titles on narrow cards. Start time at the top-left, end time at the bottom-right, so even a short card
+   keeps the two apart; each is an 8px dot inside a 24px touch target. */
+.is-mobile .dp-resize-handle,
+.is-mobile .dp-resize-handle:hover,
+.is-mobile .dp-resize-handle.dp-small-handle,
+.is-mobile .dp-resize-handle.dp-small-handle:hover {
+    width: 8px;
+    height: 8px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    transform: none;
+    background-color: var(--background-primary);
+    border: 2px solid var(--interactive-accent);
+    box-shadow: 0 0 0 1px var(--dp-glass-border), 0 1px 3px rgba(0, 0, 0, 0.25);
 }
+.is-mobile .dp-resize-handle.top,
+.is-mobile .dp-resize-handle.dp-small-handle.top {
+    top: 2px;
+    left: 2px;
+}
+.is-mobile .dp-resize-handle.bottom,
+.is-mobile .dp-resize-handle.dp-small-handle.bottom {
+    top: auto;
+    bottom: 2px;
+    left: auto;
+    right: 2px;
+}
+.is-mobile .dp-resize-handle::after,
 .is-mobile .dp-resize-handle.dp-small-handle::after {
     top: -8px;
     bottom: -8px;
-    left: -10px;
-    right: -10px;
+    left: -8px;
+    right: -8px;
+}
+/* The checkbox and the open-note arrow stay tappable where the top dot's touch target reaches them */
+.is-mobile .dp-timeline-event .dp-custom-cb,
+.is-mobile .dp-timeline-event .dp-task-link-btn {
+    position: relative;
+    z-index: 13;
+}
+/* Hold-to-drag: no iOS callout or text selection on a long-pressed card */
+.is-mobile .dp-container :is(.dp-timeline-event, .dp-kanban-card, .dp-drawer-card, .dp-grid-task-item, .dp-allday-item) {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+/* Touch drag: the held card lifts (slight scale-up, deeper glass shadow) while the finger moves it */
+.dp-timeline-event.dp-touch-lifted,
+.dp-timeline-event.selected.dp-touch-lifted {
+    transform: scale(1.04) !important;
+    box-shadow: var(--dp-glass-shadow), 0 10px 24px rgba(0, 0, 0, 0.28) !important;
+    z-index: 100 !important;
+    touch-action: none;
+}
+.dp-touch-lifted:not(.dp-timeline-event) {
+    transform: scale(1.04);
+    box-shadow: var(--dp-glass-shadow), 0 10px 24px rgba(0, 0, 0, 0.28);
+    touch-action: none;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
 }
 .is-mobile .dp-tabs > .dp-tab {
     height: 30px;
@@ -4515,6 +4596,7 @@ function triggerHaptic(type = "light", enabled = hapticsEnabled) {
   const patterns = {
     selection: 6,
     light: 10,
+    lift: 25,
     success: [10, 35, 15],
     warning: [20, 50, 20]
   };
@@ -9496,6 +9578,8 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     this.boardSwitcherScroll = {};
     this.inlineCreate = null;
     this.inlineCreateTeardown = null;
+    this.timelineTapStart = null;
+    this.lastTimelineTap = null;
     this.zoomPopoverOpen = false;
     this.zoomOutsideBound = false;
     this.syncInProgress = false;
@@ -9914,9 +9998,16 @@ ${e.calendarName ?? ""}`.toLowerCase();
     return this instanceof DayPlannerBaseView && !import_obsidian6.Platform.isMobile;
   }
   registerMouseDrag(card, source) {
+    if (import_obsidian6.Platform.isMobile) {
+      this.registerTouchHoldDrag(card, source);
+      return;
+    }
     if (!this.usesPointerMouseDrag())
       return;
     card.setAttribute("draggable", "false");
+    this.attachMousePenDrag(card, source);
+  }
+  attachMousePenDrag(card, source) {
     card.addEventListener("pointerdown", (e) => {
       if (e.pointerType === "touch" || e.button !== 0 || this.activePointerDrag)
         return;
@@ -9946,12 +10037,76 @@ ${e.calendarName ?? ""}`.toLowerCase();
       doc.addEventListener("pointercancel", stop);
     });
   }
-  beginPointerDrag(card, source, startY, ev) {
+  registerTouchHoldDrag(card, source) {
+    if (!import_obsidian6.Platform.isMobile || !(this instanceof DayPlannerBaseView) || this.useCompactLayout())
+      return;
+    const HOLD_MS = 320;
+    const SLOP = 8;
+    card.setAttribute("draggable", "false");
+    this.attachMousePenDrag(card, source);
+    let holdTimer = 0, pointerId = -1, lifted = false;
+    let startX = 0, startY = 0, lastX = 0, lastY = 0;
+    const detach = () => {
+      window.clearTimeout(holdTimer);
+      holdTimer = 0;
+      card.removeEventListener("pointermove", onMove);
+      card.removeEventListener("pointerup", detach);
+      card.removeEventListener("pointercancel", detach);
+    };
+    const onMove = (e) => {
+      if (e.pointerId !== pointerId)
+        return;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      if (Math.hypot(lastX - startX, lastY - startY) > SLOP)
+        detach();
+    };
+    card.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch" || !e.isPrimary || this.activePointerDrag)
+        return;
+      if (e.target.closest(".dp-custom-cb, .dp-task-link-btn, .dp-resize-handle, .dp-drawer-card-actions, .dp-priority-trigger"))
+        return;
+      detach();
+      pointerId = e.pointerId;
+      startX = lastX = e.clientX;
+      startY = lastY = e.clientY;
+      card.addEventListener("pointermove", onMove);
+      card.addEventListener("pointerup", detach);
+      card.addEventListener("pointercancel", detach);
+      holdTimer = window.setTimeout(() => {
+        detach();
+        if (!card.isConnected || this.activePointerDrag)
+          return;
+        lifted = true;
+        card.addClass("dp-touch-lifted");
+        const at = new PointerEvent("pointermove", { pointerId, pointerType: "touch", clientX: lastX, clientY: lastY, buttons: 1, isPrimary: true });
+        this.beginPointerDrag(card, source, startY, at, {
+          dropRequiresMove: true,
+          onEnd: () => {
+            lifted = false;
+            card.removeClass("dp-touch-lifted");
+          }
+        });
+        triggerHaptic("lift");
+      }, HOLD_MS);
+    });
+    card.addEventListener("touchmove", (e) => {
+      if (lifted && e.cancelable)
+        e.preventDefault();
+    }, { passive: false });
+    card.addEventListener("contextmenu", (e) => {
+      if (holdTimer || lifted)
+        e.preventDefault();
+    });
+  }
+  beginPointerDrag(card, source, startY, ev, opts = {}) {
     const doc = card.ownerDocument;
     const win = doc.defaultView ?? window;
     const pointerId = ev.pointerId;
     let x = ev.clientX;
     let y = ev.clientY;
+    const originX = x, originY = y;
+    let movedSinceStart = false;
     let grabOffset;
     let previewRoot;
     let group = [];
@@ -9972,11 +10127,12 @@ ${e.calendarName ?? ""}`.toLowerCase();
       this.initDragPreview(null, source.refId, grabOffset, previewRoot);
     } else {
       const fromDrawer = source.origin === "focus" || source.origin === "overdue" || source.origin === "undated";
-      const selection = fromDrawer && this.selectedTaskIds.has(source.task.id) ? this.drawerSelection() : [];
+      const selected = this.selectedTaskIds.has(source.task.id);
+      const selection = fromDrawer && selected ? this.drawerSelection() : source.origin === "board" && selected ? this.tasks.filter((t2) => this.selectedTaskIds.has(t2.id)) : [];
       group = selection.length > 1 ? selection : [source.task];
       this.selectedTaskIds.clear();
       group.forEach((task) => this.selectedTaskIds.add(task.id));
-      this.selectionZone = group.length > 1 ? "drawer" : null;
+      this.selectionZone = group.length > 1 ? fromDrawer ? "drawer" : "main" : null;
       grabOffset = 10;
       previewRoot = this.containerEl;
       this.initDragPreview(null, group[0].id, grabOffset, previewRoot);
@@ -10081,11 +10237,13 @@ ${e.calendarName ?? ""}`.toLowerCase();
       }
       x = e.clientX;
       y = e.clientY;
+      if (!movedSinceStart && Math.hypot(x - originX, y - originY) > 6)
+        movedSinceStart = true;
       schedule();
     };
     const onUp = (e) => {
       if (e.pointerId === pointerId)
-        void finish(true);
+        void finish(movedSinceStart || !opts.dropRequiresMove);
     };
     const onCancel = (e) => {
       if (e.pointerId === pointerId)
@@ -10111,6 +10269,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       doc.body.removeClass("dp-pointer-dragging");
       ghost.remove();
       card.removeClass("is-dragging");
+      opts.onEnd?.();
     };
     const finish = async (drop) => {
       if (frame) {
@@ -10155,7 +10314,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       }
       if (landing.kind === "board") {
         if (group.length > 0)
-          await this.dropTasksOnBoardColumn(group, landing.dateStr);
+          await this.dropTasksOnBoardColumn(group, landing.dateStr, landing.el.dataset.colTitle);
         return;
       }
       const minutes = landing.kind === "timeline" ? this.snapTimelineMinutes(y - landing.el.getBoundingClientRect().top - grabOffset, source.kind === "timeline") : null;
@@ -10329,17 +10488,48 @@ ${e.calendarName ?? ""}`.toLowerCase();
   openInlineCreate(e) {
     if (!this.usesPointerMouseDrag())
       return;
-    const target = e.target;
+    if (this.openInlineCreateAt(e.target, e.clientY))
+      e.preventDefault();
+  }
+  openInlineCreateAt(target, clientY) {
     if (target.closest(".dp-timeline-event, .dp-resize-handle"))
-      return;
+      return false;
     const col = target.closest(".dp-weekly-day-col, .dp-timeline-events");
     if (!col)
-      return;
-    e.preventDefault();
+      return false;
     const ratio = this.getHourHeight() / 60;
-    const minutes = this.snapTimelineMinutes(e.clientY - col.getBoundingClientRect().top - 7.5 * ratio);
+    const minutes = this.snapTimelineMinutes(clientY - col.getBoundingClientRect().top - 7.5 * ratio);
     this.inlineCreate = { dateStr: col.dataset.date || this.currentDate.format("YYYY-MM-DD"), minutes, draft: "" };
     this.mountInlineCreate();
+    return true;
+  }
+  registerDoubleTapCreate(pane) {
+    if (!import_obsidian6.Platform.isMobile || !(this instanceof DayPlannerBaseView))
+      return;
+    const TAP_MS = 300, TAP_SLOP = 10, GAP_MS = 300, GAP_DIST = 15;
+    pane.ontouchstart = (e) => {
+      const touch = e.touches.length === 1 ? e.touches[0] : null;
+      this.timelineTapStart = touch ? { x: touch.clientX, y: touch.clientY, at: Date.now() } : null;
+    };
+    pane.ontouchend = (e) => {
+      const start = this.timelineTapStart;
+      this.timelineTapStart = null;
+      const lastTap = this.lastTimelineTap;
+      const touch = e.changedTouches[0];
+      const now = Date.now();
+      if (!start || !touch || e.touches.length > 0 || this.touchDragActive || this.activePointerDrag || now - start.at > TAP_MS || Math.hypot(touch.clientX - start.x, touch.clientY - start.y) > TAP_SLOP) {
+        this.lastTimelineTap = null;
+        return;
+      }
+      const tap = { x: touch.clientX, y: touch.clientY, at: now };
+      if (!lastTap || now - lastTap.at > GAP_MS || Math.hypot(tap.x - lastTap.x, tap.y - lastTap.y) > GAP_DIST) {
+        this.lastTimelineTap = tap;
+        return;
+      }
+      this.lastTimelineTap = null;
+      if (this.openInlineCreateAt(e.target, tap.y))
+        e.preventDefault();
+    };
   }
   mountInlineCreate() {
     this.inlineCreateTeardown?.();
@@ -11415,6 +11605,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
         };
         const finalStart = formatMin(newStartMin);
         const finalEnd = formatMin(newEndMin);
+        if (newStartMin === originalStartMin && newEndMin === originalEndMin) {
+          this.render();
+          return;
+        }
         if (item.type === "gcal") {
           const cached = this.plugin.gcalCache.find((ev) => ev.id === item.refId);
           if (cached) {
@@ -11546,7 +11740,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     }
   }
   registerLongPressDrag(card, refId, isGCal, previewRoot) {
-    const HOLD_MS = 350;
+    const HOLD_MS = 320;
     const SLOP = 8;
     const EDGE = 48;
     if (import_obsidian6.Platform.isMobile)
@@ -11585,6 +11779,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const endDrag = () => {
       dragging = false;
       this.touchDragActive = false;
+      card.removeClass("dp-touch-lifted");
       cancelAnimationFrame(frame);
       this.clearDragPreview(previewRoot);
     };
@@ -11650,6 +11845,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
         }
         grabOffset = this.timelineGrabOffset(card, startY);
         this.initDragPreview(null, refId, grabOffset, previewRoot);
+        card.addClass("dp-touch-lifted");
+        triggerHaptic("lift");
         updatePreview();
         frame = requestAnimationFrame(autoScroll);
       }, HOLD_MS);
@@ -11677,6 +11874,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const ratio = hourHeight / 60;
     const scrollKey = `${this.getViewType()}:${dateStr}:daily`;
     parent.ondblclick = (e) => this.openInlineCreate(e);
+    this.registerDoubleTapCreate(parent);
     parent.onscroll = () => {
       this.savedScrollPositions[scrollKey] = {
         scrollTop: parent.scrollTop,
@@ -12021,6 +12219,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
   renderWeeklyView(parent, daysCount = 7, startFromCurrentDate = false) {
     parent.empty();
     parent.ondblclick = (e) => this.openInlineCreate(e);
+    this.registerDoubleTapCreate(parent);
     const scrollWrapper = parent.createDiv({ cls: "dp-weekly-scroll-wrapper" });
     const container = scrollWrapper.createDiv({ cls: "dp-weekly-container" });
     const DAY_COL_MIN = 84;
@@ -12829,6 +13028,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       colTasks.sort(compareTasks);
       const colEl = board.createDiv({ cls: "dp-kanban-column" });
       colEl.setAttribute("data-col-id", col.id);
+      colEl.dataset.colTitle = col.title;
       const isCollapsed = !phone && this.collapsedColumns.has(col.id);
       if (isCollapsed) {
         colEl.addClass("collapsed");
@@ -12847,20 +13047,11 @@ ${e.calendarName ?? ""}`.toLowerCase();
         header.style.paddingBottom = "0";
         header.style.gap = "8px";
       }
-      const titleSpan = header.createSpan({ text: col.title });
-      if (isCollapsed) {
-        titleSpan.style.writingMode = "vertical-lr";
-        titleSpan.style.textOrientation = "mixed";
-        titleSpan.style.transform = "rotate(180deg)";
-        titleSpan.style.whiteSpace = "nowrap";
-      }
-      header.createSpan({ cls: "dp-kanban-col-count", text: String(colTasks.length) });
       const toggleBtn = header.createSpan({
-        text: isCollapsed ? "\u25B6" : "\u25C0",
-        cls: "dp-kanban-col-toggle"
+        cls: "dp-kanban-col-toggle",
+        attr: { role: "button", "aria-label": isCollapsed ? "Expand column" : "Collapse column" }
       });
-      toggleBtn.addEventListener("mouseenter", () => toggleBtn.style.opacity = "1");
-      toggleBtn.addEventListener("mouseleave", () => toggleBtn.style.opacity = "0.6");
+      (0, import_obsidian6.setIcon)(toggleBtn, isCollapsed ? "chevron-right" : "chevron-down");
       toggleBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         if (isCollapsed) {
@@ -12878,6 +13069,14 @@ ${e.calendarName ?? ""}`.toLowerCase();
         }
         this.render();
       });
+      const titleSpan = header.createSpan({ cls: "dp-kanban-col-title", text: col.title });
+      if (isCollapsed) {
+        titleSpan.style.writingMode = "vertical-lr";
+        titleSpan.style.textOrientation = "mixed";
+        titleSpan.style.transform = "rotate(180deg)";
+        titleSpan.style.whiteSpace = "nowrap";
+      }
+      header.createSpan({ cls: "dp-kanban-col-count", text: String(colTasks.length) });
       if (!isCollapsed) {
         const cardsWrapper = colEl.createDiv({ cls: "dp-kanban-cards" });
         const colScrollKey = `${this.getViewType()}:kanban-column:${this.kanbanViewMode}:${col.id}`;
@@ -12961,6 +13160,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
             modal.open();
           });
           card.addEventListener("dragstart", (e) => this.startBoardCardDrag(e, task, card));
+          this.registerTouchHoldDrag(card, { kind: "task", task, origin: "board" });
           card.addEventListener("dragend", () => this.endBoardCardDrag(card));
         });
       }
@@ -13039,6 +13239,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       colTasks.sort(compareTasks);
       const colEl = board.createDiv({ cls: "dp-kanban-column" });
       colEl.setAttribute("data-col-id", col.id);
+      colEl.dataset.colTitle = col.title;
       const isCollapsed = !phone && this.collapsedColumns.has(col.id);
       if (isCollapsed) {
         colEl.addClass("collapsed");
@@ -13057,20 +13258,11 @@ ${e.calendarName ?? ""}`.toLowerCase();
         header.style.paddingBottom = "0";
         header.style.gap = "8px";
       }
-      const titleSpan = header.createSpan({ text: col.title });
-      if (isCollapsed) {
-        titleSpan.style.writingMode = "vertical-lr";
-        titleSpan.style.textOrientation = "mixed";
-        titleSpan.style.transform = "rotate(180deg)";
-        titleSpan.style.whiteSpace = "nowrap";
-      }
-      header.createSpan({ cls: "dp-kanban-col-count", text: String(colTasks.length) });
       const toggleBtn = header.createSpan({
-        text: isCollapsed ? "\u25B6" : "\u25C0",
-        cls: "dp-kanban-col-toggle"
+        cls: "dp-kanban-col-toggle",
+        attr: { role: "button", "aria-label": isCollapsed ? "Expand column" : "Collapse column" }
       });
-      toggleBtn.addEventListener("mouseenter", () => toggleBtn.style.opacity = "1");
-      toggleBtn.addEventListener("mouseleave", () => toggleBtn.style.opacity = "0.6");
+      (0, import_obsidian6.setIcon)(toggleBtn, isCollapsed ? "chevron-right" : "chevron-down");
       toggleBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
         if (isCollapsed) {
@@ -13088,6 +13280,14 @@ ${e.calendarName ?? ""}`.toLowerCase();
         }
         this.render();
       });
+      const titleSpan = header.createSpan({ cls: "dp-kanban-col-title", text: col.title });
+      if (isCollapsed) {
+        titleSpan.style.writingMode = "vertical-lr";
+        titleSpan.style.textOrientation = "mixed";
+        titleSpan.style.transform = "rotate(180deg)";
+        titleSpan.style.whiteSpace = "nowrap";
+      }
+      header.createSpan({ cls: "dp-kanban-col-count", text: String(colTasks.length) });
       if (!isCollapsed) {
         const cardsWrapper = colEl.createDiv({ cls: "dp-kanban-cards" });
         const colScrollKey = `${this.getViewType()}:kanban-column:${this.kanbanViewMode}:${col.id}`;
@@ -13161,6 +13361,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
             modal.open();
           });
           card.addEventListener("dragstart", (e) => this.startBoardCardDrag(e, task, card));
+          this.registerTouchHoldDrag(card, { kind: "task", task, origin: "board" });
           card.addEventListener("dragend", () => this.endBoardCardDrag(card));
         });
       }
