@@ -71,7 +71,8 @@ var DEFAULT_SETTINGS = {
   miniCalendarCollapsed: false,
   defaultTaskDuration: 60,
   showShortcutButton: true,
-  language: "auto"
+  language: "auto",
+  lastVersion: ""
 };
 var VIEW_TYPES = {
   COMBINED: "day-planner-pro-view",
@@ -2341,6 +2342,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    ------------------------------------------------------------- */
 .modal:has(.dp-modal-buttons, .dp-selector-modal-tabs),
 .modal.dp-shortcut-modal,
+.modal.dp-whats-new-modal,
 .menu.dp-glass-menu {
     background-color: var(--dp-glass-bg);
     backdrop-filter: var(--dp-glass-blur);
@@ -2353,8 +2355,91 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     border-radius: 12px;
 }
 /* Lighter dimming so the frost actually picks up the workspace behind it */
-.modal-container:has(.dp-modal-buttons, .dp-selector-modal-tabs, .dp-shortcut-modal) > .modal-bg {
+.modal-container:has(.dp-modal-buttons, .dp-selector-modal-tabs, .dp-shortcut-modal, .dp-whats-new-modal) > .modal-bg {
     opacity: 0.45;
+}
+
+/* What's New (release notes after an update) */
+.modal.dp-whats-new-modal {
+    width: min(520px, calc(100vw - 32px));
+    border-radius: 16px;
+}
+.dp-whats-new-header {
+    text-align: center;
+    padding-bottom: var(--size-4-3, 12px);
+    border-bottom: 1px solid var(--dp-glass-border);
+}
+.dp-whats-new-header h2 {
+    margin: 0 0 var(--size-4-1, 4px);
+    font-size: 1.3em;
+}
+.dp-whats-new-date {
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-muted);
+}
+.dp-whats-new-body {
+    max-height: min(60vh, 520px);
+    overflow-y: auto;
+    padding: var(--size-4-2, 8px) 2px;
+}
+.dp-whats-new-section {
+    margin-top: var(--size-4-3, 12px);
+}
+.dp-whats-new-section-title {
+    margin-bottom: var(--size-4-2, 8px);
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-semibold, 600);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--interactive-accent);
+}
+.dp-whats-new-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-4-2, 8px);
+}
+.dp-whats-new-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--size-4-3, 12px);
+    padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 10px;
+    background-color: var(--background-modifier-hover);
+}
+.dp-whats-new-emoji {
+    flex-shrink: 0;
+    font-size: 1.25em;
+    line-height: 1.4;
+}
+.dp-whats-new-text {
+    min-width: 0;
+}
+.dp-whats-new-item-title {
+    font-weight: var(--font-semibold, 600);
+}
+.dp-whats-new-item-desc {
+    margin-top: 2px;
+    font-size: var(--font-ui-small, 0.9em);
+    color: var(--text-muted);
+    line-height: 1.45;
+}
+.dp-whats-new-footer {
+    display: flex;
+    justify-content: center;
+    padding-top: var(--size-4-3, 12px);
+    border-top: 1px solid var(--dp-glass-border);
+}
+.dp-whats-new-modal button.dp-whats-new-ok {
+    min-width: 140px;
+    height: auto;
+    padding: 8px 28px;
+    border-radius: 999px;
+    font-weight: var(--font-semibold, 600);
+    box-shadow: var(--dp-glass-shadow);
 }
 
 /* Keyboard shortcut help (?) */
@@ -6374,6 +6459,15 @@ var en = {
   "settings.tab.display": "View/Display",
   "settings.language.desc": "Display language for Dayloom. Auto follows the language Obsidian is set to.",
   "settings.language.changed": "Dayloom language updated.",
+  "settings.releaseNotes.name": "Release notes",
+  "settings.releaseNotes.desc": "See what changed in this version of Dayloom ({version}).",
+  "settings.releaseNotes.button": "View Release Notes",
+  "whatsNew.title": "\u{1F389} What's New in Dayloom v{version}",
+  "whatsNew.released": "Released {date}",
+  "whatsNew.features": "New",
+  "whatsNew.improvements": "Improved",
+  "whatsNew.fixes": "Fixed",
+  "whatsNew.gotIt": "Got it!",
   "settings.defaultTaskFile.name": "Default Task File Path",
   "settings.defaultTaskFile.desc": "The default markdown file where tasks will be added when creating them in the planner.",
   "settings.exclusion.name": "Excluded Files & Folders",
@@ -6671,6 +6765,15 @@ var ko = {
   "settings.tab.display": "\uBCF4\uAE30/\uD45C\uC2DC",
   "settings.language.desc": "Dayloom\uC758 \uD45C\uC2DC \uC5B8\uC5B4\uC785\uB2C8\uB2E4. \uC790\uB3D9 \uAC10\uC9C0\uB294 Obsidian\uC758 \uC5B8\uC5B4 \uC124\uC815\uC744 \uB530\uB985\uB2C8\uB2E4.",
   "settings.language.changed": "Dayloom \uC5B8\uC5B4\uAC00 \uBCC0\uACBD\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
+  "settings.releaseNotes.name": "\uB9B4\uB9AC\uC2A4 \uB178\uD2B8",
+  "settings.releaseNotes.desc": "\uC774 \uBC84\uC804\uC758 Dayloom({version})\uC5D0\uC11C \uB2EC\uB77C\uC9C4 \uC810\uC744 \uD655\uC778\uD569\uB2C8\uB2E4.",
+  "settings.releaseNotes.button": "\uB9B4\uB9AC\uC2A4 \uB178\uD2B8 \uBCF4\uAE30",
+  "whatsNew.title": "\u{1F389} Dayloom v{version}\uC758 \uC0C8\uB85C\uC6B4 \uAE30\uB2A5",
+  "whatsNew.released": "{date} \uCD9C\uC2DC",
+  "whatsNew.features": "\uC0C8 \uAE30\uB2A5",
+  "whatsNew.improvements": "\uAC1C\uC120",
+  "whatsNew.fixes": "\uC218\uC815",
+  "whatsNew.gotIt": "\uD655\uC778",
   "settings.defaultTaskFile.name": "\uAE30\uBCF8 \uD560 \uC77C \uD30C\uC77C \uACBD\uB85C",
   "settings.defaultTaskFile.desc": "\uD50C\uB798\uB108\uC5D0\uC11C \uD560 \uC77C\uC744 \uB9CC\uB4E4 \uB54C \uCD94\uAC00\uB420 \uAE30\uBCF8 \uB9C8\uD06C\uB2E4\uC6B4 \uD30C\uC77C\uC785\uB2C8\uB2E4.",
   "settings.exclusion.name": "\uC81C\uC678\uD560 \uD30C\uC77C \uBC0F \uD3F4\uB354",
@@ -6968,6 +7071,15 @@ var ja = {
   "settings.tab.display": "\u8868\u793A",
   "settings.language.desc": "Dayloom \u306E\u8868\u793A\u8A00\u8A9E\u3067\u3059\u3002\u81EA\u52D5\u691C\u51FA\u306F Obsidian \u306E\u8A00\u8A9E\u8A2D\u5B9A\u306B\u5F93\u3044\u307E\u3059\u3002",
   "settings.language.changed": "Dayloom \u306E\u8A00\u8A9E\u3092\u5909\u66F4\u3057\u307E\u3057\u305F\u3002",
+  "settings.releaseNotes.name": "\u30EA\u30EA\u30FC\u30B9\u30CE\u30FC\u30C8",
+  "settings.releaseNotes.desc": "\u3053\u306E\u30D0\u30FC\u30B8\u30E7\u30F3\u306E Dayloom\uFF08{version}\uFF09\u306E\u5909\u66F4\u70B9\u3092\u78BA\u8A8D\u3057\u307E\u3059\u3002",
+  "settings.releaseNotes.button": "\u30EA\u30EA\u30FC\u30B9\u30CE\u30FC\u30C8\u3092\u898B\u308B",
+  "whatsNew.title": "\u{1F389} Dayloom v{version} \u306E\u65B0\u6A5F\u80FD",
+  "whatsNew.released": "{date} \u30EA\u30EA\u30FC\u30B9",
+  "whatsNew.features": "\u65B0\u6A5F\u80FD",
+  "whatsNew.improvements": "\u6539\u5584",
+  "whatsNew.fixes": "\u4FEE\u6B63",
+  "whatsNew.gotIt": "OK",
   "settings.defaultTaskFile.name": "\u65E2\u5B9A\u306E\u30BF\u30B9\u30AF\u30D5\u30A1\u30A4\u30EB",
   "settings.defaultTaskFile.desc": "\u30D7\u30E9\u30F3\u30CA\u30FC\u3067\u30BF\u30B9\u30AF\u3092\u4F5C\u6210\u3057\u305F\u3068\u304D\u306B\u8FFD\u52A0\u3055\u308C\u308B\u65E2\u5B9A\u306E Markdown \u30D5\u30A1\u30A4\u30EB\u3067\u3059\u3002",
   "settings.exclusion.name": "\u9664\u5916\u3059\u308B\u30D5\u30A1\u30A4\u30EB\u3068\u30D5\u30A9\u30EB\u30C0\u30FC",
@@ -7265,6 +7377,15 @@ var zh = {
   "settings.tab.display": "\u89C6\u56FE/\u663E\u793A",
   "settings.language.desc": "Dayloom \u7684\u663E\u793A\u8BED\u8A00\u3002\u81EA\u52A8\u68C0\u6D4B\u5C06\u8DDF\u968F Obsidian \u7684\u8BED\u8A00\u8BBE\u7F6E\u3002",
   "settings.language.changed": "Dayloom \u8BED\u8A00\u5DF2\u66F4\u6539\u3002",
+  "settings.releaseNotes.name": "\u53D1\u884C\u8BF4\u660E",
+  "settings.releaseNotes.desc": "\u67E5\u770B\u6B64\u7248\u672C Dayloom\uFF08{version}\uFF09\u7684\u66F4\u65B0\u5185\u5BB9\u3002",
+  "settings.releaseNotes.button": "\u67E5\u770B\u53D1\u884C\u8BF4\u660E",
+  "whatsNew.title": "\u{1F389} Dayloom v{version} \u65B0\u529F\u80FD",
+  "whatsNew.released": "{date} \u53D1\u5E03",
+  "whatsNew.features": "\u65B0\u529F\u80FD",
+  "whatsNew.improvements": "\u6539\u8FDB",
+  "whatsNew.fixes": "\u4FEE\u590D",
+  "whatsNew.gotIt": "\u77E5\u9053\u4E86",
   "settings.defaultTaskFile.name": "\u9ED8\u8BA4\u4EFB\u52A1\u6587\u4EF6\u8DEF\u5F84",
   "settings.defaultTaskFile.desc": "\u5728\u89C4\u5212\u5668\u4E2D\u521B\u5EFA\u4EFB\u52A1\u65F6\u6DFB\u52A0\u5230\u7684\u9ED8\u8BA4 Markdown \u6587\u4EF6\u3002",
   "settings.exclusion.name": "\u6392\u9664\u7684\u6587\u4EF6\u548C\u6587\u4EF6\u5939",
@@ -7387,6 +7508,68 @@ function t(key, vars) {
   if (!vars)
     return text;
   return text.replace(/\{(\w+)\}/g, (match, name) => name in vars ? String(vars[name]) : match);
+}
+
+// releaseNotes.ts
+var RELEASE_NOTES = [
+  {
+    version: "4.4.4",
+    date: "2026-10-08",
+    features: [
+      {
+        emoji: "\u{1F4F1}",
+        title: "Mobile long-press time resizing",
+        text: "Resize handles appear on demand on touch devices. Long-press a block: drag its body to move it, the top bar to change the start time, the bottom bar to change the end time."
+      },
+      {
+        emoji: "\u{1F4DF}",
+        title: "Tablet support",
+        text: "The full side drawer and its header button now work on iPad and Android tablets."
+      },
+      {
+        emoji: "\u270B",
+        title: "Drag and drop on tablets",
+        text: "Hold a task or event, then drag it to another time or day, a Monthly day, a Board column or the side drawer. A trackpad, mouse or Apple Pencil drags as on desktop."
+      },
+      {
+        emoji: "\u{1F446}",
+        title: "Double-tap to create",
+        text: "Double-tap an empty time slot on a phone or tablet to add a task, like a double-click on desktop."
+      }
+    ],
+    improvements: [
+      {
+        emoji: "\u26A1",
+        title: "Tap-outside dismissal",
+        text: "Tapping empty space or pressing Esc cleanly clears the selection and the resize mode, including in the middle of a drag or resize."
+      },
+      {
+        emoji: "\u{1F680}",
+        title: "Performance optimization",
+        text: "Weekly and Monthly with Google Calendar render far faster, date filters run about 25\xD7 faster, and large vaults scan with less lag."
+      },
+      {
+        emoji: "\u{1F4CB}",
+        title: "Board columns",
+        text: "The fold button is now a chevron at the far left of the column header."
+      },
+      {
+        emoji: "\u{1F4F3}",
+        title: "Long-press feel",
+        text: "A held card lifts slightly with a firmer haptic pulse."
+      }
+    ],
+    fixes: [
+      {
+        emoji: "\u{1F6E0}\uFE0F",
+        title: "Resize handle taps",
+        text: 'Tapping a resize handle without moving no longer rewrites the task or shows a "rescheduled" notice.'
+      }
+    ]
+  }
+];
+function getReleaseNotes(version) {
+  return RELEASE_NOTES.find((notes) => notes.version === version) ?? RELEASE_NOTES.find((notes) => version.startsWith(`${notes.version}.`)) ?? RELEASE_NOTES[0];
 }
 
 // modals.ts
@@ -7913,6 +8096,48 @@ var DeleteConfirmModal = class extends import_obsidian4.Modal {
     this.confirmed = true;
     this.close();
     this.onConfirm();
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+var WhatsNewModal = class extends import_obsidian4.Modal {
+  constructor(app, version) {
+    super(app);
+    this.version = version;
+  }
+  onOpen() {
+    const { contentEl, modalEl } = this;
+    const notes = getReleaseNotes(this.version);
+    modalEl.addClass("dp-whats-new-modal");
+    contentEl.empty();
+    const header = contentEl.createDiv({ cls: "dp-whats-new-header" });
+    header.createEl("h2", { text: t("whatsNew.title", { version: notes.version }) });
+    header.createDiv({ cls: "dp-whats-new-date", text: t("whatsNew.released", { date: notes.date }) });
+    const body = contentEl.createDiv({ cls: "dp-whats-new-body" });
+    const sections = [
+      [t("whatsNew.features"), notes.features],
+      [t("whatsNew.improvements"), notes.improvements],
+      [t("whatsNew.fixes"), notes.fixes]
+    ];
+    sections.forEach(([title, items]) => {
+      if (items.length === 0)
+        return;
+      const section = body.createDiv({ cls: "dp-whats-new-section" });
+      section.createDiv({ cls: "dp-whats-new-section-title", text: title });
+      const list = section.createEl("ul", { cls: "dp-whats-new-list" });
+      items.forEach((item) => {
+        const row = list.createEl("li", { cls: "dp-whats-new-item" });
+        row.createSpan({ cls: "dp-whats-new-emoji", text: item.emoji, attr: { "aria-hidden": "true" } });
+        const text = row.createDiv({ cls: "dp-whats-new-text" });
+        text.createDiv({ cls: "dp-whats-new-item-title", text: item.title });
+        text.createDiv({ cls: "dp-whats-new-item-desc", text: item.text });
+      });
+    });
+    const footer = contentEl.createDiv({ cls: "dp-whats-new-footer" });
+    const ok = footer.createEl("button", { cls: "mod-cta dp-whats-new-ok", text: t("whatsNew.gotIt") });
+    ok.addEventListener("click", () => this.close());
+    window.setTimeout(() => ok.focus({ preventScroll: true }), 0);
   }
   onClose() {
     this.contentEl.empty();
@@ -15261,6 +15486,7 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
       this.display();
       new import_obsidian7.Notice(t("settings.language.changed"));
     }));
+    new import_obsidian7.Setting(general).setName(t("settings.releaseNotes.name")).setDesc(t("settings.releaseNotes.desc", { version: this.plugin.manifest.version })).addButton((button) => button.setButtonText(t("settings.releaseNotes.button")).onClick(() => new WhatsNewModal(this.app, this.plugin.manifest.version).open()));
     this.addPathSetting(general, t("settings.defaultTaskFile.name"), t("settings.defaultTaskFile.desc"), "Day Planner.md", "file", this.plugin.settings.defaultTaskFile, async (value) => {
       this.plugin.settings.defaultTaskFile = value || "Day Planner.md";
       await this.plugin.saveSettings();
@@ -15574,6 +15800,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.notifiedRemindersDate = "";
     this.statusBarKey = "";
     this.audioCtx = null;
+    this.hadSavedSettings = false;
   }
   requestViewRefresh() {
     const now = Date.now();
@@ -15665,6 +15892,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
   async onload() {
     this.layoutReady = new Promise((resolve) => this.app.workspace.onLayoutReady(() => resolve()));
     await this.loadSettings();
+    await this.showWhatsNewAfterUpdate();
     await this.loadGCalCache();
     const styleEl = document.createElement("style");
     styleEl.id = "day-planner-pro-styles";
@@ -15718,6 +15946,11 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
         else
           new import_obsidian7.Notice(t("notice.openDayloomFirst"));
       }
+    });
+    this.addCommand({
+      id: "show-whats-new",
+      name: "What's New (Release Notes)",
+      callback: () => new WhatsNewModal(this.app, this.manifest.version).open()
     });
     this.addCommand({
       id: "show-keyboard-shortcuts",
@@ -16137,8 +16370,25 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
       this.statusBarItem.title = "All tasks for today are completed or no tasks scheduled.";
     }
   }
+  async showWhatsNewAfterUpdate() {
+    const current = this.manifest.version;
+    const previous = this.settings.lastVersion;
+    if (previous === current)
+      return;
+    const release = (version) => version.split(".").slice(0, 3).join(".");
+    const updated = previous ? release(previous) !== release(current) : this.hadSavedSettings;
+    this.settings.lastVersion = current;
+    try {
+      await this.saveData(this.settings);
+    } catch (err) {
+      console.warn("Day Planner Pro: could not record the plugin version", err);
+    }
+    if (updated)
+      this.app.workspace.onLayoutReady(() => new WhatsNewModal(this.app, current).open());
+  }
   async loadSettings() {
     const data = await this.loadData();
+    this.hadSavedSettings = !!data;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
     delete this.settings.reminderMinutesBefore;
     if (data?.showHelpButton === false && data?.showShortcutButton === void 0) {
