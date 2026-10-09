@@ -3246,11 +3246,17 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     font-size: var(--font-ui-small, 13px);
     line-height: 1;
 }
+/* Optical match, not box match: lucide's calendars fill ~18x20 of their 24-unit grid and plus 14x14, while the toolbar's
+   chevrons fill only 6x12 and menu 16x12. Equal 16px boxes made the header glyphs read ~1.5x larger, so they get
+   smaller boxes that land at the toolbar glyphs' visible height (~8-9px) */
 .dp-compact-shell .dp-header-top .dp-nav-date-icon svg,
-.dp-compact-shell .dp-header-actions > button.dp-today-btn svg,
+.dp-compact-shell .dp-header-actions > button.dp-today-btn svg {
+    width: calc(var(--dp-bar-icon, 16px) - 4px);
+    height: calc(var(--dp-bar-icon, 16px) - 4px);
+}
 .dp-compact-shell .dp-header-actions > button.dp-add-btn svg {
-    width: var(--dp-bar-icon, 16px);
-    height: var(--dp-bar-icon, 16px);
+    width: calc(var(--dp-bar-icon, 16px) - 2px);
+    height: calc(var(--dp-bar-icon, 16px) - 2px);
 }
 .dp-compact-shell .dp-header-actions > button:is(.dp-today-btn, .dp-add-btn) {
     min-height: 0;
