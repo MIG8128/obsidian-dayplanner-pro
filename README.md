@@ -2,8 +2,7 @@
 
 > The user guide for **Dayloom** (version 4.4.3), a time-blocking planner for Obsidian.
 > It walks through everything step by step, so you can follow along even if you are new to Obsidian.
->
-> 한국어 안내서: [README.ko.md](README.ko.md) (written for 4.4.3)
+> Available languages: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh.md)
 
 ---
 
