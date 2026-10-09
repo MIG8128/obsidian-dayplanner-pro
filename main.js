@@ -7587,6 +7587,17 @@ function createModalButton(parent, text, variant, icon) {
   btn.createSpan({ cls: "dp-modal-btn-label", text });
   return btn;
 }
+function registerDeleteShortcut(modal, requestDelete) {
+  const handler = (e) => {
+    if (isTypingContext(e))
+      return true;
+    e.preventDefault();
+    requestDelete();
+    return false;
+  };
+  modal.scope.register([], "Delete", handler);
+  modal.scope.register([], "Backspace", handler);
+}
 var TaskEditModal = class extends import_obsidian4.Modal {
   constructor(app, task, defaultDate, onSave, defaultStartTime = null, defaultEndTime = null) {
     super(app);
@@ -7760,14 +7771,18 @@ var TaskEditModal = class extends import_obsidian4.Modal {
     const task = this.task;
     const plugin = getPlannerPlugin(this.app);
     if (task && plugin) {
-      const deleteBtn = createModalButton(footer.start, t("common.delete"), "danger", "trash-2");
-      deleteBtn.addEventListener("click", (e) => {
-        e.preventDefault();
+      const requestDelete = () => {
         new DeleteConfirmModal(this.app, [{ kind: "task", title: cleanTaskTextForDisplay(task.text) }], () => {
           this.close();
           void deletePlannerItems(plugin, [task]);
         }).open();
+      };
+      const deleteBtn = createModalButton(footer.start, t("common.delete"), "danger", "trash-2");
+      deleteBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        requestDelete();
       });
+      registerDeleteShortcut(this, requestDelete);
     }
     const cancelBtn = createModalButton(footer.end, t("common.cancel"), "secondary");
     cancelBtn.addEventListener("click", (e) => {
@@ -7918,15 +7933,30 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
     });
     const footer = createModalFooter(form);
     if (this.event) {
+      const event = this.event;
+      let deleting = false;
+      const requestDelete = () => {
+        if (deleting)
+          return;
+        new DeleteConfirmModal(this.app, [{ kind: "event", title: event.summary || "\u2014" }], async () => {
+          deleting = true;
+          try {
+            if (await deleteGoogleCalendarEvent(this.plugin, formState.calendarId, event.id)) {
+              new import_obsidian4.Notice(t("eventModal.deleted"));
+              this.onSave();
+              this.close();
+            }
+          } finally {
+            deleting = false;
+          }
+        }).open();
+      };
       const deleteBtn = createModalButton(footer.start, t("common.delete"), "danger", "trash-2");
-      deleteBtn.addEventListener("click", async (e) => {
+      deleteBtn.addEventListener("click", (e) => {
         e.preventDefault();
-        if (await deleteGoogleCalendarEvent(this.plugin, formState.calendarId, this.event.id)) {
-          new import_obsidian4.Notice(t("eventModal.deleted"));
-          this.onSave();
-          this.close();
-        }
+        requestDelete();
       });
+      registerDeleteShortcut(this, requestDelete);
       const duplicateBtn = createModalButton(footer.start, t("eventModal.duplicate"), "secondary", "copy");
       duplicateBtn.addEventListener("click", async (e) => {
         e.preventDefault();
