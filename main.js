@@ -3002,37 +3002,58 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     width: 20px;
     height: 20px;
 }
-/* 1. Search: a full-width field */
-.dp-bottom-sheet > button.dp-sheet-search {
+/* One grouped surface for Search, Zoom and Sync (iOS grouped list): a single fill and border, hairline dividers */
+.dp-sheet-group {
     display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 10px;
-    width: 100%;
-    height: 46px;
-    min-height: 0;
-    margin: 0;
-    padding: 0 14px;
-    font-size: var(--font-ui-medium, 1em);
-    font-weight: normal;
-    color: var(--text-muted);
-    background-color: var(--background-modifier-form-field, var(--dp-segment-track));
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--dp-segment-track);
     border: 1px solid var(--dp-glass-border);
-    border-radius: 14px;
-    box-shadow: none;
-    cursor: text;
+    border-radius: 16px;
 }
-/* 2-3. Rows: zoom, sync */
-.dp-sheet-row {
+.dp-sheet-group > .dp-sheet-row {
     display: flex;
     align-items: center;
     gap: 12px;
+    width: 100%;
     min-height: 54px;
-    padding: 0 14px;
+    margin: 0;
+    padding: 0 16px;
     box-sizing: border-box;
-    background-color: var(--dp-segment-track);
-    border: 1px solid var(--dp-glass-border);
-    border-radius: 14px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+}
+.dp-sheet-group > .dp-sheet-row + .dp-sheet-row {
+    border-top: 1px solid var(--dp-glass-border);
+}
+/* Tappable rows (Search, Sync): press feedback across the full row */
+.dp-sheet-group > button.dp-sheet-row {
+    height: auto;
+    justify-content: flex-start;
+    text-align: left;
+    font: inherit;
+    color: var(--text-normal);
+    cursor: pointer;
+    -webkit-touch-callout: none; /* Sync: a long-press opens the sync options, not the iOS callout */
+    transition: background-color 0.15s ease;
+}
+.dp-sheet-group > button.dp-sheet-row:active {
+    background-color: var(--background-modifier-hover);
+}
+@media (hover: hover) {
+    .dp-sheet-group > button.dp-sheet-row:hover {
+        background-color: var(--background-modifier-hover);
+    }
+}
+.dp-sheet-group > button.dp-sheet-search {
+    font-size: var(--font-ui-medium, 1em);
+    color: var(--text-muted);
+}
+.dp-sheet-group > button.dp-sheet-sync {
+    padding-top: 8px;
+    padding-bottom: 8px;
 }
 .dp-bottom-sheet .dp-sheet-zoom > .dp-zoom-slider-floating {
     flex-direction: row;
@@ -3067,24 +3088,6 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     min-width: 44px;
     padding-left: 0;
     font-variant-numeric: tabular-nums;
-}
-.dp-bottom-sheet > button.dp-sheet-sync {
-    width: 100%;
-    height: auto;
-    margin: 0;
-    padding: 8px 14px;
-    justify-content: flex-start;
-    text-align: left;
-    font: inherit;
-    color: var(--text-normal);
-    box-shadow: none;
-    cursor: pointer;
-    -webkit-touch-callout: none; /* a long-press opens the sync options, not the iOS callout */
-    transition: background-color 0.15s ease, transform 0.1s ease;
-}
-.dp-bottom-sheet > button.dp-sheet-sync:active {
-    transform: scale(0.98);
-    background-color: var(--background-modifier-hover);
 }
 .dp-sheet-sync-text {
     display: flex;
@@ -5030,6 +5033,29 @@ body.dp-pointer-dragging * {
 .dp-search-float.is-open {
     display: flex;
     animation: dp-search-expand 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* Compact shell (Safari-style): the field docks over the bottom toolbar, in thumb reach and above the keyboard; the
+   header row stays, the toolbar steps aside. placeSearchBar anchors it by its bottom offset, so it rides up with the
+   pane when the keyboard shrinks it */
+.dp-compact-shell.dp-search-mode > .dp-header .dp-header-top {
+    visibility: visible;
+}
+.dp-compact-shell.dp-search-mode > .dp-bottom-nav {
+    visibility: hidden;
+}
+.dp-compact-shell > .dp-search-float {
+    z-index: 150; /* over the current-task bar (100) */
+    padding-left: 14px;
+}
+.dp-compact-shell > .dp-search-float.is-open {
+    animation: dp-search-rise 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dp-compact-shell > .dp-search-float input.dp-search-input {
+    font-size: max(16px, var(--font-ui-medium, 16px)); /* 16px+: iOS never zooms the page into the field */
+}
+@keyframes dp-search-rise {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: none; }
 }
 /* Grows leftward out of the toolbar's search button, at the row's right end */
 @keyframes dp-search-expand {
@@ -15306,7 +15332,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     const grabber = sheet.createDiv({ cls: "dp-sheet-grabber" });
     grabber.createDiv({ cls: "dp-sheet-grabber-bar" });
     this.registerSheetDragDismiss(sheet, grabber);
-    const search = sheet.createEl("button", { cls: "dp-sheet-search" });
+    const group = sheet.createDiv({ cls: "dp-sheet-group" });
+    const search = group.createEl("button", { cls: "dp-sheet-row dp-sheet-search" });
     (0, import_obsidian6.setIcon)(search.createSpan({ cls: "dp-sheet-icon" }), "search");
     search.createSpan({ text: t("sheet.search") });
     search.addEventListener("click", () => {
@@ -15314,10 +15341,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       this.openSearch();
     });
     if (this.activeTab === "daily" || this.activeTab === "weekly" || this.activeTab === "multiDay") {
-      sheet.createDiv({ cls: "dp-sheet-row dp-sheet-zoom" });
+      group.createDiv({ cls: "dp-sheet-row dp-sheet-zoom" });
     }
     if (this.plugin.settings.enableGoogleCalendar) {
-      const sync = sheet.createEl("button", { cls: "dp-sheet-row dp-sheet-sync" });
+      const sync = group.createEl("button", { cls: "dp-sheet-row dp-sheet-sync" });
       (0, import_obsidian6.setIcon)(sync.createSpan({ cls: "dp-sheet-icon dp-sheet-sync-icon" }), "refresh-cw");
       const text = sync.createDiv({ cls: "dp-sheet-sync-text" });
       text.createDiv({ cls: "dp-sheet-sync-title", text: t("nav.sync") });
@@ -15568,12 +15595,14 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   }
   placeSearchBar(rootEl) {
     const bar = rootEl.querySelector(":scope > .dp-search-float");
-    const row = rootEl.querySelector(":scope > .dp-header .dp-header-top");
+    const compact = this.useCompactLayout();
+    const row = rootEl.querySelector(compact ? ":scope > .dp-bottom-nav" : ":scope > .dp-header .dp-header-top");
     if (!bar || !row || !bar.hasClass("is-open"))
       return;
     const rootRect = rootEl.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();
-    bar.style.top = `${rowRect.top - rootRect.top}px`;
+    bar.style.top = compact ? "" : `${rowRect.top - rootRect.top}px`;
+    bar.style.bottom = compact ? `${rootRect.bottom - rowRect.bottom}px` : "";
     bar.style.left = `${rowRect.left - rootRect.left}px`;
     bar.style.width = `${rowRect.width}px`;
     bar.style.height = `${Math.max(32, rowRect.height)}px`;
