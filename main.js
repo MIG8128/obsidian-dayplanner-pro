@@ -2776,6 +2776,15 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Compact shell (.dp-compact-shell root): the combined view on phones and the Sidebar Day Planner Pro view.
    .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
+/* One bar height for the header row and the bottom toolbar: both rows, and every control in them, share it */
+.dp-container.dp-compact-shell {
+    --dp-bar-h: 40px;
+}
+/* Header: the same 12px side inset and 8px vertical breathing room as the bottom toolbar */
+.dp-container.dp-compact-shell > .dp-header {
+    padding: 8px 12px;
+    gap: 8px;
+}
 /* Bottom toolbar (Safari-style): three floating glass islands [\u2039 \u203A] [view tabs] [\u2630], lifted above Obsidian's own
    mobile toolbar (which overlays the view's bottom edge) and the home-indicator safe area */
 .dp-container.dp-compact-shell > .dp-bottom-nav {
@@ -2792,7 +2801,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 /* Shared island material */
 .dp-bottom-nav > .dp-bottom-island {
     flex-shrink: 0;
-    height: 40px;
+    height: var(--dp-bar-h, 40px);
     box-sizing: border-box;
     background-color: var(--dp-glass-bg);
     backdrop-filter: var(--dp-glass-blur);
@@ -2850,8 +2859,8 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    min-width: 40px;
+    width: var(--dp-bar-h, 40px);
+    min-width: var(--dp-bar-h, 40px);
     margin: 0;
     padding: 0;
     color: var(--text-normal);
@@ -2880,6 +2889,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 }
 /* Narrow sidebars: tighter islands so the four tabs keep their labels */
 @container dp-planner (max-width: 340px) {
+    .dp-container.dp-compact-shell > .dp-header {
+        padding: 8px;
+    }
     .dp-container.dp-compact-shell > .dp-bottom-nav {
         gap: 6px;
         margin-left: 8px;
@@ -3152,7 +3164,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     height: 28px;
 }
 .dp-compact-shell .dp-board-toggle {
-    height: 40px;
+    height: var(--dp-bar-h, 40px);
 }
 .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
     width: 34px;
@@ -3168,12 +3180,29 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     justify-content: space-between;
     align-items: center;
     gap: var(--size-4-2, 8px);
+    height: var(--dp-bar-h, 40px); /* exactly one toolbar island tall */
+}
+/* Date pill and Today wear the toolbar islands' material: raised fill, glass hairline, the same two-layer shadow */
+.dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact,
+.dp-compact-shell .dp-header-actions > button.dp-today-btn {
+    background-color: var(--dp-segment-active);
+    border: 1px solid var(--dp-glass-border);
+    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact.is-clickable:active {
+    background-color: var(--background-modifier-hover);
+    box-shadow: none;
+}
+@media (hover: hover) {
+    .dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact.is-clickable:hover {
+        background-color: var(--interactive-hover);
+    }
 }
 .dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact {
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    height: 40px;
+    height: var(--dp-bar-h, 40px);
     padding: 0 var(--size-4-3, 12px) 0 var(--size-4-2, 8px);
     font-size: var(--font-ui-medium, 1em);
 }
@@ -3183,16 +3212,13 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-compact-shell .dp-header-actions > button.dp-today-btn {
     gap: 6px;
     width: auto;
-    min-width: 40px;
-    height: 40px;
+    min-width: var(--dp-bar-h, 40px);
+    height: var(--dp-bar-h, 40px);
     padding: 0 14px;
     font-size: var(--font-ui-small, 0.9em);
     font-weight: var(--font-medium, 500);
     color: var(--text-normal);
-    background-color: var(--dp-segment-track);
-    border: 1px solid var(--dp-glass-border);
     border-radius: 999px;
-    box-shadow: none;
     transition: transform 0.1s ease, background-color 0.15s ease;
 }
 .dp-compact-shell .dp-header-actions > button.dp-today-btn:active {
@@ -3207,14 +3233,14 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     height: 18px;
 }
 .dp-compact-shell .dp-header-actions > button.dp-add-btn {
-    width: 40px;
-    min-width: 40px;
-    height: 40px;
+    width: var(--dp-bar-h, 40px);
+    min-width: var(--dp-bar-h, 40px);
+    height: var(--dp-bar-h, 40px);
 }
 /* The narrowest panes: Today goes icon-only so the date keeps its room */
 @container dp-planner (max-width: 360px) {
     .dp-compact-shell .dp-header-actions > button.dp-today-btn {
-        width: 40px;
+        width: var(--dp-bar-h, 40px);
         padding: 0;
     }
     .dp-compact-shell .dp-header-actions > button.dp-today-btn .dp-btn-label {
@@ -5596,15 +5622,7 @@ function createCustomCheckbox(parent, task, onClick) {
   }
   cb.addEventListener("click", (e) => {
     e.stopPropagation();
-    let nextStatus = " ";
-    if (task.statusChar === " ")
-      nextStatus = "/";
-    else if (task.statusChar === "/")
-      nextStatus = "x";
-    else if (task.statusChar === "x")
-      nextStatus = "-";
-    else
-      nextStatus = " ";
+    const nextStatus = task.statusChar === "x" ? " " : "x";
     triggerHaptic(nextStatus === "x" ? "success" : "selection");
     onClick(nextStatus);
   });
