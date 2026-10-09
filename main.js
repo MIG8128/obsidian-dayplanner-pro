@@ -71,6 +71,7 @@ var DEFAULT_SETTINGS = {
   miniCalendarCollapsed: false,
   defaultTaskDuration: 60,
   showShortcutButton: true,
+  swipeNavigation: true,
   language: "auto",
   lastVersion: ""
 };
@@ -6934,6 +6935,8 @@ var en = {
   "settings.hideMetadata.desc": "Hide bracketed inline fields such as [gcalId:: ...] from task titles in the planner, and the [gcalId:: ...] sync tag in Reading View and Live Preview. Files keep them; only the display is cleaned.",
   "settings.shortcutButton.name": "Show shortcut button in header",
   "settings.shortcutButton.desc": "Show the keyboard shortcut (?) button in the timeline header. The ? and h keys open the shortcut list either way.",
+  "settings.swipeNavigation.name": "Swipe to change dates",
+  "settings.swipeNavigation.desc": "On phones, swipe left or right inside the planner to page dates (and Board columns). Swipes that start at the screen edge always open the Obsidian sidebars. Turn off to leave every horizontal swipe to Obsidian.",
   "settings.haptics.name": "Haptic Feedback",
   "settings.haptics.desc": "Vibrate briefly when completing tasks, switching tabs or modes, and dragging or resizing timeline items. Only on mobile devices that support vibration.",
   "settings.reminderType.name": "Reminder Type",
@@ -7240,6 +7243,8 @@ var ko = {
   "settings.hideMetadata.desc": "\uD50C\uB798\uB108\uC758 \uD560 \uC77C \uC81C\uBAA9\uC5D0\uC11C [gcalId:: ...] \uAC19\uC740 \uB300\uAD04\uD638 \uC778\uB77C\uC778 \uD544\uB4DC\uB97C \uC228\uAE30\uACE0, \uC77D\uAE30 \uBCF4\uAE30\uC640 \uC2E4\uC2DC\uAC04 \uBBF8\uB9AC\uBCF4\uAE30\uC5D0\uC11C [gcalId:: ...] \uB3D9\uAE30\uD654 \uD0DC\uADF8\uB97C \uC228\uAE41\uB2C8\uB2E4. \uD30C\uC77C \uB0B4\uC6A9\uC740 \uADF8\uB300\uB85C\uC774\uBA70 \uD45C\uC2DC\uB9CC \uC815\uB9AC\uB429\uB2C8\uB2E4.",
   "settings.shortcutButton.name": "\uD5E4\uB354\uC5D0 \uB2E8\uCD95\uD0A4 \uBC84\uD2BC \uD45C\uC2DC",
   "settings.shortcutButton.desc": "\uD0C0\uC784\uB77C\uC778 \uD5E4\uB354\uC5D0 \uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4 (?) \uBC84\uD2BC\uC744 \uD45C\uC2DC\uD569\uB2C8\uB2E4. ? \uC640 h \uD0A4\uB85C\uB294 \uC5B8\uC81C\uB4E0 \uB2E8\uCD95\uD0A4 \uBAA9\uB85D\uC744 \uC5F4 \uC218 \uC788\uC2B5\uB2C8\uB2E4.",
+  "settings.swipeNavigation.name": "\uC2A4\uC640\uC774\uD504\uB85C \uB0A0\uC9DC \uC774\uB3D9",
+  "settings.swipeNavigation.desc": "\uD734\uB300\uD3F0\uC5D0\uC11C \uD50C\uB798\uB108 \uC548\uC744 \uC88C\uC6B0\uB85C \uC2A4\uC640\uC774\uD504\uD558\uBA74 \uB0A0\uC9DC(\uBCF4\uB4DC\uC5D0\uC11C\uB294 \uC5F4)\uB97C \uB118\uAE41\uB2C8\uB2E4. \uD654\uBA74 \uAC00\uC7A5\uC790\uB9AC\uC5D0\uC11C \uC2DC\uC791\uD55C \uC2A4\uC640\uC774\uD504\uB294 \uD56D\uC0C1 Obsidian \uC0AC\uC774\uB4DC\uBC14\uB97C \uC5FD\uB2C8\uB2E4. \uB044\uBA74 \uBAA8\uB4E0 \uAC00\uB85C \uC2A4\uC640\uC774\uD504\uB97C Obsidian\uC5D0 \uB9E1\uAE41\uB2C8\uB2E4.",
   "settings.haptics.name": "\uD585\uD2F1 \uD53C\uB4DC\uBC31",
   "settings.haptics.desc": "\uD560 \uC77C \uC644\uB8CC, \uD0ED\uC774\uB098 \uBAA8\uB4DC \uC804\uD658, \uD0C0\uC784\uB77C\uC778 \uD56D\uBAA9\uC744 \uB04C\uAC70\uB098 \uD06C\uAE30\uB97C \uBC14\uAFC0 \uB54C \uC9E7\uAC8C \uC9C4\uB3D9\uD569\uB2C8\uB2E4. \uC9C4\uB3D9\uC744 \uC9C0\uC6D0\uD558\uB294 \uBAA8\uBC14\uC77C \uAE30\uAE30\uC5D0\uC11C\uB9CC \uB3D9\uC791\uD569\uB2C8\uB2E4.",
   "settings.reminderType.name": "\uC54C\uB9BC \uBC29\uC2DD",
@@ -7546,6 +7551,8 @@ var ja = {
   "settings.hideMetadata.desc": "\u30D7\u30E9\u30F3\u30CA\u30FC\u306E\u30BF\u30B9\u30AF\u540D\u304B\u3089 [gcalId:: ...] \u306A\u3069\u306E\u89D2\u62EC\u5F27\u306E\u30A4\u30F3\u30E9\u30A4\u30F3\u30D5\u30A3\u30FC\u30EB\u30C9\u3092\u96A0\u3057\u3001\u95B2\u89A7\u30D3\u30E5\u30FC\u3068\u30E9\u30A4\u30D6\u30D7\u30EC\u30D3\u30E5\u30FC\u3067\u306F [gcalId:: ...] \u540C\u671F\u30BF\u30B0\u3092\u96A0\u3057\u307E\u3059\u3002\u30D5\u30A1\u30A4\u30EB\u306E\u5185\u5BB9\u306F\u305D\u306E\u307E\u307E\u3067\u3001\u8868\u793A\u3060\u3051\u304C\u6574\u7406\u3055\u308C\u307E\u3059\u3002",
   "settings.shortcutButton.name": "\u30D8\u30C3\u30C0\u30FC\u306B\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8\u30DC\u30BF\u30F3\u3092\u8868\u793A",
   "settings.shortcutButton.desc": "\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u306E\u30D8\u30C3\u30C0\u30FC\u306B\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8 (?) \u30DC\u30BF\u30F3\u3092\u8868\u793A\u3057\u307E\u3059\u3002? \u3068 h \u30AD\u30FC\u3067\u306F\u3044\u3064\u3067\u3082\u4E00\u89A7\u3092\u958B\u3051\u307E\u3059\u3002",
+  "settings.swipeNavigation.name": "\u30B9\u30EF\u30A4\u30D7\u3067\u65E5\u4ED8\u3092\u79FB\u52D5",
+  "settings.swipeNavigation.desc": "\u30B9\u30DE\u30FC\u30C8\u30D5\u30A9\u30F3\u3067\u30D7\u30E9\u30F3\u30CA\u30FC\u5185\u3092\u5DE6\u53F3\u306B\u30B9\u30EF\u30A4\u30D7\u3059\u308B\u3068\u65E5\u4ED8\uFF08\u30DC\u30FC\u30C9\u3067\u306F\u5217\uFF09\u3092\u5207\u308A\u66FF\u3048\u307E\u3059\u3002\u753B\u9762\u306E\u7AEF\u304B\u3089\u59CB\u3081\u305F\u30B9\u30EF\u30A4\u30D7\u306F\u5E38\u306B Obsidian \u306E\u30B5\u30A4\u30C9\u30D0\u30FC\u3092\u958B\u304D\u307E\u3059\u3002\u30AA\u30D5\u306B\u3059\u308B\u3068\u6A2A\u30B9\u30EF\u30A4\u30D7\u306F\u3059\u3079\u3066 Obsidian \u306B\u4EFB\u305B\u307E\u3059\u3002",
   "settings.haptics.name": "\u89E6\u899A\u30D5\u30A3\u30FC\u30C9\u30D0\u30C3\u30AF",
   "settings.haptics.desc": "\u30BF\u30B9\u30AF\u306E\u5B8C\u4E86\u3001\u30BF\u30D6\u3084\u30E2\u30FC\u30C9\u306E\u5207\u308A\u66FF\u3048\u3001\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3\u9805\u76EE\u306E\u30C9\u30E9\u30C3\u30B0\u3084\u30B5\u30A4\u30BA\u5909\u66F4\u306E\u969B\u306B\u77ED\u304F\u632F\u52D5\u3057\u307E\u3059\u3002\u632F\u52D5\u306B\u5BFE\u5FDC\u3057\u305F\u30E2\u30D0\u30A4\u30EB\u7AEF\u672B\u3067\u306E\u307F\u52D5\u4F5C\u3057\u307E\u3059\u3002",
   "settings.reminderType.name": "\u901A\u77E5\u65B9\u6CD5",
@@ -7852,6 +7859,8 @@ var zh = {
   "settings.hideMetadata.desc": "\u5728\u89C4\u5212\u5668\u7684\u4EFB\u52A1\u6807\u9898\u4E2D\u9690\u85CF [gcalId:: ...] \u7B49\u65B9\u62EC\u53F7\u884C\u5185\u5B57\u6BB5\uFF0C\u5E76\u5728\u9605\u8BFB\u89C6\u56FE\u548C\u5B9E\u65F6\u9884\u89C8\u4E2D\u9690\u85CF [gcalId:: ...] \u540C\u6B65\u6807\u7B7E\u3002\u6587\u4EF6\u5185\u5BB9\u4FDD\u6301\u4E0D\u53D8\uFF0C\u4EC5\u6E05\u7406\u663E\u793A\u3002",
   "settings.shortcutButton.name": "\u5728\u6807\u9898\u680F\u663E\u793A\u5FEB\u6377\u952E\u6309\u94AE",
   "settings.shortcutButton.desc": "\u5728\u65F6\u95F4\u7EBF\u6807\u9898\u680F\u4E2D\u663E\u793A\u952E\u76D8\u5FEB\u6377\u952E (?) \u6309\u94AE\u3002\u6309 ? \u6216 h \u952E\u968F\u65F6\u90FD\u80FD\u6253\u5F00\u5FEB\u6377\u952E\u5217\u8868\u3002",
+  "settings.swipeNavigation.name": "\u6ED1\u52A8\u5207\u6362\u65E5\u671F",
+  "settings.swipeNavigation.desc": "\u5728\u624B\u673A\u4E0A\uFF0C\u4E8E\u8BA1\u5212\u89C6\u56FE\u5185\u5DE6\u53F3\u6ED1\u52A8\u53EF\u5207\u6362\u65E5\u671F\uFF08\u770B\u677F\u4E2D\u5207\u6362\u5217\uFF09\u3002\u4ECE\u5C4F\u5E55\u8FB9\u7F18\u5F00\u59CB\u7684\u6ED1\u52A8\u59CB\u7EC8\u6253\u5F00 Obsidian \u4FA7\u8FB9\u680F\u3002\u5173\u95ED\u540E\uFF0C\u6240\u6709\u6A2A\u5411\u6ED1\u52A8\u90FD\u4EA4\u7ED9 Obsidian\u3002",
   "settings.haptics.name": "\u89E6\u611F\u53CD\u9988",
   "settings.haptics.desc": "\u5B8C\u6210\u4EFB\u52A1\u3001\u5207\u6362\u6807\u7B7E\u6216\u6A21\u5F0F\u3001\u62D6\u52A8\u6216\u8C03\u6574\u65F6\u95F4\u7EBF\u9879\u76EE\u5927\u5C0F\u65F6\u77ED\u6682\u632F\u52A8\u3002\u4EC5\u9002\u7528\u4E8E\u652F\u6301\u632F\u52A8\u7684\u79FB\u52A8\u8BBE\u5907\u3002",
   "settings.reminderType.name": "\u63D0\u9192\u65B9\u5F0F",
@@ -9465,6 +9474,7 @@ function renderTaskTitle(textEl, title, priority, prefix = "") {
   textEl.createSpan({ cls: "dp-task-title", text: title });
 }
 var CURRENT_TASK_TICK_MS = 5e3;
+var SWIPE_EDGE_PX = 32;
 var isLockedTask = (task) => !!task && (task.completed || task.statusChar === "x" || task.statusChar === "-");
 function grabOffsetIn(card, clientY) {
   const col = card.offsetParent;
@@ -15041,7 +15051,12 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       start = null;
       if (e.touches.length !== 1 || !["daily", "multiDay", "monthly", "list", "board"].includes(this.activeTab))
         return;
+      if (this.plugin.settings.swipeNavigation === false)
+        return;
       const touch = e.touches[0];
+      const viewportWidth = rootEl.ownerDocument.defaultView?.innerWidth ?? window.innerWidth;
+      if (touch.clientX < SWIPE_EDGE_PX || touch.clientX > viewportWidth - SWIPE_EDGE_PX)
+        return;
       const target = e.target;
       if (!target.closest(".day-planner-view-pane") || target.closest("input, textarea, select, .dp-resize-handle"))
         return;
@@ -16092,6 +16107,10 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
       this.plugin.settings.showShortcutButton = value;
       await this.plugin.saveSettings();
       this.plugin.refreshActiveViews();
+    }));
+    new import_obsidian7.Setting(mobileDisplay).setName(t("settings.swipeNavigation.name")).setDesc(t("settings.swipeNavigation.desc")).addToggle((toggle) => toggle.setValue(this.plugin.settings.swipeNavigation ?? true).onChange(async (value) => {
+      this.plugin.settings.swipeNavigation = value;
+      await this.plugin.saveSettings();
     }));
     new import_obsidian7.Setting(reminders).setName(t("settings.reminderType.name")).setDesc(t("settings.reminderType.desc")).addDropdown((dropdown) => dropdown.addOption("off", t("settings.reminderType.off")).addOption("auto", t("settings.reminderType.auto")).addOption("notice", t("settings.reminderType.notice")).addOption("system", t("settings.reminderType.system")).setValue(this.plugin.settings.reminderType ?? "auto").onChange(async (value) => {
       this.plugin.settings.reminderType = value;
