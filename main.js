@@ -7943,6 +7943,56 @@ function t(key, vars) {
 // releaseNotes.ts
 var RELEASE_NOTES = [
   {
+    version: "4.4.5",
+    date: "2026-10-09",
+    features: [
+      {
+        emoji: "\u{1F4C5}",
+        title: "One-day agenda on phones",
+        text: "On phones and in the compact sidebar, List shows one day as a clean timeline: times on the left, colour rails, the length and note of each item, and a summary of tasks done. Page days with the date pills, a swipe, or the < > buttons."
+      },
+      {
+        emoji: "\u23F1\uFE0F",
+        title: "Live in-progress tracker",
+        text: "The current-task bar in Daily has a new glass look with a progress line, and its time remaining now updates live. It also appears and disappears on its own when a task starts or ends."
+      },
+      {
+        emoji: "\u21A9\uFE0F",
+        title: "Undo for deleted events",
+        text: "Deleting a Google Calendar event, from its editor or the timeline, now shows Undo, which brings back the same event. The Delete key in the event editor asks first, like the Delete button."
+      }
+    ],
+    improvements: [
+      {
+        emoji: "\u{1F53A}",
+        title: "Consistent priority",
+        text: "Daily, N-day, Weekly, Monthly and all-day tasks show the priority emoji right before the title. List shows it as a coloured pill after the title."
+      },
+      {
+        emoji: "\u{1F9ED}",
+        title: "Simpler mobile tabs",
+        text: "The phone and compact tab bar is now Daily, List, Monthly, Board."
+      },
+      {
+        emoji: "\u{1F449}",
+        title: "Swipes share with Obsidian",
+        text: 'A swipe that starts at the screen edge opens the Obsidian sidebar; one further in changes the date. Turn off "Swipe to change dates" in settings to leave every swipe to Obsidian; < > buttons then appear in the header (they always show in the compact sidebar on desktop).'
+      }
+    ],
+    fixes: [
+      {
+        emoji: "\u{1F6E0}\uFE0F",
+        title: "Long List titles",
+        text: "A long title no longer pushes the priority and the note name out of view."
+      },
+      {
+        emoji: "\u{1F5D3}\uFE0F",
+        title: "Event delete calendar",
+        text: "Deleting an event from its editor always uses the event's own calendar, even after the calendar menu was changed."
+      }
+    ]
+  },
+  {
     version: "4.4.4",
     date: "2026-10-08",
     features: [
