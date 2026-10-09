@@ -2781,10 +2781,10 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     --dp-bar-h: 40px;
     --dp-bar-icon: 16px;
 }
-/* Header: the same 12px side inset and 8px vertical breathing room as the bottom toolbar */
+/* Header: the bottom toolbar's 12px side inset; a 44px band for the 40px row (2px above and below) */
 .dp-container.dp-compact-shell > .dp-header {
-    padding: 8px 12px;
-    gap: 8px;
+    padding: 2px 12px;
+    gap: 2px;
 }
 /* Bottom toolbar (Safari-style): three floating glass islands [\u2039 \u203A] [view tabs] [\u2630], lifted above Obsidian's own
    mobile toolbar (which overlays the view's bottom edge) and the home-indicator safe area */
@@ -2891,7 +2891,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 /* Narrow sidebars: tighter islands so the four tabs keep their labels */
 @container dp-planner (max-width: 340px) {
     .dp-container.dp-compact-shell > .dp-header {
-        padding: 8px;
+        padding: 2px 8px;
     }
     .dp-container.dp-compact-shell > .dp-bottom-nav {
         gap: 6px;
@@ -3267,6 +3267,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     gap: 5px;
     padding: 0 14px 0 12px;
     font-size: var(--font-ui-smaller, 12px);
+    font-weight: 600; /* as bold as the date pill */
 }
 /* The narrowest panes: Today goes icon-only so the date keeps its room */
 @container dp-planner (max-width: 360px) {
