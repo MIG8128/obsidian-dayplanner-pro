@@ -2776,40 +2776,68 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Compact shell (.dp-compact-shell root): the combined view on phones and the Sidebar Day Planner Pro view.
    .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
-/* Bottom bar: one slim floating pill [\u2630] [view tabs] [\u2039 \u203A], lifted above Obsidian's own mobile toolbar (which
-   overlays the view's bottom edge) and the home-indicator safe area */
+/* Bottom toolbar (Safari-style): three floating glass islands [\u2039 \u203A] [view tabs] [\u2630], lifted above Obsidian's own
+   mobile toolbar (which overlays the view's bottom edge) and the home-indicator safe area */
 .dp-container.dp-compact-shell > .dp-bottom-nav {
-    position: relative; /* anchors the \u2630 menu */
     display: flex;
     align-items: center;
     flex-shrink: 0;
-    gap: 2px;
+    gap: 8px;
     margin: 0 12px max(8px, env(safe-area-inset-bottom, 0px));
-    padding: 3px;
-    border: 1px solid var(--dp-glass-border);
-    border-radius: 999px;
-    background-color: var(--dp-glass-bg);
-    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight); /* no blur: nothing scrolls behind this row */
     z-index: 30;
 }
 .is-phone .dp-phone-shell > .dp-bottom-nav {
     margin-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
 }
-/* The tabs fill the middle; the bar itself is their track */
+/* Shared island material */
+.dp-bottom-nav > .dp-bottom-island {
+    flex-shrink: 0;
+    height: 40px;
+    box-sizing: border-box;
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 999px;
+    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
+}
+/* Left: \u2039 \u203A capsule */
+.dp-bottom-nav > .dp-bottom-pager {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 3px;
+}
+.dp-bottom-pager > .dp-bottom-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 32px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    color: var(--text-normal);
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+/* Center: the view tabs fill the middle island */
 .dp-compact-shell .dp-bottom-nav > .dp-tabs.dp-bottom-tabs {
     flex: 1 1 auto;
     min-width: 0;
     width: auto;
-    padding: 0;
-    background: transparent;
-    border: none;
-    border-radius: 999px;
+    gap: 2px;
+    padding: 3px;
 }
-/* Text-only pills, one 28px row (the label span ellipsizes; the button stays unclipped for the sliding pill) */
+/* Text-only pills (the label span ellipsizes; the button stays unclipped for the sliding pill) */
 .dp-compact-shell .dp-bottom-tabs > .dp-tab {
     flex: 1 1 0;
     min-width: 0;
-    height: 28px;
+    height: 32px;
     padding: 0 6px;
     border-radius: 999px;
     font-size: var(--font-ui-smaller, 12px);
@@ -2817,164 +2845,272 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-compact-shell .dp-bottom-tabs > .dp-tab.active {
     color: var(--text-accent);
 }
-/* \u2630 and \u2039 \u203A: round icon buttons at the bar's ends */
-.dp-bottom-pager,
-.dp-bottom-menu-wrap {
-    display: flex;
-    flex-shrink: 0;
-    gap: 2px;
-}
-.dp-bottom-nav .dp-bottom-bar-btn {
+/* Right: standalone round \u2630 */
+.dp-bottom-nav > button.dp-bottom-menu-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    width: 34px;
-    height: 28px;
-    min-height: 0;
+    width: 40px;
+    min-width: 40px;
     margin: 0;
     padding: 0;
-    color: var(--text-muted);
-    background: transparent;
-    border: none;
-    border-radius: 999px;
-    box-shadow: none;
+    color: var(--text-normal);
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
 }
+.dp-bottom-nav > button.dp-bottom-menu-btn.is-active {
+    color: var(--text-accent);
+    background-color: color-mix(in srgb, var(--interactive-accent) 16%, var(--dp-glass-bg));
+}
 @media (hover: hover) {
-    .dp-bottom-nav .dp-bottom-bar-btn:hover {
-        color: var(--text-normal);
+    .dp-bottom-pager > .dp-bottom-bar-btn:hover,
+    .dp-bottom-nav > button.dp-bottom-menu-btn:hover {
         background-color: var(--background-modifier-hover);
     }
 }
-.dp-bottom-nav .dp-bottom-bar-btn:active {
+.dp-bottom-pager > .dp-bottom-bar-btn:active,
+.dp-bottom-nav > button.dp-bottom-menu-btn:active {
     transform: scale(0.92);
     background-color: var(--background-modifier-hover);
 }
-.dp-bottom-nav .dp-bottom-bar-btn.is-active {
-    color: var(--text-accent);
-    background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+.dp-bottom-pager svg,
+.dp-bottom-menu-btn svg {
+    width: 20px;
+    height: 20px;
 }
-.dp-bottom-bar-btn svg {
-    width: 18px;
-    height: 18px;
+/* Narrow sidebars: tighter islands so the four tabs keep their labels */
+@container dp-planner (max-width: 340px) {
+    .dp-container.dp-compact-shell > .dp-bottom-nav {
+        gap: 6px;
+        margin-left: 8px;
+        margin-right: 8px;
+    }
+    .dp-bottom-pager > .dp-bottom-bar-btn {
+        width: 30px;
+    }
+    .dp-compact-shell .dp-bottom-tabs > .dp-tab {
+        padding: 0 3px;
+    }
 }
-/* \u2630 menu: glass popover rising from the button (content scrolls behind it, so it gets the blur) */
-.dp-bottom-menu {
+
+/* \u2630 bottom sheet: full width (12px margins), slides up over the toolbar and the current-task bar (z-index 100)
+   above a dimming backdrop; content passes behind it, so it gets the glass blur */
+.dp-sheet-backdrop {
     position: absolute;
-    left: 0;
-    bottom: calc(100% + 8px);
-    z-index: 40;
+    inset: 0;
+    z-index: 200;
+    background-color: rgba(0, 0, 0, 0.28);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.24s ease, visibility 0s linear 0.24s;
+}
+.dp-sheet-open > .dp-sheet-backdrop {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.24s ease, visibility 0s;
+}
+.dp-bottom-sheet {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    z-index: 201;
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    min-width: 220px;
-    padding: 6px;
+    gap: 8px;
+    padding: 0 12px 12px;
     box-sizing: border-box;
     background-color: var(--dp-glass-bg);
     backdrop-filter: var(--dp-glass-blur);
     -webkit-backdrop-filter: var(--dp-glass-blur);
     border: 1px solid var(--dp-glass-border);
-    border-radius: 16px;
+    border-radius: 22px;
     box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
-    transform-origin: bottom left;
-    opacity: 0;
-    transform: translateY(8px) scale(0.96);
+    transform: translateY(calc(100% + 140px));
     visibility: hidden;
-    pointer-events: none;
-    transition: opacity 0.16s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.2s;
+    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 0.34s;
 }
-.dp-bottom-menu.is-open {
-    opacity: 1;
+.is-phone .dp-phone-shell > .dp-bottom-sheet {
+    bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
+}
+.dp-sheet-open > .dp-bottom-sheet {
     transform: none;
     visibility: visible;
-    pointer-events: auto;
-    transition: opacity 0.16s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
+    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1), visibility 0s;
+}
+.dp-bottom-sheet.is-dragging {
+    transition: none;
+}
+/* The current-task bar steps aside under an open sheet */
+.dp-compact-shell > .dp-current-task-bar {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.dp-compact-shell.dp-sheet-open > .dp-current-task-bar {
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
 }
 @media (prefers-reduced-motion: reduce) {
-    .dp-bottom-menu,
-    .dp-bottom-menu.is-open {
+    .dp-bottom-sheet,
+    .dp-sheet-open > .dp-bottom-sheet {
+        transition: opacity 0.15s ease, visibility 0s linear 0.15s;
         transform: none;
+        opacity: 0;
+    }
+    .dp-sheet-open > .dp-bottom-sheet {
+        opacity: 1;
+        transition: opacity 0.15s ease, visibility 0s;
     }
 }
-.dp-bottom-menu > .dp-bottom-menu-item {
+/* Grabber: drag it down to dismiss */
+.dp-sheet-grabber {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    margin: 0 -12px;
+    cursor: grab;
+    touch-action: none;
+}
+.dp-sheet-grabber-bar {
+    width: 38px;
+    height: 5px;
+    border-radius: 3px;
+    background-color: var(--background-modifier-border-hover, var(--text-faint));
+}
+.dp-sheet-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+.dp-sheet-icon svg,
+.dp-sheet-zoom .dp-zoom-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+/* 1. Search: a full-width field */
+.dp-bottom-sheet > button.dp-sheet-search {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
-    height: 44px;
+    height: 46px;
     min-height: 0;
     margin: 0;
-    padding: 0 12px;
+    padding: 0 14px;
     font-size: var(--font-ui-medium, 1em);
-    font-weight: var(--font-medium, 500);
-    text-align: left;
-    color: var(--text-normal);
-    background: transparent;
-    border: none;
-    border-radius: 10px;
-    box-shadow: none;
-    cursor: pointer;
-    -webkit-touch-callout: none; /* Sync: a long-press opens the sync options, not the iOS callout */
-}
-.dp-bottom-menu > .dp-bottom-menu-item:active,
-.dp-bottom-menu > .dp-bottom-menu-item:focus-visible {
-    background-color: var(--background-modifier-hover);
-}
-@media (hover: hover) {
-    .dp-bottom-menu > .dp-bottom-menu-item:hover {
-        background-color: var(--background-modifier-hover);
-    }
-}
-.dp-bottom-menu-icon,
-.dp-bottom-menu .dp-zoom-toggle {
-    display: inline-flex;
+    font-weight: normal;
     color: var(--text-muted);
+    background-color: var(--background-modifier-form-field, var(--dp-segment-track));
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 14px;
+    box-shadow: none;
+    cursor: text;
 }
-.dp-bottom-menu-icon svg,
-.dp-bottom-menu .dp-zoom-toggle svg {
-    width: 18px;
-    height: 18px;
-}
-/* Zoom row: the timeline zoom control, always expanded [\u{1F50D} \u2014\u2014\u25CF\u2014\u2014 60px] */
-.dp-bottom-menu-zoom {
+/* 2-3. Rows: zoom, sync */
+.dp-sheet-row {
     display: flex;
     align-items: center;
-    height: 44px;
-    padding: 0 12px;
+    gap: 12px;
+    min-height: 54px;
+    padding: 0 14px;
+    box-sizing: border-box;
+    background-color: var(--dp-segment-track);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 14px;
 }
-.dp-bottom-menu .dp-bottom-menu-zoom > .dp-zoom-slider-floating {
+.dp-bottom-sheet .dp-sheet-zoom > .dp-zoom-slider-floating {
     flex-direction: row;
     gap: 12px;
     width: 100%;
-    height: 100%;
+    height: 54px;
     margin: 0;
     overflow: visible;
     background: transparent;
     border: none;
 }
-.dp-bottom-menu .dp-zoom-slider-floating span:first-child {
-    width: 18px;
+.dp-bottom-sheet .dp-zoom-slider-floating span:first-child {
+    width: 20px;
+    color: var(--text-muted);
     pointer-events: none;
 }
-.dp-bottom-menu .dp-zoom-popover {
+.dp-bottom-sheet .dp-zoom-popover {
     flex: 1 1 auto;
     flex-direction: row;
-    gap: 8px;
+    gap: 10px;
     min-width: 0;
 }
-.dp-bottom-menu .dp-zoom-slider {
+.dp-bottom-sheet .dp-zoom-slider {
     flex: 1 1 auto;
     width: auto;
     min-width: 0;
     opacity: 1;
 }
-.dp-bottom-menu .dp-zoom-value {
+.dp-bottom-sheet .dp-zoom-value {
     opacity: 1;
     width: auto;
+    min-width: 44px;
     padding-left: 0;
+    font-variant-numeric: tabular-nums;
+}
+.dp-bottom-sheet > button.dp-sheet-sync {
+    width: 100%;
+    height: auto;
+    margin: 0;
+    padding: 8px 14px;
+    justify-content: flex-start;
+    text-align: left;
+    font: inherit;
+    color: var(--text-normal);
+    box-shadow: none;
+    cursor: pointer;
+    -webkit-touch-callout: none; /* a long-press opens the sync options, not the iOS callout */
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+.dp-bottom-sheet > button.dp-sheet-sync:active {
+    transform: scale(0.98);
+    background-color: var(--background-modifier-hover);
+}
+.dp-sheet-sync-text {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.dp-sheet-sync-title {
+    font-size: var(--font-ui-medium, 1em);
+    font-weight: 600;
+}
+.dp-sheet-sync-status {
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-muted);
+}
+/* Status dot: green = fetched within the cache window, amber = stale / never, accent pulse = syncing */
+.dp-sheet-sync-dot {
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: var(--color-orange, #d29922);
+}
+.dp-sheet-sync[data-sync-state="fresh"] .dp-sheet-sync-dot {
+    background-color: var(--color-green, #3fb950);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-green, #3fb950) 22%, transparent);
+}
+.dp-sheet-sync[data-sync-state="syncing"] .dp-sheet-sync-dot {
+    background-color: var(--interactive-accent);
+    animation: dp-sheet-pulse 1s ease-in-out infinite;
+}
+.dp-sheet-sync[data-sync-state="syncing"] .dp-sheet-sync-icon svg {
+    animation: dp-sheet-spin 0.9s linear infinite;
+}
+@keyframes dp-sheet-spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes dp-sheet-pulse {
+    50% { opacity: 0.35; }
 }
 .dp-bottom-nav-label {
     max-width: 100%;
@@ -6961,6 +7097,10 @@ var en = {
   "nav.sync": "Sync",
   "nav.menu": "Menu",
   "nav.search": "Search",
+  "sheet.search": "Search tasks and events",
+  "sheet.syncing": "Syncing\u2026",
+  "sheet.lastSynced": "Updated {time}",
+  "sheet.notSynced": "Not synced yet",
   "nav.filter": "Filter",
   "nav.shortcuts": "Keyboard Shortcuts (?)",
   "nav.toggleDrawer": "Toggle side drawer (S)",
@@ -7268,6 +7408,10 @@ var ko = {
   "nav.sync": "\uB3D9\uAE30\uD654",
   "nav.menu": "\uBA54\uB274",
   "nav.search": "\uAC80\uC0C9",
+  "sheet.search": "\uD560 \uC77C\uACFC \uC77C\uC815 \uAC80\uC0C9",
+  "sheet.syncing": "\uB3D9\uAE30\uD654 \uC911\u2026",
+  "sheet.lastSynced": "{time} \uC5C5\uB370\uC774\uD2B8\uB428",
+  "sheet.notSynced": "\uC544\uC9C1 \uB3D9\uAE30\uD654\uB418\uC9C0 \uC54A\uC74C",
   "nav.filter": "\uD544\uD130",
   "nav.shortcuts": "\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4 (?)",
   "nav.toggleDrawer": "\uC0AC\uC774\uB4DC \uC11C\uB78D \uC5F4\uAE30/\uB2EB\uAE30 (S)",
@@ -7575,6 +7719,10 @@ var ja = {
   "nav.sync": "\u540C\u671F",
   "nav.menu": "\u30E1\u30CB\u30E5\u30FC",
   "nav.search": "\u691C\u7D22",
+  "sheet.search": "\u30BF\u30B9\u30AF\u3068\u4E88\u5B9A\u3092\u691C\u7D22",
+  "sheet.syncing": "\u540C\u671F\u4E2D\u2026",
+  "sheet.lastSynced": "{time}\u306B\u66F4\u65B0",
+  "sheet.notSynced": "\u307E\u3060\u540C\u671F\u3055\u308C\u3066\u3044\u307E\u305B\u3093",
   "nav.filter": "\u30D5\u30A3\u30EB\u30BF\u30FC",
   "nav.shortcuts": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8 (?)",
   "nav.toggleDrawer": "\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u306E\u5207\u308A\u66FF\u3048 (S)",
@@ -7882,6 +8030,10 @@ var zh = {
   "nav.sync": "\u540C\u6B65",
   "nav.menu": "\u83DC\u5355",
   "nav.search": "\u641C\u7D22",
+  "sheet.search": "\u641C\u7D22\u4EFB\u52A1\u548C\u65E5\u7A0B",
+  "sheet.syncing": "\u6B63\u5728\u540C\u6B65\u2026",
+  "sheet.lastSynced": "{time}\u66F4\u65B0",
+  "sheet.notSynced": "\u5C1A\u672A\u540C\u6B65",
   "nav.filter": "\u7B5B\u9009",
   "nav.shortcuts": "\u952E\u76D8\u5FEB\u6377\u952E (?)",
   "nav.toggleDrawer": "\u5207\u6362\u4FA7\u8FB9\u62BD\u5C49 (S)",
@@ -12163,7 +12315,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       let sliderContainer = this.containerEl.querySelector(".dp-zoom-slider-floating");
       if (showSlider) {
         if (!sliderContainer) {
-          const headerActions = this.containerEl.querySelector(".dp-bottom-menu-zoom") ?? this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
+          const headerActions = this.containerEl.querySelector(".dp-sheet-zoom") ?? this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
           const viewContent = this.contentEl || this.containerEl;
           sliderContainer = (headerActions ?? viewContent).createDiv({ cls: "dp-zoom-slider-floating" });
           headerActions?.prepend(sliderContainer);
@@ -14929,8 +15081,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   constructor() {
     super(...arguments);
     this.activeTab = "daily";
-    this.bottomMenuOpen = false;
-    this.bottomMenuOutsideBound = false;
+    this.bottomSheetOpen = false;
+    this.bottomSheetKeysBound = false;
     this.drawerScrollTop = 0;
     this.drawerSectionOverrides = /* @__PURE__ */ new Map();
     this.drawerSectionState = /* @__PURE__ */ new Map();
@@ -14988,8 +15140,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     let tabsContainer;
     const bottomBar = phone ? rootEl.createDiv({ cls: "dp-bottom-nav" }) : null;
     if (bottomBar) {
-      this.renderBottomMenu(bottomBar);
-      tabsContainer = bottomBar.createDiv({ cls: "dp-tabs dp-bottom-tabs" });
+      this.renderBottomPager(bottomBar);
+      tabsContainer = bottomBar.createDiv({ cls: "dp-tabs dp-bottom-tabs dp-bottom-island" });
     } else {
       tabsContainer = headerTop.createDiv({ cls: "dp-tabs dp-header-tabs" });
       headerTop.insertBefore(tabsContainer, headerTop.querySelector(":scope > .dp-header-actions"));
@@ -15050,7 +15202,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       }
     });
     if (bottomBar)
-      this.renderBottomPager(bottomBar);
+      this.renderBottomMenuButton(bottomBar);
     animateActiveTabPill(tabsContainer, this, this.activeTab);
     keepActiveTabInView(tabsContainer, this);
     this.mountActivePane(rootEl);
@@ -15060,6 +15212,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       this.stopCurrentTaskTracker();
     if (bottomBar) {
       rootEl.appendChild(bottomBar);
+      this.renderBottomSheet(rootEl);
       this.registerSwipeNavigation(rootEl);
     }
     rootEl.toggleClass("dp-drawer-open", this.isSideDrawerOpen());
@@ -15068,99 +15221,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.trackHeaderHeight(rootEl, header);
     this.syncSearchBar(rootEl);
   }
-  renderBottomMenu(bar) {
-    const wrap = bar.createDiv({ cls: "dp-bottom-menu-wrap" });
-    const menuBtn = wrap.createEl("button", {
-      cls: `dp-bottom-bar-btn dp-bottom-menu-btn${this.bottomMenuOpen ? " is-active" : ""}`,
-      attr: { "aria-label": t("nav.menu"), "aria-haspopup": "menu", "aria-expanded": String(this.bottomMenuOpen) }
-    });
-    (0, import_obsidian6.setIcon)(menuBtn, "menu");
-    const menu = wrap.createDiv({ cls: `dp-bottom-menu${this.bottomMenuOpen ? " is-open" : ""}`, attr: { role: "menu" } });
-    menuBtn.addEventListener("click", () => {
-      triggerHaptic("selection");
-      this.setBottomMenuOpen(!this.bottomMenuOpen);
-      if (this.bottomMenuOpen)
-        menu.querySelector(".dp-bottom-menu-item")?.focus({ preventScroll: true });
-    });
-    const addItem = (icon, label, run) => {
-      const item = menu.createEl("button", { cls: "dp-bottom-menu-item", attr: { role: "menuitem" } });
-      (0, import_obsidian6.setIcon)(item.createSpan({ cls: "dp-bottom-menu-icon" }), icon);
-      item.createSpan({ text: label });
-      item.addEventListener("click", () => {
-        this.setBottomMenuOpen(false);
-        run();
-      });
-      return item;
-    };
-    addItem("search", t("nav.search"), () => this.openSearch());
-    if (this.activeTab === "daily" || this.activeTab === "weekly" || this.activeTab === "multiDay") {
-      menu.createDiv({ cls: "dp-bottom-menu-zoom" });
-    }
-    if (this.plugin.settings.enableGoogleCalendar) {
-      let pressTimer = null;
-      let longPressed = false;
-      const cancelPress = () => {
-        if (pressTimer !== null)
-          window.clearTimeout(pressTimer);
-        pressTimer = null;
-      };
-      const openSyncModal = () => {
-        longPressed = true;
-        cancelPress();
-        this.setBottomMenuOpen(false);
-        new TaskSyncModal(this.app, this.plugin, async () => {
-          await this.refreshTasks(null, true);
-        }).open();
-      };
-      const syncItem = addItem("refresh-cw", t("nav.sync"), () => {
-        if (longPressed)
-          return;
-        void this.runSync();
-      });
-      syncItem.addEventListener("pointerdown", (e) => {
-        longPressed = false;
-        cancelPress();
-        if (e.button !== 0)
-          return;
-        pressTimer = window.setTimeout(() => {
-          triggerHaptic("selection");
-          openSyncModal();
-        }, 550);
-      });
-      ["pointerup", "pointerleave", "pointercancel"].forEach((type) => syncItem.addEventListener(type, cancelPress));
-      syncItem.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        if (!longPressed)
-          openSyncModal();
-      });
-    }
-    if (!this.bottomMenuOutsideBound) {
-      this.bottomMenuOutsideBound = true;
-      this.registerDomEvent(document, "pointerdown", (e) => {
-        if (!this.bottomMenuOpen)
-          return;
-        if (this.containerEl.querySelector(".dp-bottom-menu-wrap")?.contains(e.target))
-          return;
-        this.setBottomMenuOpen(false);
-      });
-      this.registerDomEvent(document, "keydown", (e) => {
-        if (e.key !== "Escape" || !this.bottomMenuOpen)
-          return;
-        this.setBottomMenuOpen(false);
-        this.containerEl.querySelector(".dp-bottom-menu-btn")?.focus({ preventScroll: true });
-      });
-    }
-  }
-  setBottomMenuOpen(open) {
-    this.bottomMenuOpen = open;
-    const wrap = this.containerEl.querySelector(".dp-bottom-menu-wrap");
-    wrap?.querySelector(".dp-bottom-menu")?.toggleClass("is-open", open);
-    const btn = wrap?.querySelector(".dp-bottom-menu-btn");
-    btn?.toggleClass("is-active", open);
-    btn?.setAttr("aria-expanded", String(open));
-  }
   renderBottomPager(bar) {
-    const pager = bar.createDiv({ cls: "dp-bottom-pager" });
+    const pager = bar.createDiv({ cls: "dp-bottom-island dp-bottom-pager" });
     [-1, 1].forEach((step) => {
       const btn = pager.createEl("button", {
         cls: "dp-bottom-bar-btn",
@@ -15176,6 +15238,145 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
         void this.navigateWithSlide(step);
       });
     });
+  }
+  renderBottomMenuButton(bar) {
+    const btn = bar.createEl("button", {
+      cls: `dp-bottom-island dp-bottom-menu-btn${this.bottomSheetOpen ? " is-active" : ""}`,
+      attr: { "aria-label": t("nav.menu"), "aria-haspopup": "dialog", "aria-expanded": String(this.bottomSheetOpen) }
+    });
+    (0, import_obsidian6.setIcon)(btn, "menu");
+    btn.addEventListener("click", () => {
+      triggerHaptic("selection");
+      this.setBottomSheetOpen(!this.bottomSheetOpen);
+    });
+  }
+  renderBottomSheet(rootEl) {
+    const backdrop = rootEl.createDiv({ cls: "dp-sheet-backdrop" });
+    backdrop.addEventListener("click", () => this.setBottomSheetOpen(false));
+    const sheet = rootEl.createDiv({ cls: "dp-bottom-sheet", attr: { role: "dialog", "aria-label": t("nav.menu") } });
+    const grabber = sheet.createDiv({ cls: "dp-sheet-grabber" });
+    grabber.createDiv({ cls: "dp-sheet-grabber-bar" });
+    this.registerSheetDragDismiss(sheet, grabber);
+    const search = sheet.createEl("button", { cls: "dp-sheet-search" });
+    (0, import_obsidian6.setIcon)(search.createSpan({ cls: "dp-sheet-icon" }), "search");
+    search.createSpan({ text: t("sheet.search") });
+    search.addEventListener("click", () => {
+      this.setBottomSheetOpen(false);
+      this.openSearch();
+    });
+    if (this.activeTab === "daily" || this.activeTab === "weekly" || this.activeTab === "multiDay") {
+      sheet.createDiv({ cls: "dp-sheet-row dp-sheet-zoom" });
+    }
+    if (this.plugin.settings.enableGoogleCalendar) {
+      const sync = sheet.createEl("button", { cls: "dp-sheet-row dp-sheet-sync" });
+      (0, import_obsidian6.setIcon)(sync.createSpan({ cls: "dp-sheet-icon dp-sheet-sync-icon" }), "refresh-cw");
+      const text = sync.createDiv({ cls: "dp-sheet-sync-text" });
+      text.createDiv({ cls: "dp-sheet-sync-title", text: t("nav.sync") });
+      text.createDiv({ cls: "dp-sheet-sync-status" });
+      sync.createSpan({ cls: "dp-sheet-sync-dot" });
+      let pressTimer = null;
+      let longPressed = false;
+      const cancelPress = () => {
+        if (pressTimer !== null)
+          window.clearTimeout(pressTimer);
+        pressTimer = null;
+      };
+      const openSyncModal = () => {
+        longPressed = true;
+        cancelPress();
+        this.setBottomSheetOpen(false);
+        new TaskSyncModal(this.app, this.plugin, async () => {
+          await this.refreshTasks(null, true);
+        }).open();
+      };
+      sync.addEventListener("click", () => {
+        if (longPressed || this.syncInProgress)
+          return;
+        const run = this.runSync();
+        this.updateSheetSyncStatus();
+        void run.finally(() => this.updateSheetSyncStatus());
+      });
+      sync.addEventListener("pointerdown", (e) => {
+        longPressed = false;
+        cancelPress();
+        if (e.button !== 0)
+          return;
+        pressTimer = window.setTimeout(() => {
+          triggerHaptic("selection");
+          openSyncModal();
+        }, 550);
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach((type) => sync.addEventListener(type, cancelPress));
+      sync.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        if (!longPressed)
+          openSyncModal();
+      });
+    }
+    rootEl.toggleClass("dp-sheet-open", this.bottomSheetOpen);
+    this.updateSheetSyncStatus();
+    if (!this.bottomSheetKeysBound) {
+      this.bottomSheetKeysBound = true;
+      this.registerDomEvent(document, "keydown", (e) => {
+        if (e.key !== "Escape" || !this.bottomSheetOpen)
+          return;
+        this.setBottomSheetOpen(false);
+        this.containerEl.querySelector(".dp-bottom-menu-btn")?.focus({ preventScroll: true });
+      });
+    }
+  }
+  setBottomSheetOpen(open) {
+    this.bottomSheetOpen = open;
+    const rootEl = this.containerEl.querySelector(".dp-container");
+    if (!rootEl)
+      return;
+    rootEl.toggleClass("dp-sheet-open", open);
+    const btn = rootEl.querySelector(".dp-bottom-menu-btn");
+    btn?.toggleClass("is-active", open);
+    btn?.setAttr("aria-expanded", String(open));
+    if (open) {
+      this.updateSheetSyncStatus();
+      rootEl.querySelector(".dp-sheet-search")?.focus({ preventScroll: true });
+    }
+  }
+  updateSheetSyncStatus() {
+    const row = this.containerEl.querySelector(".dp-sheet-sync");
+    if (!row)
+      return;
+    const fetchedAt = this.plugin.gcalRanges.get(this.getGCalRange().cacheKey)?.fetchedAt;
+    const state = this.syncInProgress ? "syncing" : fetchedAt && Date.now() - fetchedAt <= GCAL_CACHE_TTL_MS ? "fresh" : "stale";
+    row.dataset.syncState = state;
+    row.querySelector(".dp-sheet-sync-status")?.setText(state === "syncing" ? t("sheet.syncing") : fetchedAt ? t("sheet.lastSynced", { time: window.moment(fetchedAt).fromNow() }) : t("sheet.notSynced"));
+  }
+  registerSheetDragDismiss(sheet, handle) {
+    let startY = null;
+    let startTime = 0;
+    let dy = 0;
+    handle.addEventListener("pointerdown", (e) => {
+      startY = e.clientY;
+      startTime = performance.now();
+      dy = 0;
+      handle.setPointerCapture(e.pointerId);
+      sheet.addClass("is-dragging");
+    });
+    handle.addEventListener("pointermove", (e) => {
+      if (startY === null)
+        return;
+      dy = Math.max(0, e.clientY - startY);
+      sheet.style.transform = `translateY(${dy}px)`;
+    });
+    const end = () => {
+      if (startY === null)
+        return;
+      startY = null;
+      const flick = dy > 20 && dy / Math.max(1, performance.now() - startTime) > 0.5;
+      sheet.removeClass("is-dragging");
+      sheet.style.transform = "";
+      if (dy > 80 || flick)
+        this.setBottomSheetOpen(false);
+    };
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
   }
   hasSideDrawer() {
     return !this.useCompactLayout() && SIDE_DRAWER_TABS.includes(this.activeTab);
