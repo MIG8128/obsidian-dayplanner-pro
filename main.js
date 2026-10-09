@@ -1095,6 +1095,22 @@ var STYLES = `
     font-weight: bold;
     font-size: 0.8em;
 }
+/* Task priority, one look in every view (views.ts renderTaskTitle): the emoji leads the title as an inline mark with
+   a fixed gap. inline-block keeps it out of the title's line-through and lets it wrap / clamp with the title. */
+.dp-priority-mark {
+    display: inline-block;
+    margin-right: 0.3em;
+    font-size: 0.9em;
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    text-decoration: none;
+    vertical-align: baseline;
+}
+:is(.completed, .cancelled) .dp-priority-mark {
+    opacity: 0.6;
+    filter: grayscale(0.7);
+}
 
 /* \uD504\uB9AC\uBBF8\uC5C4 \uBC18\uC751\uD615 \uCEE4\uC2A4\uD140 \uCCB4\uD06C\uBC15\uC2A4 \uC2A4\uD0C0\uC77C */
 .dp-custom-cb {
@@ -2185,17 +2201,14 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-gc-item:hover {
     background-color: var(--background-modifier-hover);
 }
-.dp-gc-item.completed .dp-gc-item-title-text {
+.dp-gc-item.completed .dp-gc-item-title {
     text-decoration: line-through;
     color: var(--text-muted);
 }
-.dp-gc-item.cancelled .dp-gc-item-title-text {
+.dp-gc-item.cancelled .dp-gc-item-title {
     text-decoration: line-through;
     color: var(--text-muted);
     opacity: 0.6;
-}
-.dp-gc-item:is(.completed, .cancelled) .dp-gc-item-priority {
-    opacity: 0.5;
 }
 .dp-gc-item-dot {
     width: 8px;
@@ -2214,38 +2227,10 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     color: var(--text-normal);
     flex-grow: 1;
     min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-.dp-gc-item-title-text {
-    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-/* Priority badge: emoji on a tinted glass chip, never squeezed out by a long title */
-.dp-gc-item-priority {
-    --dp-prio: var(--text-muted);
-    flex-shrink: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    height: 18px;
-    padding: 0 4px;
-    border-radius: 9px;
-    font-size: 0.72em;
-    line-height: 1;
-    background-color: color-mix(in srgb, var(--dp-prio) 14%, transparent);
-    border: 1px solid color-mix(in srgb, var(--dp-prio) 32%, transparent);
-    box-sizing: border-box;
-}
-.dp-gc-item-priority.is-highest { --dp-prio: var(--color-red, #e5484d); }
-.dp-gc-item-priority.is-high { --dp-prio: var(--color-orange, #f76b15); }
-.dp-gc-item-priority.is-medium { --dp-prio: var(--color-yellow, #e2a336); }
-.dp-gc-item-priority.is-low { --dp-prio: var(--color-blue, #3e8ef7); }
-.dp-gc-item-priority.is-lowest { --dp-prio: var(--text-faint); }
 .dp-gc-item-file {
     font-size: 0.78em;
     color: var(--text-muted);
@@ -4227,15 +4212,14 @@ body.dp-pointer-dragging * {
 }
 
 /* Progressive disclosure: once a timeline card's content box drops under ~85px (a card ~105px wide), location,
-   description, the open-note arrow and the priority badge go; the title stays as one bold, ellipsized line.
+   description and the open-note arrow go; the title (led by its priority mark) wraps up to three bold lines.
    Each card is its own size container, so overlapping (side-by-side) events collapse as well as narrow columns. */
 .dp-timeline-event {
     container: dp-card / inline-size;
 }
 @container dp-card (max-width: 85px) {
     .dp-event-meta,
-    .dp-event-main .dp-task-link-btn,
-    .dp-event-main .dp-badge-priority {
+    .dp-event-main .dp-task-link-btn {
         display: none !important;
     }
     .dp-event-main {
@@ -9202,6 +9186,16 @@ function renderSideDrawer(rootEl, view) {
 
 // views.ts
 var PRIORITY_EMOJI = { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" };
+function renderTaskTitle(textEl, title, priority, prefix = "") {
+  if (prefix)
+    textEl.appendText(prefix);
+  const emoji = priority ? PRIORITY_EMOJI[priority] : void 0;
+  if (emoji) {
+    const label = t(`priority.${priority}`);
+    textEl.createSpan({ cls: `dp-priority-mark is-${priority}`, text: emoji, attr: { "aria-label": label, title: label } });
+  }
+  textEl.createSpan({ cls: "dp-task-title", text: title });
+}
 var CURRENT_TASK_TICK_MS = 5e3;
 var isLockedTask = (task) => !!task && (task.completed || task.statusChar === "x" || task.statusChar === "-");
 function grabOffsetIn(card, clientY) {
@@ -10364,7 +10358,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
           itemDateStr = task.date;
         title = cleanTaskTextForDisplay(task.text);
         if (task.priority && task.priority !== "normal") {
-          priorityBadge = { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" }[task.priority] || "";
+          priorityBadge = PRIORITY_EMOJI[task.priority] || "";
         }
       } else {
         const gcal = this.plugin.gcalCache.find((ev) => ev.id === id);
@@ -10394,10 +10388,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
         cardClasses = originalEl.className;
         bgStyle = originalEl.style.backgroundImage || "";
         borderStyle = originalEl.style.border || "";
-        const titleEl = originalEl.querySelector("span.dp-task-text") || originalEl.querySelector("span");
+        const titleEl = originalEl.querySelector(".dp-task-title") || originalEl.querySelector("span");
         if (titleEl && titleEl.textContent)
           title = titleEl.textContent;
-        const priorityEl = originalEl.querySelector(".dp-badge-priority");
+        const priorityEl = originalEl.querySelector(".dp-priority-mark");
         if (priorityEl && priorityEl.textContent)
           priorityBadge = priorityEl.textContent;
         originalEl.style.opacity = "0.35";
@@ -10468,12 +10462,11 @@ ${e.calendarName ?? ""}`.toLowerCase();
         mainRow.style.cssText = "display: flex; align-items: center; width: 100%; height: 100%; gap: 6px; overflow: hidden; min-width: 0; padding: 2px 4px;";
         if (item.id === primaryItem?.id)
           mainRow.createSpan({ cls: "dp-drag-time" });
-        const titleSpan = mainRow.createEl("span", { text: item.title });
+        const titleSpan = mainRow.createEl("span");
         titleSpan.style.cssText = "flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85em; font-weight: bold;";
-        if (item.priorityBadge) {
-          const badge = mainRow.createSpan({ cls: "dp-badge dp-badge-priority", text: item.priorityBadge });
-          badge.style.cssText = "border:none; background:none; margin:0;";
-        }
+        if (item.priorityBadge)
+          titleSpan.createSpan({ cls: "dp-priority-mark", text: item.priorityBadge });
+        titleSpan.appendText(item.title);
         item.previewContainerEl = cardContainer;
       }
       if (cardContainer.parentElement !== targetCol) {
@@ -11227,8 +11220,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       await updateTaskInFile3(this.app, task, { statusChar: newStatus });
       await this.refreshTasks();
     });
-    const priorityPrefix = task.priority !== "normal" ? { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" }[task.priority] + " " : "";
-    chip.createSpan({ cls: "dp-task-text", text: `${priorityPrefix}${cleanTaskTextForDisplay(task.text)}` });
+    renderTaskTitle(chip.createSpan({ cls: "dp-task-text" }), cleanTaskTextForDisplay(task.text), task.priority);
     const linkBtn = chip.createSpan({ text: "\u2197", cls: "dp-task-link-btn" });
     linkBtn.addEventListener("click", async (e) => {
       e.stopPropagation();
@@ -12721,17 +12713,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
           });
         }
         const displayTitle = cleanTaskTextForDisplay(item.text);
-        const labelSpan = mainRow.createEl("span", {
-          cls: "dp-task-text",
-          text: `${displayTitle}`
-        });
-        if (item.taskRef && item.taskRef.priority !== "normal") {
-          const priorityEmojis = { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" };
-          mainRow.createSpan({
-            cls: "dp-badge dp-badge-priority",
-            text: priorityEmojis[item.taskRef.priority]
-          });
-        }
+        const labelSpan = mainRow.createEl("span", { cls: "dp-task-text" });
+        renderTaskTitle(labelSpan, displayTitle, item.taskRef?.priority);
         const linkBtn = mainRow.createSpan({ text: "\u2197", cls: "dp-task-link-btn" });
         linkBtn.addEventListener("click", async (e) => {
           e.stopPropagation();
@@ -13170,11 +13153,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
             });
           }
           const displayTitle = cleanTaskTextForDisplay(item.text);
-          const priorityPrefix = item.taskRef && item.taskRef.priority !== "normal" ? { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" }[item.taskRef.priority] + " " : "";
-          const textSpan = mainRow.createEl("span", {
-            cls: "dp-task-text",
-            text: ` ${priorityPrefix}${displayTitle}`
-          });
+          const textSpan = mainRow.createEl("span", { cls: "dp-task-text" });
+          renderTaskTitle(textSpan, displayTitle, item.taskRef?.priority);
           const linkBtn = mainRow.createSpan({ text: "\u2197", cls: "dp-task-link-btn" });
           linkBtn.addEventListener("click", async (e) => {
             e.stopPropagation();
@@ -13390,11 +13370,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
           const item = listWrapper.createDiv({ cls: itemClass });
           item.dataset.selectId = task.id;
           const displayTitle = cleanTaskTextForDisplay(task.text);
-          const priorityPrefix = task.priority !== "normal" ? { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" }[task.priority] + " " : "";
-          const textSpan = item.createSpan({
-            cls: "dp-task-text",
-            text: `${task.startTime && !phone ? `${task.startTime} ` : ""}${priorityPrefix}${displayTitle}`
-          });
+          const textSpan = item.createSpan({ cls: "dp-task-text" });
+          renderTaskTitle(textSpan, displayTitle, task.priority, task.startTime && !phone ? `${task.startTime} ` : "");
           const taskColor = this.plugin.settings.taskColor || "#ff9f1c";
           if (task.statusChar === "-") {
             item.style.cssText = `opacity: 0.55; border-left: 3px solid var(--text-error) !important; background-color: rgba(235, 87, 87, 0.05) !important;`;
@@ -14227,17 +14204,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
           text: timeText
         });
         const displayTitle = isTask ? cleanTaskTextForDisplay(item.task.text) : item.event.summary;
-        const titleEl = card.createDiv({ cls: "dp-gc-item-title" });
-        titleEl.createSpan({ cls: "dp-gc-item-title-text", text: displayTitle });
-        const priority = isTask ? item.task.priority : void 0;
-        if (priority && PRIORITY_EMOJI[priority]) {
-          const label = t(`priority.${priority}`);
-          titleEl.createSpan({
-            cls: `dp-gc-item-priority is-${priority}`,
-            text: PRIORITY_EMOJI[priority],
-            attr: { "aria-label": label, title: label }
-          });
-        }
+        renderTaskTitle(card.createDiv({ cls: "dp-gc-item-title" }), displayTitle, isTask ? item.task.priority : void 0);
         if (isTask) {
           const fileBase = item.task.filePath.split(/[/\\]/).pop() || item.task.filePath;
           const fileBadge = card.createDiv({
