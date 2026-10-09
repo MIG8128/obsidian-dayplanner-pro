@@ -39,8 +39,6 @@ var DEFAULT_SETTINGS = {
   googleClientId: "",
   googleClientSecret: "",
   googleRefreshToken: "",
-  googleAccessToken: "",
-  googleAccessTokenExpires: 0,
   googleCalendars: [],
   dailyNotesFolder: "",
   dailyNotesFormat: "YYYY-MM-DD",
@@ -5501,6 +5499,9 @@ function parseTaskLine(line, filePath, lineNumber, dailyNotesFormat) {
 function isSyncConflictPath(path) {
   return /\.sync-conflict-/i.test(path);
 }
+function sanitizeCredential(value) {
+  return typeof value === "string" ? value.replace(/\s+/g, "") : "";
+}
 var scanSettings = null;
 function setScanSettings(settings) {
   scanSettings = settings;
@@ -6050,33 +6051,51 @@ function showRateLimitedNotice(message, durationMs = 5e3, throttleMs = 1e4) {
   activeNotices.set(message, now);
   new import_obsidian2.Notice(message, durationMs / 1e3);
 }
+var accessTokenCache = null;
+var accessTokenRequest = null;
 async function getGoogleAccessToken(plugin) {
   const { settings } = plugin;
-  if (!settings.googleClientId || !settings.googleClientSecret || !settings.googleRefreshToken) {
+  const clientId = sanitizeCredential(settings.googleClientId);
+  const clientSecret = sanitizeCredential(settings.googleClientSecret);
+  const refreshToken = sanitizeCredential(settings.googleRefreshToken);
+  if (!clientId || !clientSecret || !refreshToken) {
     return null;
   }
-  const now = Date.now();
-  if (settings.googleAccessToken && settings.googleAccessTokenExpires > now + 6e4) {
-    return settings.googleAccessToken;
+  const key = `${clientId}|${clientSecret}|${refreshToken}`;
+  if (accessTokenCache?.key === key && accessTokenCache.expires > Date.now() + 6e4) {
+    return accessTokenCache.token;
   }
+  if (accessTokenRequest?.key === key)
+    return accessTokenRequest.promise;
+  const promise = requestGoogleAccessToken(clientId, clientSecret, refreshToken, key);
+  accessTokenRequest = { key, promise };
+  try {
+    return await promise;
+  } finally {
+    if (accessTokenRequest?.promise === promise)
+      accessTokenRequest = null;
+  }
+}
+async function requestGoogleAccessToken(clientId, clientSecret, refreshToken, key) {
   try {
     const response = await (0, import_obsidian2.requestUrl)({
       url: "https://oauth2.googleapis.com/token",
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        client_id: settings.googleClientId,
-        client_secret: settings.googleClientSecret,
-        refresh_token: settings.googleRefreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
         grant_type: "refresh_token"
       }).toString()
     });
     if (response.status === 200) {
       const data = response.json;
-      settings.googleAccessToken = data.access_token;
-      settings.googleAccessTokenExpires = Date.now() + data.expires_in * 1e3;
-      await plugin.saveSettings();
-      return data.access_token;
+      const token = sanitizeCredential(data.access_token);
+      if (!token)
+        throw new Error("Token response carried no access_token");
+      accessTokenCache = { key, token, expires: Date.now() + (Number(data.expires_in) || 3600) * 1e3 };
+      return token;
     } else {
       console.error("Failed to refresh Google Token:", response.text);
       let errMsg = response.text;
@@ -16287,15 +16306,15 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
       text: t("settings.oauth.intro")
     });
     new import_obsidian7.Setting(gcal).setName(t("settings.clientId.name")).setDesc(t("settings.clientId.desc")).addText((text) => text.setPlaceholder("xxxx.apps.googleusercontent.com").setValue(this.plugin.settings.googleClientId || "").onChange(async (value) => {
-      this.plugin.settings.googleClientId = value.trim();
+      this.plugin.settings.googleClientId = sanitizeCredential(value);
       await this.plugin.saveSettings();
     }));
     new import_obsidian7.Setting(gcal).setName(t("settings.clientSecret.name")).setDesc(t("settings.clientSecret.desc")).addText((text) => text.setPlaceholder("GOCSPX-xxxx").setValue(this.plugin.settings.googleClientSecret || "").onChange(async (value) => {
-      this.plugin.settings.googleClientSecret = value.trim();
+      this.plugin.settings.googleClientSecret = sanitizeCredential(value);
       await this.plugin.saveSettings();
     }));
     new import_obsidian7.Setting(gcal).setName(t("settings.refreshToken.name")).setDesc(t("settings.refreshToken.desc")).addText((text) => text.setPlaceholder("1//0xxxx").setValue(this.plugin.settings.googleRefreshToken || "").onChange(async (value) => {
-      this.plugin.settings.googleRefreshToken = value.trim();
+      this.plugin.settings.googleRefreshToken = sanitizeCredential(value);
       await this.plugin.saveSettings();
     }));
     const calHeader = gcal.createDiv();
@@ -16434,6 +16453,8 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.statusBarKey = "";
     this.audioCtx = null;
     this.hadSavedSettings = false;
+    this.savedSettingsJson = "";
+    this.settingsUnreadable = false;
   }
   requestViewRefresh() {
     const now = Date.now();
@@ -17012,17 +17033,44 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     const updated = previous ? release(previous) !== release(current) : this.hadSavedSettings;
     this.settings.lastVersion = current;
     try {
-      await this.saveData(this.settings);
+      await this.persistSettings();
     } catch (err) {
       console.warn("Day Planner Pro: could not record the plugin version", err);
     }
     if (updated)
       this.app.workspace.onLayoutReady(() => new WhatsNewModal(this.app, current).open());
   }
+  async readSettingsData() {
+    try {
+      return await this.loadData();
+    } catch (err) {
+      try {
+        const raw = await this.app.vault.adapter.read(`${this.manifest.dir}/data.json`);
+        return JSON.parse(raw.replace(/^﻿/, "").trim());
+      } catch {
+        throw err;
+      }
+    }
+  }
   async loadSettings() {
-    const data = await this.loadData();
-    this.hadSavedSettings = !!data;
+    let data = null;
+    try {
+      data = await this.readSettingsData();
+      this.settingsUnreadable = false;
+    } catch (err) {
+      console.error("Day Planner Pro: data.json could not be parsed; running on defaults without saving", err);
+      new import_obsidian7.Notice("Day Planner Pro: the settings file (data.json) could not be read, possibly mid-sync. Defaults are in use and changes will not be saved until it is readable again.", 15e3);
+      this.settingsUnreadable = true;
+    }
+    this.applySettingsData(data);
+    this.hadSavedSettings = !!data || this.settingsUnreadable;
+  }
+  applySettingsData(data) {
+    if (!data || typeof data !== "object" || Array.isArray(data))
+      data = null;
     this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    delete this.settings.googleAccessToken;
+    delete this.settings.googleAccessTokenExpires;
     delete this.settings.reminderMinutesBefore;
     if (data?.showHelpButton === false && data?.showShortcutButton === void 0) {
       this.settings.showShortcutButton = false;
@@ -17036,16 +17084,59 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
         enabled: true
       }];
     }
+    this.sanitizeSettings();
+    this.savedSettingsJson = this.settingsUnreadable ? "" : JSON.stringify(this.settings);
     setHapticsEnabled(this.settings.enableMobileHaptics);
     setScanSettings(this.settings);
     setLanguage(this.settings.language);
     this.exclusionKey = JSON.stringify([this.settings.excludePaths, this.settings.excludeMatchMode]);
   }
+  sanitizeSettings() {
+    const s = this.settings;
+    s.googleClientId = sanitizeCredential(s.googleClientId);
+    s.googleClientSecret = sanitizeCredential(s.googleClientSecret);
+    s.googleRefreshToken = sanitizeCredential(s.googleRefreshToken);
+    if (!Array.isArray(s.googleCalendars))
+      s.googleCalendars = [];
+    s.googleCalendars.forEach((c) => {
+      if (typeof c.id === "string")
+        c.id = c.id.trim();
+    });
+    if (typeof s.taskSyncCalendarId === "string")
+      s.taskSyncCalendarId = s.taskSyncCalendarId.trim();
+  }
+  async persistSettings() {
+    if (this.settingsUnreadable)
+      return;
+    this.sanitizeSettings();
+    const json = JSON.stringify(this.settings);
+    if (json === this.savedSettingsJson)
+      return;
+    await this.saveData(this.settings);
+    this.savedSettingsJson = json;
+  }
+  async onExternalSettingsChange() {
+    let data;
+    try {
+      data = await this.readSettingsData();
+    } catch (err) {
+      console.warn("Day Planner Pro: ignoring an unreadable external data.json change", err);
+      return;
+    }
+    const exclusionKey = this.exclusionKey;
+    this.settingsUnreadable = false;
+    this.applySettingsData(data);
+    if (this.exclusionKey !== exclusionKey) {
+      this.tasksCache = await scanVaultTasks(this.app);
+      this.updateStatusBar();
+    }
+    this.refreshActiveViews();
+  }
   async saveSettings() {
     setHapticsEnabled(this.settings.enableMobileHaptics);
     setScanSettings(this.settings);
     setLanguage(this.settings.language);
-    await this.saveData(this.settings);
+    await this.persistSettings();
     const exclusionKey = JSON.stringify([this.settings.excludePaths, this.settings.excludeMatchMode]);
     if (exclusionKey !== this.exclusionKey) {
       this.exclusionKey = exclusionKey;
