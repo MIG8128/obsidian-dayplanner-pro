@@ -2776,9 +2776,10 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Compact shell (.dp-compact-shell root): the combined view on phones and the Sidebar Day Planner Pro view.
    .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
-/* One bar height for the header row and the bottom toolbar: both rows, and every control in them, share it */
+/* One bar size for the header row and the bottom toolbar: both rows, every control in them and every icon share it */
 .dp-container.dp-compact-shell {
     --dp-bar-h: 40px;
+    --dp-bar-icon: 16px;
 }
 /* Header: the same 12px side inset and 8px vertical breathing room as the bottom toolbar */
 .dp-container.dp-compact-shell > .dp-header {
@@ -2884,8 +2885,8 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 }
 .dp-bottom-pager svg,
 .dp-bottom-menu-btn svg {
-    width: 20px;
-    height: 20px;
+    width: var(--dp-bar-icon, 16px);
+    height: var(--dp-bar-icon, 16px);
 }
 /* Narrow sidebars: tighter islands so the four tabs keep their labels */
 @container dp-planner (max-width: 340px) {
@@ -3236,6 +3237,30 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     width: var(--dp-bar-h, 40px);
     min-width: var(--dp-bar-h, 40px);
     height: var(--dp-bar-h, 40px);
+}
+/* Header row at the toolbar's scale: the same icon size, toolbar-sized type, no Obsidian min-height or line-height
+   stretching a control past the bar height */
+.dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact {
+    gap: 6px;
+    padding: 0 14px 0 12px;
+    font-size: var(--font-ui-small, 13px);
+    line-height: 1;
+}
+.dp-compact-shell .dp-header-top .dp-nav-date-icon svg,
+.dp-compact-shell .dp-header-actions > button.dp-today-btn svg,
+.dp-compact-shell .dp-header-actions > button.dp-add-btn svg {
+    width: var(--dp-bar-icon, 16px);
+    height: var(--dp-bar-icon, 16px);
+}
+.dp-compact-shell .dp-header-actions > button:is(.dp-today-btn, .dp-add-btn) {
+    min-height: 0;
+    max-height: var(--dp-bar-h, 40px);
+    line-height: 1;
+}
+.dp-compact-shell .dp-header-actions > button.dp-today-btn {
+    gap: 5px;
+    padding: 0 14px 0 12px;
+    font-size: var(--font-ui-smaller, 12px);
 }
 /* The narrowest panes: Today goes icon-only so the date keeps its room */
 @container dp-planner (max-width: 360px) {
