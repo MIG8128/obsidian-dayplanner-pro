@@ -4910,6 +4910,49 @@ body.dp-pointer-dragging * {
     border-radius: 999px;
 }
 
+/* Desktop combined view: one header row [date pill] [view tabs] [\u2039 Today \u203A \xB7 tools \xB7 +]. Equal side columns keep the
+   tabs in the true center (they don't jump as the date label changes width); short of room, the tabs shrink into a
+   scroller before they ever push the side controls */
+.dp-header-top.has-view-tabs {
+    display: grid;
+    grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
+}
+.dp-header-top.has-view-tabs > .dp-nav-date {
+    justify-self: start;
+}
+.dp-header-top.has-view-tabs > .dp-header-actions {
+    justify-self: end;
+    margin-left: 0;
+}
+.dp-header-top > .dp-tabs.dp-header-tabs {
+    width: auto;
+    min-width: 0;
+    height: 32px; /* the same capsule height as the nav group and the toolbar */
+    padding: 2px;
+}
+.dp-header-top > .dp-header-tabs > .dp-tab {
+    flex: 0 0 auto;
+    height: 26px;
+    padding: 0 12px;
+}
+/* Narrow panes: the tabs take their own full-width row under the date and the actions */
+@container dp-planner (max-width: 860px) {
+    .dp-header-top.has-view-tabs {
+        display: flex;
+    }
+    .dp-header-top.has-view-tabs > .dp-header-actions {
+        margin-left: auto;
+    }
+    .dp-header-top > .dp-tabs.dp-header-tabs {
+        order: 1;
+        flex: 1 1 100%;
+    }
+    .dp-header-top > .dp-header-tabs > .dp-tab {
+        flex: 1 0 auto;
+        padding: 0 8px;
+    }
+}
+
 /* Weekday labels and week numbers in the phone date-pill style */
 .dp-weekly-header-grid > .dp-grid-header.dp-day-pill {
     display: flex;
@@ -6718,17 +6761,14 @@ var en = {
   "notice.taskAdded": "New task added successfully.",
   "notice.openViewFirst": "Open a Dayloom view first.",
   "notice.openDayloomFirst": "Open Dayloom first.",
-  "view.daily": "Daily",
-  "view.dailyTimeline": "Daily Timeline",
-  "view.twoDay": "2-Day View",
-  "view.nDay": "{n}-day View",
-  "view.nDaySuffix": "-day View",
-  "view.weekly": "Weekly View",
-  "view.monthly": "Monthly",
-  "view.monthlyCalendar": "Monthly Calendar",
+  "view.daily": "Day",
+  "view.twoDay": "2-day",
+  "view.nDay": "{n}-day",
+  "view.nDaySuffix": "-day",
+  "view.weekly": "Week",
+  "view.monthly": "Month",
   "view.board": "Board",
   "view.list": "List",
-  "view.listView": "List View",
   "board.kanban": "Kanban",
   "board.kanbanTitle": "Standard Kanban",
   "board.priorityTitle": "Priority Focus",
@@ -7026,17 +7066,14 @@ var ko = {
   "notice.taskAdded": "\uC0C8 \uD560 \uC77C\uC774 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
   "notice.openViewFirst": "\uBA3C\uC800 Dayloom \uBDF0\uB97C \uC5EC\uC138\uC694.",
   "notice.openDayloomFirst": "\uBA3C\uC800 Dayloom\uC744 \uC5EC\uC138\uC694.",
-  "view.daily": "\uC77C\uAC04",
-  "view.dailyTimeline": "\uC77C\uAC04 \uD0C0\uC784\uB77C\uC778",
-  "view.twoDay": "2\uC77C \uBCF4\uAE30",
-  "view.nDay": "{n}\uC77C \uBCF4\uAE30",
-  "view.nDaySuffix": "\uC77C \uBCF4\uAE30",
-  "view.weekly": "\uC8FC\uAC04 \uBCF4\uAE30",
-  "view.monthly": "\uC6D4\uAC04",
-  "view.monthlyCalendar": "\uC6D4\uAC04 \uB2EC\uB825",
+  "view.daily": "\uC77C",
+  "view.twoDay": "2\uC77C",
+  "view.nDay": "{n}\uC77C",
+  "view.nDaySuffix": "\uC77C",
+  "view.weekly": "\uC8FC",
+  "view.monthly": "\uC6D4",
   "view.board": "\uBCF4\uB4DC",
   "view.list": "\uBAA9\uB85D",
-  "view.listView": "\uBAA9\uB85D \uBCF4\uAE30",
   "board.kanban": "\uCE78\uBC18",
   "board.kanbanTitle": "\uAE30\uBCF8 \uCE78\uBC18",
   "board.priorityTitle": "\uC6B0\uC120\uC21C\uC704 \uC9D1\uC911",
@@ -7335,16 +7372,13 @@ var ja = {
   "notice.openViewFirst": "\u5148\u306B Dayloom \u30D3\u30E5\u30FC\u3092\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
   "notice.openDayloomFirst": "\u5148\u306B Dayloom \u3092\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
   "view.daily": "\u65E5",
-  "view.dailyTimeline": "\u65E5\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3",
-  "view.twoDay": "2\u65E5\u30D3\u30E5\u30FC",
-  "view.nDay": "{n}\u65E5\u30D3\u30E5\u30FC",
-  "view.nDaySuffix": "\u65E5\u30D3\u30E5\u30FC",
-  "view.weekly": "\u9031\u30D3\u30E5\u30FC",
+  "view.twoDay": "2\u65E5",
+  "view.nDay": "{n}\u65E5",
+  "view.nDaySuffix": "\u65E5",
+  "view.weekly": "\u9031",
   "view.monthly": "\u6708",
-  "view.monthlyCalendar": "\u6708\u30AB\u30EC\u30F3\u30C0\u30FC",
   "view.board": "\u30DC\u30FC\u30C9",
   "view.list": "\u30EA\u30B9\u30C8",
-  "view.listView": "\u30EA\u30B9\u30C8\u30D3\u30E5\u30FC",
   "board.kanban": "\u30AB\u30F3\u30D0\u30F3",
   "board.kanbanTitle": "\u6A19\u6E96\u30AB\u30F3\u30D0\u30F3",
   "board.priorityTitle": "\u512A\u5148\u5EA6\u30D5\u30A9\u30FC\u30AB\u30B9",
@@ -7643,16 +7677,13 @@ var zh = {
   "notice.openViewFirst": "\u8BF7\u5148\u6253\u5F00 Dayloom \u89C6\u56FE\u3002",
   "notice.openDayloomFirst": "\u8BF7\u5148\u6253\u5F00 Dayloom\u3002",
   "view.daily": "\u65E5",
-  "view.dailyTimeline": "\u65E5\u65F6\u95F4\u7EBF",
-  "view.twoDay": "2 \u5929\u89C6\u56FE",
-  "view.nDay": "{n} \u5929\u89C6\u56FE",
-  "view.nDaySuffix": " \u5929\u89C6\u56FE",
-  "view.weekly": "\u5468\u89C6\u56FE",
+  "view.twoDay": "2 \u5929",
+  "view.nDay": "{n} \u5929",
+  "view.nDaySuffix": " \u5929",
+  "view.weekly": "\u5468",
   "view.monthly": "\u6708",
-  "view.monthlyCalendar": "\u6708\u5386",
   "view.board": "\u770B\u677F",
   "view.list": "\u5217\u8868",
-  "view.listView": "\u5217\u8868\u89C6\u56FE",
   "board.kanban": "\u770B\u677F",
   "board.kanbanTitle": "\u6807\u51C6\u770B\u677F",
   "board.priorityTitle": "\u4F18\u5148\u7EA7\u805A\u7126",
@@ -12200,7 +12231,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       setFirstIcon(drawerBtn, ["panel-right", "sidebar-right", "layout-sidebar-right"]);
       drawerBtn.addEventListener("click", () => void view.toggleSideDrawer());
     }
-    return { dateLabel };
+    return { dateLabel, headerTop };
   }
   async runSync() {
     if (this.syncInProgress)
@@ -14738,22 +14769,29 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     rootEl.toggleClass("dp-phone-shell", phone && import_obsidian6.Platform.isPhone);
     const header = rootEl.createDiv({ cls: "dp-header" });
     rootEl.prepend(header);
-    this.renderNavHeader(header, true);
+    const { headerTop } = this.renderNavHeader(header, true);
     if (phone && (this.activeTab === "daily" || this.activeTab === "list"))
       this.renderPhoneDateStrip(header);
-    const tabsContainer = phone ? rootEl.createDiv({ cls: "dp-tabs dp-bottom-nav" }) : header.createDiv({ cls: "dp-tabs" });
+    let tabsContainer;
+    if (phone) {
+      tabsContainer = rootEl.createDiv({ cls: "dp-tabs dp-bottom-nav" });
+    } else {
+      tabsContainer = headerTop.createDiv({ cls: "dp-tabs dp-header-tabs" });
+      headerTop.insertBefore(tabsContainer, headerTop.querySelector(":scope > .dp-header-actions"));
+      headerTop.addClass("has-view-tabs");
+    }
     const tabs = phone ? [
       { key: "daily", label: t("view.daily"), icon: "calendar-clock" },
       { key: "list", label: t("view.list"), icon: "list" },
       { key: "monthly", label: t("view.monthly"), icon: "calendar-days" },
       { key: "board", label: t("view.board"), icon: "layout-dashboard" }
     ] : [
-      { key: "daily", label: t("view.dailyTimeline") },
+      { key: "daily", label: t("view.daily") },
       { key: "multiDay", label: t("view.nDay", { n: this.plugin.settings.nDayViewDays || 4 }) },
       { key: "weekly", label: t("view.weekly") },
-      { key: "monthly", label: t("view.monthlyCalendar") },
+      { key: "monthly", label: t("view.monthly") },
       { key: "board", label: t("view.board") },
-      { key: "list", label: t("view.listView") }
+      { key: "list", label: t("view.list") }
     ];
     tabs.forEach((tab) => {
       if (tab.key === "multiDay" && !phone) {
@@ -15899,12 +15937,12 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
     this.renderNavHeader(header, false);
     const tabsContainer = header.createDiv({ cls: "dp-tabs" });
     const tabs = [
-      { key: "daily", label: t("view.dailyTimeline") },
+      { key: "daily", label: t("view.daily") },
       { key: "multiDay", label: t("view.nDay", { n: this.plugin.settings.nDayViewDays || 4 }) },
       { key: "weekly", label: t("view.weekly") },
-      { key: "monthly", label: t("view.monthlyCalendar") },
+      { key: "monthly", label: t("view.monthly") },
       { key: "board", label: t("view.board") },
-      { key: "list", label: t("view.listView") }
+      { key: "list", label: t("view.list") }
     ];
     tabs.forEach((tab) => {
       if (tab.key === "multiDay") {
