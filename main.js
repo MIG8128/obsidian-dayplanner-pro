@@ -2780,11 +2780,12 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-container.dp-compact-shell {
     --dp-bar-h: 40px;
     --dp-bar-icon: 16px;
+    --dp-head-h: 30px; /* header row controls: smaller than the toolbar islands */
 }
-/* Header: the bottom toolbar's 12px side inset; a 44px band for the 40px row (2px above and below) */
+/* Header: the bottom toolbar's 12px side inset; a 44px band for the 30px row (7px above and below) */
 .dp-container.dp-compact-shell > .dp-header {
-    padding: 2px 12px;
-    gap: 2px;
+    padding: 7px 12px;
+    gap: 6px;
 }
 /* Bottom toolbar (Safari-style): three floating glass islands [\u2039 \u203A] [view tabs] [\u2630], lifted above Obsidian's own
    mobile toolbar (which overlays the view's bottom edge) and the home-indicator safe area */
@@ -2891,7 +2892,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 /* Narrow sidebars: tighter islands so the four tabs keep their labels */
 @container dp-planner (max-width: 340px) {
     .dp-container.dp-compact-shell > .dp-header {
-        padding: 2px 8px;
+        padding: 7px 8px;
     }
     .dp-container.dp-compact-shell > .dp-bottom-nav {
         gap: 6px;
@@ -3165,11 +3166,11 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     height: 28px;
 }
 .dp-compact-shell .dp-board-toggle {
-    height: var(--dp-bar-h, 40px);
+    height: var(--dp-head-h, 30px);
 }
 .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
-    width: 34px;
-    height: 32px;
+    width: 30px;
+    height: 24px;
     padding: 0;
     font-size: 0.95em;
 }
@@ -3181,7 +3182,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     justify-content: space-between;
     align-items: center;
     gap: var(--size-4-2, 8px);
-    height: var(--dp-bar-h, 40px); /* exactly one toolbar island tall */
+    height: var(--dp-head-h, 30px); /* the compact header row: 30px controls (the size before this redesign) */
 }
 /* Date pill and Today wear the toolbar islands' material: raised fill, glass hairline, the same two-layer shadow */
 .dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact,
@@ -3203,7 +3204,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    height: var(--dp-bar-h, 40px);
+    height: var(--dp-head-h, 30px);
     padding: 0 var(--size-4-3, 12px) 0 var(--size-4-2, 8px);
     font-size: var(--font-ui-medium, 1em);
 }
@@ -3213,8 +3214,8 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-compact-shell .dp-header-actions > button.dp-today-btn {
     gap: 6px;
     width: auto;
-    min-width: var(--dp-bar-h, 40px);
-    height: var(--dp-bar-h, 40px);
+    min-width: var(--dp-head-h, 30px);
+    height: var(--dp-head-h, 30px);
     padding: 0 14px;
     font-size: var(--font-ui-small, 0.9em);
     font-weight: var(--font-medium, 500);
@@ -3234,45 +3235,43 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     height: 18px;
 }
 .dp-compact-shell .dp-header-actions > button.dp-add-btn {
-    width: var(--dp-bar-h, 40px);
-    min-width: var(--dp-bar-h, 40px);
-    height: var(--dp-bar-h, 40px);
+    width: var(--dp-head-h, 30px);
+    min-width: var(--dp-head-h, 30px);
+    height: var(--dp-head-h, 30px);
 }
 /* Header row at the toolbar's scale: the same icon size, toolbar-sized type, no Obsidian min-height or line-height
    stretching a control past the bar height */
 .dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact {
     gap: 6px;
-    padding: 0 14px 0 12px;
+    padding: 0 12px 0 8px;
     font-size: var(--font-ui-small, 13px);
     line-height: 1;
 }
-/* Optical match, not box match: lucide's calendars fill ~18x20 of their 24-unit grid and plus 14x14, while the toolbar's
-   chevrons fill only 6x12 and menu 16x12. Equal 16px boxes made the header glyphs read ~1.5x larger, so they get
-   smaller boxes that land at the toolbar glyphs' visible height (~8-9px) */
+/* Header icons at their original scale for the 30px row: calendar 14px, + 17px */
 .dp-compact-shell .dp-header-top .dp-nav-date-icon svg,
 .dp-compact-shell .dp-header-actions > button.dp-today-btn svg {
-    width: calc(var(--dp-bar-icon, 16px) - 4px);
-    height: calc(var(--dp-bar-icon, 16px) - 4px);
+    width: 14px;
+    height: 14px;
 }
 .dp-compact-shell .dp-header-actions > button.dp-add-btn svg {
-    width: calc(var(--dp-bar-icon, 16px) - 2px);
-    height: calc(var(--dp-bar-icon, 16px) - 2px);
+    width: 17px;
+    height: 17px;
 }
 .dp-compact-shell .dp-header-actions > button:is(.dp-today-btn, .dp-add-btn) {
     min-height: 0;
-    max-height: var(--dp-bar-h, 40px);
+    max-height: var(--dp-head-h, 30px);
     line-height: 1;
 }
 .dp-compact-shell .dp-header-actions > button.dp-today-btn {
     gap: 5px;
-    padding: 0 14px 0 12px;
+    padding: 0 10px;
     font-size: var(--font-ui-smaller, 12px);
     font-weight: 600; /* as bold as the date pill */
 }
 /* The narrowest panes: Today goes icon-only so the date keeps its room */
 @container dp-planner (max-width: 360px) {
     .dp-compact-shell .dp-header-actions > button.dp-today-btn {
-        width: var(--dp-bar-h, 40px);
+        width: var(--dp-head-h, 30px);
         padding: 0;
     }
     .dp-compact-shell .dp-header-actions > button.dp-today-btn .dp-btn-label {
