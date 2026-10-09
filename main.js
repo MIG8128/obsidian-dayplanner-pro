@@ -3072,7 +3072,20 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     max-width: 88px;
     margin-left: 0;
 }
-/* Compact List agenda (one day): the header and the date strip already name the day, so the rows take the full width */
+/* -------------------------------------------------------------
+   Compact List agenda (one day; views.ts renderListView): no boxes. A time gutter on the left, then one faint spine
+   through the day on which every item lays its colour rail, inset hairlines between rows, and a title over a quiet
+   meta line. The header and the date strip already name the day, so the day column goes.
+   ------------------------------------------------------------- */
+.dp-gc-list-container.is-day-agenda {
+    --dp-agenda-gutter: 58px;
+    --dp-agenda-gap: 10px;
+    --dp-agenda-rail-x: calc(var(--dp-agenda-gutter) + var(--dp-agenda-gap)); /* left edge of the 3px rail */
+}
+.dp-gc-list-container.is-day-agenda .dp-gc-list-scroll {
+    padding: 8px 12px 20px;
+    gap: 12px;
+}
 .dp-gc-list-container.is-day-agenda .dp-gc-day-sidebar {
     display: none;
 }
@@ -3080,20 +3093,232 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     border-bottom: none;
     padding-bottom: 0;
 }
-.dp-gc-list-container.is-day-agenda .dp-gc-item {
-    padding: 8px 10px;
-    border-radius: 10px;
-    background-color: var(--background-secondary);
-    border: 1px solid var(--dp-glass-border);
+.dp-gc-list-container.is-day-agenda .dp-gc-day-content {
+    position: relative;
+    gap: 0;
 }
-.dp-gc-list-container.is-day-agenda .dp-gc-item:hover {
+/* The day's spine, fading out at both ends; the item rails sit on it */
+.dp-gc-list-container.is-day-agenda .dp-gc-day-content::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: calc(var(--dp-agenda-rail-x) + 1px);
+    width: 1px;
+    background-image: linear-gradient(to bottom, transparent, var(--background-modifier-border) 10%, var(--background-modifier-border) 90%, transparent);
+    pointer-events: none;
+}
+.dp-gc-list-container.is-day-agenda .dp-gc-item.dp-agenda-item {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--dp-agenda-gutter) 3px 18px minmax(0, 1fr);
+    grid-template-areas: "when rail mark body";
+    column-gap: var(--dp-agenda-gap);
+    align-items: start;
+    padding: 10px 8px 10px 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    font-size: 1em;
+    transition: background-color 0.15s ease;
+}
+.dp-gc-list-container.is-day-agenda .dp-gc-item.dp-agenda-item:hover {
     background-color: var(--background-modifier-hover);
 }
+/* Inset hairline between rows, starting under the titles (Apple Calendar style) */
+.dp-gc-list-container.is-day-agenda .dp-agenda-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: calc(var(--dp-agenda-rail-x) + 3px + var(--dp-agenda-gap));
+    right: 8px;
+    bottom: 0;
+    height: 1px;
+    background-color: var(--background-modifier-border);
+    opacity: 0.7;
+    pointer-events: none;
+}
+.dp-agenda-when {
+    grid-area: when;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    padding-top: 1px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+}
+.dp-agenda-start {
+    font-size: 0.8em;
+    font-weight: 600;
+    color: var(--text-normal);
+}
+.dp-agenda-start.is-allday {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+.dp-agenda-end {
+    font-size: 0.72em;
+    color: var(--text-faint);
+}
+.dp-agenda-rail {
+    grid-area: rail;
+    align-self: stretch;
+    position: relative;
+    z-index: 1;
+    width: 3px;
+    min-height: 18px;
+    border-radius: 2px;
+    background-color: var(--dp-agenda-color);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--dp-agenda-color) 40%, transparent);
+}
+.dp-gc-list-container.is-day-agenda .dp-agenda-item > .dp-custom-cb,
+.dp-gc-list-container.is-day-agenda .dp-agenda-item > .dp-gc-item-dot {
+    grid-area: mark;
+    justify-self: center;
+    align-self: start;
+}
+.dp-gc-list-container.is-day-agenda .dp-agenda-item > .dp-gc-item-dot {
+    margin-top: 5px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--dp-agenda-color) 20%, transparent);
+}
+.dp-agenda-body {
+    grid-area: body;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.dp-gc-list-container.is-day-agenda .dp-agenda-body .dp-gc-item-title {
+    font-size: 0.95em;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: normal;
+    word-break: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.dp-agenda-meta {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 0.76em;
+    color: var(--text-muted);
+}
+.dp-agenda-meta > * {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dp-agenda-meta > * + *::before {
+    content: '\xB7';
+    margin-right: 6px;
+    color: var(--text-faint);
+}
+.dp-agenda-duration {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+/* The source note is a quiet link here, not a pill */
+.dp-gc-list-container.is-day-agenda .dp-agenda-meta .dp-gc-item-file {
+    align-self: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
+    font-size: inherit;
+    color: inherit;
+}
+.dp-gc-list-container.is-day-agenda .dp-agenda-meta .dp-gc-item-file:hover {
+    color: var(--text-accent);
+}
+.dp-gc-list-container.is-day-agenda .dp-agenda-item:is(.completed, .cancelled) .dp-agenda-rail {
+    background-color: var(--text-faint);
+    box-shadow: none;
+    opacity: 0.5;
+}
+.dp-gc-list-container.is-day-agenda .dp-agenda-item:is(.completed, .cancelled) .dp-agenda-start {
+    color: var(--text-muted);
+}
+/* Now: the red dot sits on the spine, its rule runs under the titles */
+.dp-gc-list-container.is-day-agenda .dp-gc-time-line {
+    margin: 0;
+    height: 12px;
+}
+.dp-gc-list-container.is-day-agenda .dp-gc-time-dot {
+    position: relative;
+    z-index: 2;
+    margin-left: calc(var(--dp-agenda-rail-x) - 2.5px);
+    margin-right: 0;
+    box-shadow: 0 0 0 3px rgba(234, 67, 53, 0.22);
+}
+.dp-gc-list-container.is-day-agenda .dp-gc-time-rule {
+    margin-right: 8px; /* ends with the hairlines */
+    height: 1.5px;
+    opacity: 0.85;
+}
+/* Day summary: one glass line on top */
+.dp-agenda-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background-color: var(--dp-glass-bg);
+    border: 1px solid var(--dp-glass-border);
+    box-shadow: inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-agenda-summary-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.8em;
+    font-variant-numeric: tabular-nums;
+}
+.dp-agenda-summary-main {
+    font-weight: 600;
+    color: var(--text-normal);
+}
+.dp-agenda-summary-sub {
+    color: var(--text-muted);
+}
+.dp-agenda-summary-track {
+    height: 3px;
+    border-radius: 2px;
+    background-color: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+    overflow: hidden;
+}
+.dp-agenda-summary-fill {
+    height: 100%;
+    border-radius: inherit;
+    transform-origin: left center;
+    transform: scaleX(var(--dp-agenda-done, 0));
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--interactive-accent) 55%, transparent), var(--interactive-accent));
+}
 .dp-gc-list-empty {
-    padding: 32px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 40px 12px;
     text-align: center;
     color: var(--text-muted);
     font-size: 0.9em;
+}
+.dp-gc-list-empty-icon {
+    display: inline-flex;
+    color: var(--text-faint);
+}
+.dp-gc-list-empty-icon svg {
+    width: 28px;
+    height: 28px;
 }
 
 /* -------------------------------------------------------------
@@ -14010,7 +14235,13 @@ ${e.calendarName ?? ""}`.toLowerCase();
       await this.refreshTasks();
     });
     const dayAgenda = this.isDayAgendaList();
-    container.toggleClass("is-day-agenda", dayAgenda && !globalSearch);
+    const agendaLayout = dayAgenda && !globalSearch;
+    container.toggleClass("is-day-agenda", agendaLayout);
+    const taskColor = this.plugin.settings.taskColor || "#ff9f1c";
+    const toMinutes2 = (hhmm) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      return h * 60 + m;
+    };
     let startDate = this.currentDate.clone().startOf(dayAgenda ? "day" : "month");
     let endDate = this.currentDate.clone().endOf(dayAgenda ? "day" : "month");
     if (self.parentNoteType === "daily" && self.parentNoteDate) {
@@ -14087,11 +14318,29 @@ ${e.calendarName ?? ""}`.toLowerCase();
       } else if (self.parentNoteType === "weekly") {
         emptyText = "No tasks or events found for this week.";
       }
-      listScroll.createDiv({
-        cls: "dp-gc-list-empty",
-        text: emptyText
-      });
+      const empty = listScroll.createDiv({ cls: "dp-gc-list-empty" });
+      if (agendaLayout)
+        (0, import_obsidian6.setIcon)(empty.createDiv({ cls: "dp-gc-list-empty-icon" }), "calendar-check");
+      empty.createDiv({ text: emptyText });
       return;
+    }
+    if (agendaLayout) {
+      const dayItems = Array.from(daysMap.values()).flat();
+      const tasksOfDay = dayItems.filter((item) => item.type === "task");
+      const done = tasksOfDay.filter((item) => item.task.completed).length;
+      const events = dayItems.length - tasksOfDay.length;
+      const summary = listScroll.createDiv({ cls: "dp-agenda-summary" });
+      const line = summary.createDiv({ cls: "dp-agenda-summary-line" });
+      line.createSpan({
+        cls: "dp-agenda-summary-main",
+        text: tasksOfDay.length > 0 ? `${done} of ${tasksOfDay.length} tasks done` : "No tasks"
+      });
+      if (events > 0)
+        line.createSpan({ cls: "dp-agenda-summary-sub", text: `${events} event${events === 1 ? "" : "s"}` });
+      if (tasksOfDay.length > 0) {
+        const track = summary.createDiv({ cls: "dp-agenda-summary-track" });
+        track.createDiv({ cls: "dp-agenda-summary-fill" }).style.setProperty("--dp-agenda-done", String(done / tasksOfDay.length));
+      }
     }
     const sortedDates = Array.from(daysMap.keys()).sort();
     const formatTimeStr = (time) => {
@@ -14180,6 +14429,21 @@ ${e.calendarName ?? ""}`.toLowerCase();
         }
         const card = contentDiv.createDiv({ cls: cardClass });
         card.dataset.selectId = isTask ? item.task.id : item.event.id;
+        const start = isTask ? item.task.startTime : item.event.isAllDay ? null : item.event.startTimeStr;
+        const end = isTask ? item.task.endTime : item.event.isAllDay ? null : item.event.endTimeStr;
+        if (agendaLayout) {
+          card.addClass("dp-agenda-item");
+          card.style.setProperty("--dp-agenda-color", isTask ? taskColor : item.event.color || "var(--interactive-accent)");
+          const when = card.createDiv({ cls: "dp-agenda-when" });
+          if (start) {
+            when.createDiv({ cls: "dp-agenda-start", text: formatTimeStr(start) });
+            if (end)
+              when.createDiv({ cls: "dp-agenda-end", text: formatTimeStr(end) });
+          } else {
+            when.createDiv({ cls: "dp-agenda-start is-allday", text: isKorean ? "\uC885\uC77C" : "All day" });
+          }
+          card.createDiv({ cls: "dp-agenda-rail" });
+        }
         if (isTask) {
           createCustomCheckbox(card, item.task, async (newStatus) => {
             await updateTaskInFile3(this.app, item.task, { statusChar: newStatus });
@@ -14193,24 +14457,33 @@ ${e.calendarName ?? ""}`.toLowerCase();
           const dot = card.createDiv({ cls: "dp-gc-item-dot" });
           dot.style.backgroundColor = color;
         }
-        let timeText = isKorean ? "\uC885\uC77C" : "All day";
-        if (isTask && item.task.startTime) {
-          timeText = formatTimeRange(item.task.startTime, item.task.endTime);
-        } else if (!isTask && !item.event.isAllDay) {
-          timeText = formatTimeRange(item.event.startTimeStr, item.event.endTimeStr);
+        if (!agendaLayout) {
+          card.createDiv({
+            cls: "dp-gc-item-time",
+            text: start ? formatTimeRange(start, end) : isKorean ? "\uC885\uC77C" : "All day"
+          });
         }
-        card.createDiv({
-          cls: "dp-gc-item-time",
-          text: timeText
-        });
         const displayTitle = isTask ? cleanTaskTextForDisplay(item.task.text) : item.event.summary;
-        renderTaskTitle(card.createDiv({ cls: "dp-gc-item-title" }), displayTitle, isTask ? item.task.priority : void 0);
+        const body = agendaLayout ? card.createDiv({ cls: "dp-agenda-body" }) : card;
+        renderTaskTitle(body.createDiv({ cls: "dp-gc-item-title" }), displayTitle, isTask ? item.task.priority : void 0);
+        let meta = null;
+        if (agendaLayout) {
+          meta = body.createDiv({ cls: "dp-agenda-meta" });
+          const startMin = start ? toMinutes2(start) : null;
+          const endMin = end ? toMinutes2(end) : null;
+          if (startMin !== null && endMin !== null && endMin > startMin) {
+            meta.createSpan({ cls: "dp-agenda-duration", text: formatMinutesNice(endMin - startMin) });
+          }
+          if (!isTask) {
+            if (item.event.location)
+              meta.createSpan({ text: item.event.location });
+            if (item.event.calendarName)
+              meta.createSpan({ text: item.event.calendarName });
+          }
+        }
         if (isTask) {
           const fileBase = item.task.filePath.split(/[/\\]/).pop() || item.task.filePath;
-          const fileBadge = card.createDiv({
-            cls: "dp-gc-item-file",
-            text: `\u{1F4C4} ${fileBase}`
-          });
+          const fileBadge = meta ? meta.createSpan({ cls: "dp-gc-item-file", text: fileBase.replace(/\.md$/i, ""), attr: { "aria-label": `Open ${fileBase}` } }) : card.createDiv({ cls: "dp-gc-item-file", text: `\u{1F4C4} ${fileBase}` });
           fileBadge.addEventListener("click", async (e) => {
             e.stopPropagation();
             await openTaskInEditor(this.app, item.task);
@@ -14244,6 +14517,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
             }).open();
           });
         }
+        if (meta && !meta.hasChildNodes())
+          meta.remove();
       };
       const renderTimeLine = () => {
         const tl = contentDiv.createDiv({ cls: "dp-gc-time-line" });
