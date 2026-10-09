@@ -5738,6 +5738,34 @@ async function patchGoogleCalendarEvent(plugin, calendarId, eventId, dateStr, st
     return false;
   }
 }
+async function restoreGoogleCalendarEvent(plugin, calendarId, eventId) {
+  const token = await getGoogleAccessToken(plugin);
+  if (!token) {
+    showRateLimitedNotice("\u26A0\uFE0F Google Calendar OAuth \uC815\uBCF4\uAC00 \uBE44\uC5B4\uC788\uAC70\uB098 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.", 5e3, 3e4);
+    return false;
+  }
+  try {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
+    const response = await gcalRequest({
+      url,
+      method: "PATCH",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ status: "confirmed" })
+    });
+    if (response.status === 200)
+      return true;
+    console.error("Google Calendar Restore Error:", response.text);
+    showRateLimitedNotice(`\u274C Google Calendar \uC77C\uC815 \uBCF5\uC6D0 \uC2E4\uD328 (${response.status}): ${response.text}`, 5e3, 15e3);
+    return false;
+  } catch (e) {
+    console.error("Error restoring Google Calendar Event:", e);
+    showRateLimitedNotice(`\u274C Google Calendar \uD1B5\uC2E0 \uC5D0\uB7EC: ${e instanceof Error ? e.message : String(e)}`, 5e3, 15e3);
+    return false;
+  }
+}
 async function deleteGoogleCalendarEvent(plugin, calendarId, eventId, paced = false) {
   const token = await getGoogleAccessToken(plugin);
   if (!token) {
@@ -6339,7 +6367,7 @@ var en = {
   "delete.eventsNote": "Google Calendar events are deleted from the calendar and cannot be restored here.",
   "delete.done": "Deleted {n} items.",
   "delete.failed": "{n} items could not be deleted (changed or no longer there).",
-  "delete.restored": "Restored {n} tasks.",
+  "delete.restored": "Restored {n} items.",
   "selection.count": "{n} selected",
   "selection.delete": "Delete the selected items (Delete)",
   "selection.clear": "Clear the selection (Esc)",
@@ -6645,7 +6673,7 @@ var ko = {
   "delete.eventsNote": "\uAD6C\uAE00 \uCE98\uB9B0\uB354 \uC77C\uC815\uC740 \uCE98\uB9B0\uB354\uC5D0\uC11C \uC0AD\uC81C\uB418\uBA70 \uC5EC\uAE30\uC11C \uBCF5\uC6D0\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.",
   "delete.done": "{n}\uAC1C \uD56D\uBAA9\uC744 \uC0AD\uC81C\uD588\uC2B5\uB2C8\uB2E4.",
   "delete.failed": "{n}\uAC1C \uD56D\uBAA9\uC740 \uC0AD\uC81C\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4 (\uBCC0\uACBD\uB418\uC5C8\uAC70\uB098 \uC774\uBBF8 \uC5C6\uC74C).",
-  "delete.restored": "\uD560 \uC77C {n}\uAC1C\uB97C \uBCF5\uC6D0\uD588\uC2B5\uB2C8\uB2E4.",
+  "delete.restored": "{n}\uAC1C \uD56D\uBAA9\uC744 \uBCF5\uC6D0\uD588\uC2B5\uB2C8\uB2E4.",
   "selection.count": "{n}\uAC1C \uC120\uD0DD\uB428",
   "selection.delete": "\uC120\uD0DD\uD55C \uD56D\uBAA9 \uC0AD\uC81C (Delete)",
   "selection.clear": "\uC120\uD0DD \uD574\uC81C (Esc)",
@@ -6951,7 +6979,7 @@ var ja = {
   "delete.eventsNote": "Google \u30AB\u30EC\u30F3\u30C0\u30FC\u306E\u4E88\u5B9A\u306F\u30AB\u30EC\u30F3\u30C0\u30FC\u304B\u3089\u524A\u9664\u3055\u308C\u3001\u3053\u3053\u3067\u306F\u5FA9\u5143\u3067\u304D\u307E\u305B\u3093\u3002",
   "delete.done": "{n} \u4EF6\u306E\u9805\u76EE\u3092\u524A\u9664\u3057\u307E\u3057\u305F\u3002",
   "delete.failed": "{n} \u4EF6\u306E\u9805\u76EE\u306F\u524A\u9664\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\uFF08\u5909\u66F4\u6E08\u307F\u3001\u307E\u305F\u306F\u5B58\u5728\u3057\u307E\u305B\u3093\uFF09\u3002",
-  "delete.restored": "{n} \u4EF6\u306E\u30BF\u30B9\u30AF\u3092\u5FA9\u5143\u3057\u307E\u3057\u305F\u3002",
+  "delete.restored": "{n} \u4EF6\u306E\u9805\u76EE\u3092\u5FA9\u5143\u3057\u307E\u3057\u305F\u3002",
   "selection.count": "{n} \u4EF6\u9078\u629E\u4E2D",
   "selection.delete": "\u9078\u629E\u3057\u305F\u9805\u76EE\u3092\u524A\u9664 (Delete)",
   "selection.clear": "\u9078\u629E\u3092\u89E3\u9664 (Esc)",
@@ -7257,7 +7285,7 @@ var zh = {
   "delete.eventsNote": "Google \u65E5\u5386\u65E5\u7A0B\u5C06\u4ECE\u65E5\u5386\u4E2D\u5220\u9664\uFF0C\u65E0\u6CD5\u5728\u6B64\u6062\u590D\u3002",
   "delete.done": "\u5DF2\u5220\u9664 {n} \u4E2A\u9879\u76EE\u3002",
   "delete.failed": "{n} \u4E2A\u9879\u76EE\u65E0\u6CD5\u5220\u9664\uFF08\u5DF2\u66F4\u6539\u6216\u5DF2\u4E0D\u5B58\u5728\uFF09\u3002",
-  "delete.restored": "\u5DF2\u6062\u590D {n} \u4E2A\u4EFB\u52A1\u3002",
+  "delete.restored": "\u5DF2\u6062\u590D {n} \u4E2A\u9879\u76EE\u3002",
   "selection.count": "\u5DF2\u9009\u62E9 {n} \u4E2A",
   "selection.delete": "\u5220\u9664\u6240\u9009\u9879\u76EE (Delete)",
   "selection.clear": "\u53D6\u6D88\u9009\u62E9 (Esc)",
@@ -7934,21 +7962,10 @@ var GCalEventEditModal = class extends import_obsidian4.Modal {
     const footer = createModalFooter(form);
     if (this.event) {
       const event = this.event;
-      let deleting = false;
       const requestDelete = () => {
-        if (deleting)
-          return;
-        new DeleteConfirmModal(this.app, [{ kind: "event", title: event.summary || "\u2014" }], async () => {
-          deleting = true;
-          try {
-            if (await deleteGoogleCalendarEvent(this.plugin, formState.calendarId, event.id)) {
-              new import_obsidian4.Notice(t("eventModal.deleted"));
-              this.onSave();
-              this.close();
-            }
-          } finally {
-            deleting = false;
-          }
+        new DeleteConfirmModal(this.app, [{ kind: "event", title: event.summary || "\u2014" }], () => {
+          this.close();
+          void deletePlannerItems(this.plugin, [], [event]);
         }).open();
       };
       const deleteBtn = createModalButton(footer.start, t("common.delete"), "danger", "trash-2");
@@ -9176,11 +9193,11 @@ async function deletePlannerItems(plugin, tasks, events = []) {
         gone.add(`${syncCalendarId}::${task.gcalEventId}`);
     }
   }
-  let eventsDeleted = 0;
+  const deletedEvents = [];
   for (const e of events) {
     if (await deleteGoogleCalendarEvent(plugin, e.calendarId, e.id)) {
       gone.add(`${e.calendarId}::${e.id}`);
-      eventsDeleted++;
+      deletedEvents.push(e);
     } else {
       failed++;
     }
@@ -9189,8 +9206,8 @@ async function deletePlannerItems(plugin, tasks, events = []) {
     plugin.removeCachedEvents(gone);
   await reparseAndRefresh(plugin, removed.map((r) => r.filePath));
   const parts = [];
-  if (removed.length + eventsDeleted > 0)
-    parts.push(t("delete.done", { n: removed.length + eventsDeleted }));
+  if (removed.length + deletedEvents.length > 0)
+    parts.push(t("delete.done", { n: removed.length + deletedEvents.length }));
   if (failed > 0)
     parts.push(t("delete.failed", { n: failed }));
   const notice = new import_obsidian6.Notice("", 8e3);
@@ -9199,15 +9216,24 @@ async function deletePlannerItems(plugin, tasks, events = []) {
     return;
   messageEl.empty();
   messageEl.createSpan({ text: `${parts.join(" ")} ` });
-  if (removed.length === 0)
+  if (removed.length + deletedEvents.length === 0)
     return;
   const undoBtn = messageEl.createEl("button", { text: t("common.undo") });
   undoBtn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
     notice.hide();
-    const restored = await restoreTaskLines(app, removed, markSelfWrite);
-    await reparseAndRefresh(plugin, removed.map((r) => r.filePath));
+    let restored = removed.length > 0 ? await restoreTaskLines(app, removed, markSelfWrite) : 0;
+    let eventsRestored = 0;
+    for (const ev of deletedEvents) {
+      if (await restoreGoogleCalendarEvent(plugin, ev.calendarId, ev.id))
+        eventsRestored++;
+    }
+    restored += eventsRestored;
+    if (removed.length > 0)
+      await reparseAndRefresh(plugin, removed.map((r) => r.filePath));
+    if (eventsRestored > 0)
+      plugin.refreshActiveViews(true);
     new import_obsidian6.Notice(t("delete.restored", { n: restored }));
   });
 }
