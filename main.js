@@ -1194,58 +1194,140 @@ var STYLES = `
     background-color: var(--background-modifier-hover);
 }
 
+/* In-progress tracker (Daily): a glass card with an accent wash, a live dot, and a thin progress track along the
+   bottom edge (--dp-ct-progress, 0\u20131, set by the tracker tick). No backdrop blur: nothing scrolls behind it. */
 .dp-current-task-bar {
     position: relative;
-    background-color: var(--background-secondary-alt);
-    border: 2px solid var(--interactive-accent);
-    border-radius: 8px;
-    padding: 8px 12px;
     display: flex;
     align-items: center;
     gap: 10px;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
-    z-index: 100;
     margin: 8px 12px;
+    padding: 9px 10px 12px 12px;
+    border-radius: 12px;
+    background-color: var(--dp-glass-bg);
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--interactive-accent) 14%, transparent), transparent 75%);
+    border: 1px solid color-mix(in srgb, var(--interactive-accent) 35%, var(--dp-glass-border));
+    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
+    overflow: hidden;
+    z-index: 100;
     box-sizing: border-box;
     flex-shrink: 0;
 }
-.theme-dark .dp-current-task-bar {
-    background-color: #121214;
-    box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.4);
-}
-.dp-ct-status-icon {
-    color: var(--text-error);
-    font-size: 1.1em;
-    animation: dp-pulse 1.8s infinite;
+.dp-ct-pulse {
+    position: relative;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background-color: var(--interactive-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
     flex-shrink: 0;
 }
-@keyframes dp-pulse {
-    0% { opacity: 0.4; transform: scale(0.9); }
-    50% { opacity: 1; transform: scale(1.15); }
-    100% { opacity: 0.4; transform: scale(0.9); }
+.dp-ct-pulse::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background-color: var(--interactive-accent);
+    animation: dp-ct-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes dp-ct-ping {
+    0% { transform: scale(1); opacity: 0.55; }
+    80%, 100% { transform: scale(2.8); opacity: 0; }
 }
 .dp-ct-info {
     flex-grow: 1;
-    overflow: hidden;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 1px;
+    gap: 2px;
 }
 .dp-ct-title {
-    font-size: 0.85em;
-    font-weight: bold;
+    font-size: 0.86em;
+    font-weight: 600;
     color: var(--text-normal);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
-.theme-dark .dp-ct-title {
-    color: #ffffff;
-}
 .dp-ct-time {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
     font-size: 0.74em;
     color: var(--text-muted);
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.dp-ct-remaining {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-accent);
+    font-weight: 500;
+}
+.dp-ct-range + .dp-ct-remaining::before {
+    content: '\xB7';
+    margin-right: 6px;
+    color: var(--text-faint);
+}
+.dp-ct-percent {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.72em;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-accent);
+    background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--interactive-accent) 24%, transparent);
+}
+.dp-current-task-bar button.dp-ct-open {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+.dp-current-task-bar button.dp-ct-open:hover,
+.dp-current-task-bar button.dp-ct-open:focus-visible {
+    color: var(--text-accent);
+    background-color: var(--background-modifier-hover);
+}
+.dp-ct-open svg {
+    width: 15px;
+    height: 15px;
+}
+.dp-ct-progress {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 5px;
+    height: 3px;
+    border-radius: 2px;
+    background-color: color-mix(in srgb, var(--interactive-accent) 16%, transparent);
+    overflow: hidden;
+    pointer-events: none;
+}
+.dp-ct-progress-fill {
+    width: 100%;
+    height: 100%;
+    border-radius: inherit;
+    transform-origin: left center;
+    transform: scaleX(var(--dp-ct-progress, 0));
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--interactive-accent) 55%, transparent), var(--interactive-accent));
+    transition: transform 0.6s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+    .dp-ct-pulse::after { animation: none; opacity: 0; }
+    .dp-ct-progress-fill { transition: none; }
 }
 /* Status Bar Progress Bar */
 .dp-status-bar-item {
@@ -2103,14 +2185,17 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-gc-item:hover {
     background-color: var(--background-modifier-hover);
 }
-.dp-gc-item.completed .dp-gc-item-title {
+.dp-gc-item.completed .dp-gc-item-title-text {
     text-decoration: line-through;
     color: var(--text-muted);
 }
-.dp-gc-item.cancelled .dp-gc-item-title {
+.dp-gc-item.cancelled .dp-gc-item-title-text {
     text-decoration: line-through;
     color: var(--text-muted);
     opacity: 0.6;
+}
+.dp-gc-item:is(.completed, .cancelled) .dp-gc-item-priority {
+    opacity: 0.5;
 }
 .dp-gc-item-dot {
     width: 8px;
@@ -2128,10 +2213,39 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-gc-item-title {
     color: var(--text-normal);
     flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.dp-gc-item-title-text {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* Priority badge: emoji on a tinted glass chip, never squeezed out by a long title */
+.dp-gc-item-priority {
+    --dp-prio: var(--text-muted);
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    font-size: 0.72em;
+    line-height: 1;
+    background-color: color-mix(in srgb, var(--dp-prio) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--dp-prio) 32%, transparent);
+    box-sizing: border-box;
+}
+.dp-gc-item-priority.is-highest { --dp-prio: var(--color-red, #e5484d); }
+.dp-gc-item-priority.is-high { --dp-prio: var(--color-orange, #f76b15); }
+.dp-gc-item-priority.is-medium { --dp-prio: var(--color-yellow, #e2a336); }
+.dp-gc-item-priority.is-low { --dp-prio: var(--color-blue, #3e8ef7); }
+.dp-gc-item-priority.is-lowest { --dp-prio: var(--text-faint); }
 .dp-gc-item-file {
     font-size: 0.78em;
     color: var(--text-muted);
@@ -2972,6 +3086,29 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     align-self: center;
     max-width: 88px;
     margin-left: 0;
+}
+/* Compact List agenda (one day): the header and the date strip already name the day, so the rows take the full width */
+.dp-gc-list-container.is-day-agenda .dp-gc-day-sidebar {
+    display: none;
+}
+.dp-gc-list-container.is-day-agenda .dp-gc-day-row {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+.dp-gc-list-container.is-day-agenda .dp-gc-item {
+    padding: 8px 10px;
+    border-radius: 10px;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--dp-glass-border);
+}
+.dp-gc-list-container.is-day-agenda .dp-gc-item:hover {
+    background-color: var(--background-modifier-hover);
+}
+.dp-gc-list-empty {
+    padding: 32px 12px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9em;
 }
 
 /* -------------------------------------------------------------
@@ -9064,6 +9201,8 @@ function renderSideDrawer(rootEl, view) {
 }
 
 // views.ts
+var PRIORITY_EMOJI = { highest: "\u{1F53A}", high: "\u23EB", medium: "\u{1F53C}", low: "\u{1F53D}", lowest: "\u23EC" };
+var CURRENT_TASK_TICK_MS = 5e3;
 var isLockedTask = (task) => !!task && (task.completed || task.statusChar === "x" || task.statusChar === "-");
 function grabOffsetIn(card, clientY) {
   const col = card.offsetParent;
@@ -9883,6 +10022,7 @@ var DayPlannerBaseView = class extends import_obsidian6.ItemView {
     this.zoomOutsideBound = false;
     this.syncInProgress = false;
     this.navDirection = null;
+    this.trackerTimer = null;
     this.plugin = plugin;
     this.currentDate = window.moment();
     if (this.plugin.settings.collapsedColumns) {
@@ -10141,6 +10281,17 @@ ${e.calendarName ?? ""}`.toLowerCase();
   }
   useCompactLayout() {
     return false;
+  }
+  isDayAgendaList() {
+    return this.useCompactLayout() && this.getViewTabType() === "list";
+  }
+  getNavUnit() {
+    const tab = this.getViewTabType();
+    if (tab === "weekly")
+      return "week";
+    if (tab === "monthly" || tab === "list" && !this.isDayAgendaList())
+      return "month";
+    return "day";
   }
   getNDayCount() {
     return this.useCompactLayout() ? 2 : Math.max(2, Math.min(14, this.plugin.settings.nDayViewDays || 4));
@@ -11239,7 +11390,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         }
       } else if (key === "w") {
         e.preventDefault();
-        if (this instanceof DayPlannerCombinedView) {
+        if (this instanceof DayPlannerCombinedView && !this.useCompactLayout()) {
           await this.switchTab("weekly");
         } else {
           await this.plugin.activateView("day-planner-pro-view", "weekly");
@@ -11260,7 +11411,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         }
       } else if (key === "x") {
         e.preventDefault();
-        if (this instanceof DayPlannerCombinedView) {
+        if (this instanceof DayPlannerCombinedView && !this.useCompactLayout()) {
           await this.switchTab("multiDay");
         } else {
           await this.plugin.activateView("day-planner-pro-view", "multiDay");
@@ -11548,7 +11699,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
   renderNavHeader(parent, showTabs = false) {
     const headerTop = parent.createDiv({ cls: "dp-header-top" });
     const compact = this.useCompactLayout();
-    const info = getHeaderDateInfo(this.currentDate, this.getViewTabType(), this.getNDayCount());
+    const info = getHeaderDateInfo(this.currentDate, this.isDayAgendaList() ? "daily" : this.getViewTabType(), this.getNDayCount());
     const dateEl = headerTop.createDiv({ cls: "dp-nav-date" });
     if (compact)
       dateEl.addClass("dp-header-date-compact");
@@ -11739,8 +11890,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
   }
   async goToToday() {
     const today = window.moment();
-    const tab = this.getViewTabType();
-    const unit = tab === "weekly" ? "week" : tab === "monthly" || tab === "list" ? "month" : "day";
+    const unit = this.getNavUnit();
     this.navDirection = this.currentDate.isSame(today, unit) ? null : this.currentDate.isBefore(today, unit) ? "next" : "prev";
     this.currentDate = today;
     this.scrollToTodayRequested = true;
@@ -11755,8 +11905,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const target = window.moment(dateStr, "YYYY-MM-DD");
     if (target.isSame(this.currentDate, "day"))
       return;
-    const tab = this.getViewTabType();
-    const unit = tab === "weekly" ? "week" : tab === "monthly" || tab === "list" ? "month" : "day";
+    const unit = this.getNavUnit();
     this.navDirection = target.isSame(this.currentDate, unit) ? null : target.isAfter(this.currentDate, unit) ? "next" : "prev";
     this.currentDate = target;
     triggerHaptic("selection");
@@ -11780,45 +11929,86 @@ ${e.calendarName ?? ""}`.toLowerCase();
       applySlideTransition(el, this.navDirection, host);
   }
   renderCurrentTaskTracker(parent) {
+    this.stopCurrentTaskTracker();
+    let lastKey = this.syncCurrentTaskTracker(parent, "", true);
+    const id = window.setInterval(() => {
+      if (!parent.isConnected)
+        this.stopCurrentTaskTracker();
+      else
+        lastKey = this.syncCurrentTaskTracker(parent, lastKey, false);
+    }, CURRENT_TASK_TICK_MS);
+    this.trackerTimer = id;
+    this.registerInterval(id);
+  }
+  stopCurrentTaskTracker() {
+    if (this.trackerTimer != null)
+      window.clearInterval(this.trackerTimer);
+    this.trackerTimer = null;
+  }
+  syncCurrentTaskTracker(parent, lastKey, initial) {
     const now = window.moment();
     const todayStr = now.format("YYYY-MM-DD");
     const currentMinutes = now.hour() * 60 + now.minute();
-    const todayTasks = this.tasks.filter((t2) => t2.date === todayStr && t2.startTime && t2.endTime);
+    const toMin = (hhmm) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      return h * 60 + m;
+    };
     let activeTask = null;
-    let progressPercent = 0;
-    let minsRemaining = 0;
-    for (const task of todayTasks) {
-      const [sh, sm] = task.startTime.split(":").map(Number);
-      const [eh, em] = task.endTime.split(":").map(Number);
-      const startMin = sh * 60 + sm;
-      const endMin = eh * 60 + em;
-      if (currentMinutes >= startMin && currentMinutes < endMin) {
+    for (const task of this.tasks) {
+      if (task.date !== todayStr || !task.startTime || !task.endTime)
+        continue;
+      if (currentMinutes >= toMin(task.startTime) && currentMinutes < toMin(task.endTime)) {
         activeTask = task;
-        const duration = endMin - startMin;
-        const elapsed = currentMinutes - startMin;
-        progressPercent = Math.min(100, Math.max(0, elapsed / duration * 100));
-        minsRemaining = endMin - currentMinutes;
         break;
       }
     }
-    if (activeTask) {
-      const trackerBar = parent.createDiv({ cls: "dp-current-task-bar" });
-      trackerBar.createDiv({ cls: "dp-ct-status-icon", text: "\u25B6" });
-      const infoContainer = trackerBar.createDiv({ cls: "dp-ct-info" });
-      const titleText = cleanTaskTextForDisplay(activeTask.text);
-      infoContainer.createDiv({ cls: "dp-ct-title", text: titleText });
-      infoContainer.createDiv({
-        cls: "dp-ct-time",
-        text: `\u23F0 ${activeTask.startTime}~${activeTask.endTime} (${formatMinutesNice(minsRemaining)} remaining)`
-      });
-      const linkBtn = trackerBar.createSpan({ text: "\u2197", cls: "dp-task-link-btn" });
-      linkBtn.addEventListener("click", async (e) => {
-        e.stopPropagation();
-        if (activeTask) {
-          await openTaskInEditor(this.app, activeTask);
-        }
-      });
+    let bar = parent.querySelector(":scope > .dp-current-task-bar");
+    if (!activeTask) {
+      bar?.remove();
+      return "";
     }
+    const identity = `${activeTask.id}|${activeTask.text}|${activeTask.startTime}|${activeTask.endTime}|${activeTask.statusChar}`;
+    const key = `${identity}|${currentMinutes}`;
+    if (bar && key === lastKey)
+      return key;
+    if (!bar || bar.dataset.trackerId !== identity) {
+      bar?.remove();
+      bar = this.buildCurrentTaskBar(activeTask, identity);
+      const nav = initial ? null : parent.querySelector(":scope > .dp-bottom-nav");
+      if (nav)
+        parent.insertBefore(bar, nav);
+      else
+        parent.appendChild(bar);
+    }
+    const startMin = toMin(activeTask.startTime);
+    const endMin = toMin(activeTask.endTime);
+    const percent = Math.min(100, Math.max(0, Math.round((currentMinutes - startMin) / (endMin - startMin) * 100)));
+    bar.querySelector(".dp-ct-remaining").setText(`${formatMinutesNice(endMin - currentMinutes)} remaining`);
+    bar.querySelector(".dp-ct-percent").setText(`${percent}%`);
+    bar.style.setProperty("--dp-ct-progress", String(percent / 100));
+    bar.setAttribute("aria-valuenow", String(percent));
+    return key;
+  }
+  buildCurrentTaskBar(task, identity) {
+    const bar = createDiv({ cls: "dp-current-task-bar", attr: { role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100" } });
+    bar.dataset.trackerId = identity;
+    const title = cleanTaskTextForDisplay(task.text);
+    bar.setAttribute("aria-label", title);
+    bar.createSpan({ cls: "dp-ct-pulse" });
+    const info = bar.createDiv({ cls: "dp-ct-info" });
+    info.createDiv({ cls: "dp-ct-title", text: title });
+    const meta = info.createDiv({ cls: "dp-ct-time" });
+    meta.createSpan({ cls: "dp-ct-range", text: `${task.startTime} \u2013 ${task.endTime}` });
+    meta.createSpan({ cls: "dp-ct-remaining" });
+    bar.createSpan({ cls: "dp-ct-percent" });
+    const openBtn = bar.createEl("button", { cls: "dp-ct-open", attr: { "aria-label": "Open task in its note" } });
+    (0, import_obsidian6.setIcon)(openBtn, "arrow-up-right");
+    openBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      await openTaskInEditor(this.app, task);
+    });
+    bar.createDiv({ cls: "dp-ct-progress" }).createDiv({ cls: "dp-ct-progress-fill" });
+    return bar;
   }
   registerMarqueeSelection(eventsCol, getTimedEvents) {
     let marquee = null;
@@ -13842,8 +14032,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
       self.listSearchQuery = searchInput.value.toLowerCase().trim();
       await this.refreshTasks();
     });
-    let startDate = this.currentDate.clone().startOf("month");
-    let endDate = this.currentDate.clone().endOf("month");
+    const dayAgenda = this.isDayAgendaList();
+    container.toggleClass("is-day-agenda", dayAgenda && !globalSearch);
+    let startDate = this.currentDate.clone().startOf(dayAgenda ? "day" : "month");
+    let endDate = this.currentDate.clone().endOf(dayAgenda ? "day" : "month");
     if (self.parentNoteType === "daily" && self.parentNoteDate) {
       startDate = window.moment(self.parentNoteDate, "YYYY-MM-DD").startOf("day");
       endDate = window.moment(self.parentNoteDate, "YYYY-MM-DD").endOf("day");
@@ -13900,7 +14092,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     });
     const listScroll = container.createDiv({ cls: "dp-gc-list-scroll" });
     this.playNavSlide(listScroll, container);
-    const listScrollKey = `${this.getViewType()}:${this.currentDate.format("YYYY-MM")}:list-scroll`;
+    const listScrollKey = `${this.getViewType()}:${this.currentDate.format(dayAgenda ? "YYYY-MM-DD" : "YYYY-MM")}:list-scroll`;
     listScroll.addEventListener("scroll", () => {
       this.savedScrollPositions[listScrollKey] = {
         scrollTop: listScroll.scrollTop,
@@ -13909,12 +14101,17 @@ ${e.calendarName ?? ""}`.toLowerCase();
     });
     if (daysMap.size === 0) {
       let emptyText = "No tasks or events found in this month.";
-      if (self.parentNoteType === "daily") {
+      if (globalSearch) {
+        emptyText = "No tasks or events match the search.";
+      } else if (dayAgenda) {
+        emptyText = "No tasks or events on this day.";
+      } else if (self.parentNoteType === "daily") {
         emptyText = "No tasks or events found for today.";
       } else if (self.parentNoteType === "weekly") {
         emptyText = "No tasks or events found for this week.";
       }
       listScroll.createDiv({
+        cls: "dp-gc-list-empty",
         text: emptyText
       });
       return;
@@ -14030,10 +14227,17 @@ ${e.calendarName ?? ""}`.toLowerCase();
           text: timeText
         });
         const displayTitle = isTask ? cleanTaskTextForDisplay(item.task.text) : item.event.summary;
-        card.createDiv({
-          cls: "dp-gc-item-title",
-          text: displayTitle
-        });
+        const titleEl = card.createDiv({ cls: "dp-gc-item-title" });
+        titleEl.createSpan({ cls: "dp-gc-item-title-text", text: displayTitle });
+        const priority = isTask ? item.task.priority : void 0;
+        if (priority && PRIORITY_EMOJI[priority]) {
+          const label = t(`priority.${priority}`);
+          titleEl.createSpan({
+            cls: `dp-gc-item-priority is-${priority}`,
+            text: PRIORITY_EMOJI[priority],
+            attr: { "aria-label": label, title: label }
+          });
+        }
         if (isTask) {
           const fileBase = item.task.filePath.split(/[/\\]/).pop() || item.task.filePath;
           const fileBadge = card.createDiv({
@@ -14145,7 +14349,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     if (this.activeTab === "monthly")
       this.currentDate.add(direction, "month");
     if (this.activeTab === "list") {
-      this.currentDate.add(direction, "month");
+      this.currentDate.add(direction, this.isDayAgendaList() ? "day" : "month");
     }
   }
   renderRoot(rootEl) {
@@ -14155,15 +14359,14 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     const header = rootEl.createDiv({ cls: "dp-header" });
     rootEl.prepend(header);
     this.renderNavHeader(header, true);
-    if (phone && (this.activeTab === "daily" || this.activeTab === "multiDay"))
+    if (phone && (this.activeTab === "daily" || this.activeTab === "list"))
       this.renderPhoneDateStrip(header);
     const tabsContainer = phone ? rootEl.createDiv({ cls: "dp-tabs dp-bottom-nav" }) : header.createDiv({ cls: "dp-tabs" });
     const tabs = phone ? [
       { key: "daily", label: t("view.daily"), icon: "calendar-clock" },
-      { key: "multiDay", label: t("view.twoDay"), icon: "calendar-range" },
+      { key: "list", label: t("view.list"), icon: "list" },
       { key: "monthly", label: t("view.monthly"), icon: "calendar-days" },
-      { key: "board", label: t("view.board"), icon: "layout-dashboard" },
-      { key: "list", label: t("view.list"), icon: "list" }
+      { key: "board", label: t("view.board"), icon: "layout-dashboard" }
     ] : [
       { key: "daily", label: t("view.dailyTimeline") },
       { key: "multiDay", label: t("view.nDay", { n: this.plugin.settings.nDayViewDays || 4 }) },
@@ -14220,6 +14423,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.mountActivePane(rootEl);
     if (this.activeTab === "daily")
       this.renderCurrentTaskTracker(rootEl);
+    else
+      this.stopCurrentTaskTracker();
     if (phone) {
       rootEl.appendChild(tabsContainer);
       this.registerSwipeNavigation(rootEl);
@@ -14501,7 +14706,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     if (!this.useCompactLayout())
       return super.focusDay(dateStr);
     const target = window.moment(dateStr, "YYYY-MM-DD");
-    if (this.activeTab !== "daily" && this.activeTab !== "multiDay") {
+    if (this.activeTab !== "daily" && this.activeTab !== "list") {
       const fromMonthly = this.activeTab === "monthly";
       this.currentDate = target;
       this.dataVersion++;
@@ -14592,8 +14797,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     }, { capture: true });
   }
   render() {
-    if (this.useCompactLayout() && this.activeTab === "weekly")
-      this.activeTab = "multiDay";
+    if (this.useCompactLayout() && (this.activeTab === "weekly" || this.activeTab === "multiDay"))
+      this.activeTab = "daily";
     if (!this.isTabSwitch)
       this.dataVersion++;
     super.render();
@@ -15372,6 +15577,7 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
   renderContentArea(rootEl, content) {
     content.empty();
     rootEl.querySelector(":scope > .dp-current-task-bar")?.remove();
+    this.stopCurrentTaskTracker();
     if (this.viewType === "daily") {
       this.renderDailyTimeline(content);
       this.renderCurrentTaskTracker(rootEl);
