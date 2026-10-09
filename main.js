@@ -2776,13 +2776,16 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Compact shell (.dp-compact-shell root): the combined view on phones and the Sidebar Day Planner Pro view.
    .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
-/* Bottom navigation: floating pill lifted above Obsidian's own mobile toolbar (which overlays the view's bottom edge) */
+/* Bottom bar: one slim floating pill [\u2630] [view tabs] [\u2039 \u203A], lifted above Obsidian's own mobile toolbar (which
+   overlays the view's bottom edge) and the home-indicator safe area */
 .dp-container.dp-compact-shell > .dp-bottom-nav {
+    position: relative; /* anchors the \u2630 menu */
+    display: flex;
+    align-items: center;
     flex-shrink: 0;
-    width: auto; /* .dp-tabs is 100% wide; auto lets the side margins inset the pill */
     gap: 2px;
-    margin: 0 12px 0;
-    padding: 2px;
+    margin: 0 12px max(8px, env(safe-area-inset-bottom, 0px));
+    padding: 3px;
     border: 1px solid var(--dp-glass-border);
     border-radius: 999px;
     background-color: var(--dp-glass-bg);
@@ -2792,17 +2795,186 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .is-phone .dp-phone-shell > .dp-bottom-nav {
     margin-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
 }
+/* The tabs fill the middle; the bar itself is their track */
+.dp-compact-shell .dp-bottom-nav > .dp-tabs.dp-bottom-tabs {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+}
 /* Text-only pills, one 28px row (the label span ellipsizes; the button stays unclipped for the sliding pill) */
-.dp-compact-shell .dp-bottom-nav > .dp-tab {
+.dp-compact-shell .dp-bottom-tabs > .dp-tab {
     flex: 1 1 0;
     min-width: 0;
     height: 28px;
-    padding: 0 8px;
+    padding: 0 6px;
     border-radius: 999px;
     font-size: var(--font-ui-smaller, 12px);
 }
-.dp-compact-shell .dp-bottom-nav > .dp-tab.active {
+.dp-compact-shell .dp-bottom-tabs > .dp-tab.active {
     color: var(--text-accent);
+}
+/* \u2630 and \u2039 \u203A: round icon buttons at the bar's ends */
+.dp-bottom-pager,
+.dp-bottom-menu-wrap {
+    display: flex;
+    flex-shrink: 0;
+    gap: 2px;
+}
+.dp-bottom-nav .dp-bottom-bar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 34px;
+    height: 28px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    color: var(--text-muted);
+    background: transparent;
+    border: none;
+    border-radius: 999px;
+    box-shadow: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+@media (hover: hover) {
+    .dp-bottom-nav .dp-bottom-bar-btn:hover {
+        color: var(--text-normal);
+        background-color: var(--background-modifier-hover);
+    }
+}
+.dp-bottom-nav .dp-bottom-bar-btn:active {
+    transform: scale(0.92);
+    background-color: var(--background-modifier-hover);
+}
+.dp-bottom-nav .dp-bottom-bar-btn.is-active {
+    color: var(--text-accent);
+    background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+}
+.dp-bottom-bar-btn svg {
+    width: 18px;
+    height: 18px;
+}
+/* \u2630 menu: glass popover rising from the button (content scrolls behind it, so it gets the blur) */
+.dp-bottom-menu {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 8px);
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 220px;
+    padding: 6px;
+    box-sizing: border-box;
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 16px;
+    box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
+    transform-origin: bottom left;
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s linear 0.2s;
+}
+.dp-bottom-menu.is-open {
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.16s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+    .dp-bottom-menu,
+    .dp-bottom-menu.is-open {
+        transform: none;
+    }
+}
+.dp-bottom-menu > .dp-bottom-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 100%;
+    height: 44px;
+    min-height: 0;
+    margin: 0;
+    padding: 0 12px;
+    font-size: var(--font-ui-medium, 1em);
+    font-weight: var(--font-medium, 500);
+    text-align: left;
+    color: var(--text-normal);
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    box-shadow: none;
+    cursor: pointer;
+    -webkit-touch-callout: none; /* Sync: a long-press opens the sync options, not the iOS callout */
+}
+.dp-bottom-menu > .dp-bottom-menu-item:active,
+.dp-bottom-menu > .dp-bottom-menu-item:focus-visible {
+    background-color: var(--background-modifier-hover);
+}
+@media (hover: hover) {
+    .dp-bottom-menu > .dp-bottom-menu-item:hover {
+        background-color: var(--background-modifier-hover);
+    }
+}
+.dp-bottom-menu-icon,
+.dp-bottom-menu .dp-zoom-toggle {
+    display: inline-flex;
+    color: var(--text-muted);
+}
+.dp-bottom-menu-icon svg,
+.dp-bottom-menu .dp-zoom-toggle svg {
+    width: 18px;
+    height: 18px;
+}
+/* Zoom row: the timeline zoom control, always expanded [\u{1F50D} \u2014\u2014\u25CF\u2014\u2014 60px] */
+.dp-bottom-menu-zoom {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 12px;
+}
+.dp-bottom-menu .dp-bottom-menu-zoom > .dp-zoom-slider-floating {
+    flex-direction: row;
+    gap: 12px;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    overflow: visible;
+    background: transparent;
+    border: none;
+}
+.dp-bottom-menu .dp-zoom-slider-floating span:first-child {
+    width: 18px;
+    pointer-events: none;
+}
+.dp-bottom-menu .dp-zoom-popover {
+    flex: 1 1 auto;
+    flex-direction: row;
+    gap: 8px;
+    min-width: 0;
+}
+.dp-bottom-menu .dp-zoom-slider {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    opacity: 1;
+}
+.dp-bottom-menu .dp-zoom-value {
+    opacity: 1;
+    width: auto;
+    padding-left: 0;
 }
 .dp-bottom-nav-label {
     max-width: 100%;
@@ -2844,17 +3016,17 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     height: 28px;
 }
 .dp-compact-shell .dp-board-toggle {
-    height: 36px;
+    height: 40px;
 }
 .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
-    width: 32px;
-    height: 28px;
+    width: 34px;
+    height: 32px;
     padding: 0;
     font-size: 0.95em;
 }
 
-/* Single header row (phone views, compact Board): [date pill] ... [\u{1F50D}] [\u{1F4C5}] [Sync] [+]; never wraps: the actions
-   never shrink, the date pill gives way (clipped) on the narrowest screens */
+/* Single header row (phone views, sidebar view): [date pill] ... [\u{1F4C5} Today] [+] (Board: [mode toggle] [+]); the other
+   tools live in the bottom bar. Never wraps: the actions never shrink, the date pill gives way only on the narrowest panes */
 .dp-compact-shell .dp-header-top {
     flex-wrap: nowrap;
     justify-content: space-between;
@@ -2865,16 +3037,53 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    height: 36px;
+    height: 40px;
     padding: 0 var(--size-4-3, 12px) 0 var(--size-4-2, 8px);
     font-size: var(--font-ui-medium, 1em);
 }
 .dp-compact-shell .dp-header-top > .dp-header-actions {
     flex-shrink: 0;
 }
-/* Phones with the < > buttons (swipes turned off): the "(Wk 41)" suffix makes room so the date itself stays readable */
-.dp-phone-shell .dp-header-top.has-nav-arrows .dp-nav-date-sub {
-    display: none;
+.dp-compact-shell .dp-header-actions > button.dp-today-btn {
+    gap: 6px;
+    width: auto;
+    min-width: 40px;
+    height: 40px;
+    padding: 0 14px;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-medium, 500);
+    color: var(--text-normal);
+    background-color: var(--dp-segment-track);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 999px;
+    box-shadow: none;
+    transition: transform 0.1s ease, background-color 0.15s ease;
+}
+.dp-compact-shell .dp-header-actions > button.dp-today-btn:active {
+    transform: scale(0.95);
+    background-color: var(--background-modifier-hover);
+}
+.dp-compact-shell .dp-header-actions > button.dp-today-btn .dp-btn-label {
+    display: inline;
+}
+.dp-compact-shell .dp-header-actions > button.dp-today-btn svg {
+    width: 18px;
+    height: 18px;
+}
+.dp-compact-shell .dp-header-actions > button.dp-add-btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+}
+/* The narrowest panes: Today goes icon-only so the date keeps its room */
+@container dp-planner (max-width: 360px) {
+    .dp-compact-shell .dp-header-actions > button.dp-today-btn {
+        width: 40px;
+        padding: 0;
+    }
+    .dp-compact-shell .dp-header-actions > button.dp-today-btn .dp-btn-label {
+        display: none;
+    }
 }
 /* Daily / 2-Day: 7-day date strip under the header nav */
 .dp-compact-shell .dp-date-strip {
@@ -6750,6 +6959,8 @@ var en = {
   "nav.previous": "Previous",
   "nav.next": "Next",
   "nav.sync": "Sync",
+  "nav.menu": "Menu",
+  "nav.search": "Search",
   "nav.filter": "Filter",
   "nav.shortcuts": "Keyboard Shortcuts (?)",
   "nav.toggleDrawer": "Toggle side drawer (S)",
@@ -7055,6 +7266,8 @@ var ko = {
   "nav.previous": "\uC774\uC804",
   "nav.next": "\uB2E4\uC74C",
   "nav.sync": "\uB3D9\uAE30\uD654",
+  "nav.menu": "\uBA54\uB274",
+  "nav.search": "\uAC80\uC0C9",
   "nav.filter": "\uD544\uD130",
   "nav.shortcuts": "\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4 (?)",
   "nav.toggleDrawer": "\uC0AC\uC774\uB4DC \uC11C\uB78D \uC5F4\uAE30/\uB2EB\uAE30 (S)",
@@ -7360,6 +7573,8 @@ var ja = {
   "nav.previous": "\u524D\u3078",
   "nav.next": "\u6B21\u3078",
   "nav.sync": "\u540C\u671F",
+  "nav.menu": "\u30E1\u30CB\u30E5\u30FC",
+  "nav.search": "\u691C\u7D22",
   "nav.filter": "\u30D5\u30A3\u30EB\u30BF\u30FC",
   "nav.shortcuts": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8 (?)",
   "nav.toggleDrawer": "\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u306E\u5207\u308A\u66FF\u3048 (S)",
@@ -7665,6 +7880,8 @@ var zh = {
   "nav.previous": "\u4E0A\u4E00\u4E2A",
   "nav.next": "\u4E0B\u4E00\u4E2A",
   "nav.sync": "\u540C\u6B65",
+  "nav.menu": "\u83DC\u5355",
+  "nav.search": "\u641C\u7D22",
   "nav.filter": "\u7B5B\u9009",
   "nav.shortcuts": "\u952E\u76D8\u5FEB\u6377\u952E (?)",
   "nav.toggleDrawer": "\u5207\u6362\u4FA7\u8FB9\u62BD\u5C49 (S)",
@@ -11946,7 +12163,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       let sliderContainer = this.containerEl.querySelector(".dp-zoom-slider-floating");
       if (showSlider) {
         if (!sliderContainer) {
-          const headerActions = this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
+          const headerActions = this.containerEl.querySelector(".dp-bottom-menu-zoom") ?? this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
           const viewContent = this.contentEl || this.containerEl;
           sliderContainer = (headerActions ?? viewContent).createDiv({ cls: "dp-zoom-slider-floating" });
           headerActions?.prepend(sliderContainer);
@@ -12099,10 +12316,9 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const headerActions = headerTop.createDiv({ cls: "dp-header-actions" });
     const navGroup = compact ? null : headerActions.createDiv({ cls: "dp-nav-buttons-group" });
     const tools = headerActions.createDiv({ cls: "dp-header-tools" });
-    const showArrows = !compact || !import_obsidian6.Platform.isMobile || this.plugin.settings.swipeNavigation === false;
-    headerTop.toggleClass("has-nav-arrows", compact && showArrows && this.getViewTabType() !== "board");
+    const showArrows = !compact;
     if (this.getViewTabType() !== "board") {
-      const navHost = navGroup ?? tools;
+      const navHost = navGroup ?? headerActions;
       if (showArrows) {
         const prevBtn = navHost.createEl("button", { cls: "dp-nav-arrow", attr: { "aria-label": t("nav.previous") } });
         (0, import_obsidian6.setIcon)(prevBtn, "chevron-left");
@@ -12127,7 +12343,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         });
       }
     }
-    if (this instanceof DayPlannerCombinedView) {
+    if (this instanceof DayPlannerCombinedView && !compact) {
       const view = this;
       const searchBtn = tools.createEl("button", {
         cls: `dp-search-btn${view.searchQuery ? " is-active" : ""}`,
@@ -12136,7 +12352,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       (0, import_obsidian6.setIcon)(searchBtn, "search");
       searchBtn.addEventListener("click", () => view.openSearch());
     }
-    if (this.plugin.settings.enableGoogleCalendar) {
+    if (this.plugin.settings.enableGoogleCalendar && !compact) {
       const syncBtn = tools.createEl("button", { cls: "dp-sync-btn", attr: { "aria-label": t("nav.sync") } });
       (0, import_obsidian6.setIcon)(syncBtn.createSpan({ cls: "dp-btn-icon" }), "refresh-cw");
       syncBtn.addEventListener("click", () => void this.runSync());
@@ -14713,6 +14929,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   constructor() {
     super(...arguments);
     this.activeTab = "daily";
+    this.bottomMenuOpen = false;
+    this.bottomMenuOutsideBound = false;
     this.drawerScrollTop = 0;
     this.drawerSectionOverrides = /* @__PURE__ */ new Map();
     this.drawerSectionState = /* @__PURE__ */ new Map();
@@ -14768,8 +14986,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     if (phone && (this.activeTab === "daily" || this.activeTab === "list"))
       this.renderPhoneDateStrip(header);
     let tabsContainer;
-    if (phone) {
-      tabsContainer = rootEl.createDiv({ cls: "dp-tabs dp-bottom-nav" });
+    const bottomBar = phone ? rootEl.createDiv({ cls: "dp-bottom-nav" }) : null;
+    if (bottomBar) {
+      this.renderBottomMenu(bottomBar);
+      tabsContainer = bottomBar.createDiv({ cls: "dp-tabs dp-bottom-tabs" });
     } else {
       tabsContainer = headerTop.createDiv({ cls: "dp-tabs dp-header-tabs" });
       headerTop.insertBefore(tabsContainer, headerTop.querySelector(":scope > .dp-header-actions"));
@@ -14829,6 +15049,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
         });
       }
     });
+    if (bottomBar)
+      this.renderBottomPager(bottomBar);
     animateActiveTabPill(tabsContainer, this, this.activeTab);
     keepActiveTabInView(tabsContainer, this);
     this.mountActivePane(rootEl);
@@ -14836,8 +15058,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       this.renderCurrentTaskTracker(rootEl);
     else
       this.stopCurrentTaskTracker();
-    if (phone) {
-      rootEl.appendChild(tabsContainer);
+    if (bottomBar) {
+      rootEl.appendChild(bottomBar);
       this.registerSwipeNavigation(rootEl);
     }
     rootEl.toggleClass("dp-drawer-open", this.isSideDrawerOpen());
@@ -14845,6 +15067,115 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       renderSideDrawer(rootEl, this);
     this.trackHeaderHeight(rootEl, header);
     this.syncSearchBar(rootEl);
+  }
+  renderBottomMenu(bar) {
+    const wrap = bar.createDiv({ cls: "dp-bottom-menu-wrap" });
+    const menuBtn = wrap.createEl("button", {
+      cls: `dp-bottom-bar-btn dp-bottom-menu-btn${this.bottomMenuOpen ? " is-active" : ""}`,
+      attr: { "aria-label": t("nav.menu"), "aria-haspopup": "menu", "aria-expanded": String(this.bottomMenuOpen) }
+    });
+    (0, import_obsidian6.setIcon)(menuBtn, "menu");
+    const menu = wrap.createDiv({ cls: `dp-bottom-menu${this.bottomMenuOpen ? " is-open" : ""}`, attr: { role: "menu" } });
+    menuBtn.addEventListener("click", () => {
+      triggerHaptic("selection");
+      this.setBottomMenuOpen(!this.bottomMenuOpen);
+      if (this.bottomMenuOpen)
+        menu.querySelector(".dp-bottom-menu-item")?.focus({ preventScroll: true });
+    });
+    const addItem = (icon, label, run) => {
+      const item = menu.createEl("button", { cls: "dp-bottom-menu-item", attr: { role: "menuitem" } });
+      (0, import_obsidian6.setIcon)(item.createSpan({ cls: "dp-bottom-menu-icon" }), icon);
+      item.createSpan({ text: label });
+      item.addEventListener("click", () => {
+        this.setBottomMenuOpen(false);
+        run();
+      });
+      return item;
+    };
+    addItem("search", t("nav.search"), () => this.openSearch());
+    if (this.activeTab === "daily" || this.activeTab === "weekly" || this.activeTab === "multiDay") {
+      menu.createDiv({ cls: "dp-bottom-menu-zoom" });
+    }
+    if (this.plugin.settings.enableGoogleCalendar) {
+      let pressTimer = null;
+      let longPressed = false;
+      const cancelPress = () => {
+        if (pressTimer !== null)
+          window.clearTimeout(pressTimer);
+        pressTimer = null;
+      };
+      const openSyncModal = () => {
+        longPressed = true;
+        cancelPress();
+        this.setBottomMenuOpen(false);
+        new TaskSyncModal(this.app, this.plugin, async () => {
+          await this.refreshTasks(null, true);
+        }).open();
+      };
+      const syncItem = addItem("refresh-cw", t("nav.sync"), () => {
+        if (longPressed)
+          return;
+        void this.runSync();
+      });
+      syncItem.addEventListener("pointerdown", (e) => {
+        longPressed = false;
+        cancelPress();
+        if (e.button !== 0)
+          return;
+        pressTimer = window.setTimeout(() => {
+          triggerHaptic("selection");
+          openSyncModal();
+        }, 550);
+      });
+      ["pointerup", "pointerleave", "pointercancel"].forEach((type) => syncItem.addEventListener(type, cancelPress));
+      syncItem.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        if (!longPressed)
+          openSyncModal();
+      });
+    }
+    if (!this.bottomMenuOutsideBound) {
+      this.bottomMenuOutsideBound = true;
+      this.registerDomEvent(document, "pointerdown", (e) => {
+        if (!this.bottomMenuOpen)
+          return;
+        if (this.containerEl.querySelector(".dp-bottom-menu-wrap")?.contains(e.target))
+          return;
+        this.setBottomMenuOpen(false);
+      });
+      this.registerDomEvent(document, "keydown", (e) => {
+        if (e.key !== "Escape" || !this.bottomMenuOpen)
+          return;
+        this.setBottomMenuOpen(false);
+        this.containerEl.querySelector(".dp-bottom-menu-btn")?.focus({ preventScroll: true });
+      });
+    }
+  }
+  setBottomMenuOpen(open) {
+    this.bottomMenuOpen = open;
+    const wrap = this.containerEl.querySelector(".dp-bottom-menu-wrap");
+    wrap?.querySelector(".dp-bottom-menu")?.toggleClass("is-open", open);
+    const btn = wrap?.querySelector(".dp-bottom-menu-btn");
+    btn?.toggleClass("is-active", open);
+    btn?.setAttr("aria-expanded", String(open));
+  }
+  renderBottomPager(bar) {
+    const pager = bar.createDiv({ cls: "dp-bottom-pager" });
+    [-1, 1].forEach((step) => {
+      const btn = pager.createEl("button", {
+        cls: "dp-bottom-bar-btn",
+        attr: { "aria-label": t(step < 0 ? "nav.previous" : "nav.next") }
+      });
+      (0, import_obsidian6.setIcon)(btn, step < 0 ? "chevron-left" : "chevron-right");
+      btn.addEventListener("click", () => {
+        if (this.activeTab === "board") {
+          this.navigateBoardTab(step);
+          return;
+        }
+        triggerHaptic("selection");
+        void this.navigateWithSlide(step);
+      });
+    });
   }
   hasSideDrawer() {
     return !this.useCompactLayout() && SIDE_DRAWER_TABS.includes(this.activeTab);
