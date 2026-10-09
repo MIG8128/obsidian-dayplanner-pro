@@ -140,8 +140,8 @@ var STYLES = `
 .dp-header {
     display: flex;
     flex-direction: column;
-    padding: 10px 12px;
-    gap: 8px;
+    padding: 12px 16px;
+    gap: 10px;
     position: relative;
     z-index: 30; /* above sticky hour column so the ambient shadow stays visible */
     border-bottom: 1px solid var(--dp-glass-border);
@@ -180,11 +180,11 @@ var STYLES = `
 .dp-nav-date {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    height: 30px;
-    padding: 0 12px 0 10px;
+    gap: 7px;
+    height: 38px;
+    padding: 0 16px 0 13px;
     box-sizing: border-box;
-    font-size: 1em;
+    font-size: 1.05em;
     font-weight: 600;
     color: var(--text-normal);
     background-color: var(--interactive-normal);
@@ -213,8 +213,8 @@ var STYLES = `
     color: var(--text-muted);
 }
 .dp-nav-date-icon svg {
-    width: 14px;
-    height: 14px;
+    width: 17px;
+    height: 17px;
 }
 .dp-nav-date.is-clickable:hover .dp-nav-date-icon {
     color: var(--interactive-accent);
@@ -1155,8 +1155,8 @@ var STYLES = `
     display: flex;
     align-items: center;
     gap: 2px;
-    height: 26px;
-    padding: 2px;
+    height: 38px;
+    padding: 3px;
     margin-right: 4px;
     box-sizing: border-box;
     background-color: var(--dp-segment-track);
@@ -1165,10 +1165,10 @@ var STYLES = `
     flex-shrink: 0;
 }
 .dp-board-toggle > .dp-board-toggle-btn {
-    height: 20px;
-    padding: 0 8px;
+    height: 30px;
+    padding: 0 12px;
     margin: 0;
-    font-size: 0.75em;
+    font-size: var(--font-ui-small, 0.9em);
     line-height: 1;
     border-radius: 6px;
     border: none;
@@ -1962,8 +1962,8 @@ var STYLES = `
 
 /* Zoom control: first item of the header actions (same contextual slot as .dp-board-toggle); expands leftward on hover */
 .dp-zoom-slider-floating {
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
     margin-right: 4px;
     flex-shrink: 0;
     border-radius: 8px;
@@ -1980,8 +1980,8 @@ var STYLES = `
 }
 /* Center the icon in collapsed state */
 .dp-zoom-slider-floating span:first-child {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2665,12 +2665,12 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    ------------------------------------------------------------- */
 @container dp-planner (max-width: 400px) {
     .dp-header {
-        padding: 8px 10px;
-        gap: 6px;
+        padding: 10px 12px;
+        gap: 8px;
     }
     .dp-nav-date {
-        font-size: 0.92em;
-        padding: 0 10px 0 8px;
+        font-size: 1em;
+        padding: 0 12px 0 10px;
     }
     .dp-tabs > .dp-tab {
         padding: 0 8px;
@@ -2782,9 +2782,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     width: auto; /* .dp-tabs is 100% wide; auto lets the side margins inset the pill */
     gap: 2px;
     margin: 0 12px 0;
-    padding: 3px;
+    padding: 2px;
     border: 1px solid var(--dp-glass-border);
-    border-radius: 12px;
+    border-radius: 999px;
     background-color: var(--dp-glass-bg);
     box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight); /* no blur: nothing scrolls behind this row */
     z-index: 30;
@@ -2792,25 +2792,17 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .is-phone .dp-phone-shell > .dp-bottom-nav {
     margin-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
 }
+/* Text-only pills, one 28px row (the label span ellipsizes; the button stays unclipped for the sliding pill) */
 .dp-compact-shell .dp-bottom-nav > .dp-tab {
     flex: 1 1 0;
     min-width: 0;
-    height: auto;
-    padding: 4px 8px;
-    flex-direction: column;
-    gap: 2px;
-    border-radius: 9px;
-    font-size: 11px;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: var(--font-ui-smaller, 12px);
 }
 .dp-compact-shell .dp-bottom-nav > .dp-tab.active {
     color: var(--text-accent);
-}
-.dp-bottom-nav-icon {
-    display: inline-flex;
-}
-.dp-bottom-nav-icon svg {
-    width: 20px;
-    height: 20px;
 }
 .dp-bottom-nav-label {
     max-width: 100%;
@@ -2825,9 +2817,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 }
 .dp-compact-shell .dp-header-actions > button {
     flex-shrink: 0;
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
     margin: 0;
     padding: 0;
     display: inline-flex;
@@ -2840,8 +2832,8 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 /* The zoom control is the desktop one (tap toggles .is-open, which expands it inline to the left); collapsed it is
    the same 30px square as its neighbours, and open it still fits a phone-width actions row */
 .dp-compact-shell .dp-header-actions > .dp-zoom-slider-floating {
-    height: 30px;
-    width: 30px;
+    height: 36px;
+    width: 36px;
     margin: 0;
 }
 .dp-compact-shell .dp-header-actions > .dp-zoom-slider-floating.is-open {
@@ -2852,11 +2844,11 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     height: 28px;
 }
 .dp-compact-shell .dp-board-toggle {
-    height: 30px;
+    height: 36px;
 }
 .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
-    width: 30px;
-    height: 24px;
+    width: 32px;
+    height: 28px;
     padding: 0;
     font-size: 0.95em;
 }
@@ -2873,8 +2865,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
+    height: 36px;
     padding: 0 var(--size-4-3, 12px) 0 var(--size-4-2, 8px);
-    font-size: var(--font-ui-small, 0.9em);
+    font-size: var(--font-ui-medium, 1em);
 }
 .dp-compact-shell .dp-header-top > .dp-header-actions {
     flex-shrink: 0;
@@ -4776,9 +4769,9 @@ body.dp-pointer-dragging * {
     flex-shrink: 0;
     align-items: center;
     gap: 2px;
-    height: 32px;
+    height: 38px;
     margin: 0;
-    padding: 2px;
+    padding: 3px;
     box-sizing: border-box;
     background-color: var(--dp-segment-track);
     border: 1px solid var(--dp-glass-border);
@@ -4792,12 +4785,12 @@ body.dp-pointer-dragging * {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 5px;
-    height: 26px;
-    min-width: 26px;
+    gap: 6px;
+    height: 30px;
+    min-width: 30px;
     margin: 0;
-    padding: 0 10px;
-    font-size: var(--font-ui-small, 0.9em);
+    padding: 0 12px;
+    font-size: var(--font-ui-medium, 1em);
     font-weight: var(--font-medium, 500);
     line-height: 1;
     color: var(--text-muted);
@@ -4811,7 +4804,7 @@ body.dp-pointer-dragging * {
 /* Icon-only tools are round */
 .dp-nav-buttons-group > button.dp-nav-arrow,
 .dp-header-tools > button:is(.dp-search-btn, .dp-sync-btn, .dp-help-btn, .dp-drawer-toggle) {
-    width: 26px;
+    width: 30px;
     padding: 0;
 }
 .dp-nav-buttons-group > button:hover,
@@ -4834,8 +4827,8 @@ body.dp-pointer-dragging * {
 .dp-nav-buttons-group svg,
 .dp-header-tools svg,
 .dp-zoom-toggle svg {
-    width: 15px;
-    height: 15px;
+    width: 18px;
+    height: 18px;
 }
 .dp-btn-icon {
     display: inline-flex;
@@ -4859,9 +4852,9 @@ body.dp-pointer-dragging * {
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    min-width: 32px;
-    height: 32px;
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
     margin: 0;
     padding: 0;
     color: var(--text-on-accent);
@@ -4881,21 +4874,22 @@ body.dp-pointer-dragging * {
     transform: scale(0.94);
 }
 .dp-add-btn svg {
-    width: 17px;
-    height: 17px;
+    width: 20px;
+    height: 20px;
 }
 /* Compact shell (phones, sidebar): same capsules, 30px row */
 .dp-compact-shell .dp-header-tools {
-    height: 30px;
+    height: 36px;
+    padding: 2px;
 }
 .dp-compact-shell .dp-header-tools > button {
-    width: 26px;
+    width: 30px;
     padding: 0;
 }
 .dp-compact-shell .dp-header-actions > button.dp-add-btn {
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
     border-radius: 999px;
 }
 .dp-compact-shell .dp-header-tools > .dp-zoom-slider-floating.is-open {
@@ -4927,13 +4921,14 @@ body.dp-pointer-dragging * {
 .dp-header-top > .dp-tabs.dp-header-tabs {
     width: auto;
     min-width: 0;
-    height: 32px; /* the same capsule height as the nav group and the toolbar */
-    padding: 2px;
+    height: 38px; /* the same capsule height as the nav group and the toolbar */
+    padding: 3px;
 }
 .dp-header-top > .dp-header-tabs > .dp-tab {
     flex: 0 0 auto;
-    height: 26px;
-    padding: 0 12px;
+    height: 30px;
+    padding: 0 15px;
+    font-size: var(--font-ui-small, 0.9em);
 }
 /* Narrow panes: the tabs take their own full-width row under the date and the actions */
 @container dp-planner (max-width: 860px) {
@@ -4949,7 +4944,7 @@ body.dp-pointer-dragging * {
     }
     .dp-header-top > .dp-header-tabs > .dp-tab {
         flex: 1 0 auto;
-        padding: 0 8px;
+        padding: 0 10px;
     }
 }
 
@@ -14781,10 +14776,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       headerTop.addClass("has-view-tabs");
     }
     const tabs = phone ? [
-      { key: "daily", label: t("view.daily"), icon: "calendar-clock" },
-      { key: "list", label: t("view.list"), icon: "list" },
-      { key: "monthly", label: t("view.monthly"), icon: "calendar-days" },
-      { key: "board", label: t("view.board"), icon: "layout-dashboard" }
+      { key: "daily", label: t("view.daily") },
+      { key: "list", label: t("view.list") },
+      { key: "monthly", label: t("view.monthly") },
+      { key: "board", label: t("view.board") }
     ] : [
       { key: "daily", label: t("view.daily") },
       { key: "multiDay", label: t("view.nDay", { n: this.plugin.settings.nDayViewDays || 4 }) },
@@ -14825,12 +14820,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       } else {
         const btn = tabsContainer.createEl("button", {
           cls: `dp-tab ${this.activeTab === tab.key ? "active" : ""}`,
-          text: tab.icon ? "" : tab.label
+          text: phone ? "" : tab.label
         });
-        if (tab.icon) {
-          (0, import_obsidian6.setIcon)(btn.createSpan({ cls: "dp-bottom-nav-icon" }), tab.icon);
+        if (phone)
           btn.createSpan({ cls: "dp-bottom-nav-label", text: tab.label });
-        }
         btn.addEventListener("click", async () => {
           await this.switchTab(tab.key);
         });
