@@ -1095,7 +1095,7 @@ var STYLES = `
     font-weight: bold;
     font-size: 0.8em;
 }
-/* Task priority, one look in every view (views.ts renderTaskTitle): the emoji leads the title as an inline mark with
+/* Task priority in the timeline-style views (views.ts renderTaskTitle; List uses .dp-gc-item-priority): the emoji leads the title as an inline mark with
    a fixed gap. inline-block keeps it out of the title's line-through and lets it wrap / clamp with the title. */
 .dp-priority-mark {
     display: inline-block;
@@ -2184,6 +2184,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 }
 .dp-gc-day-content {
     flex-grow: 1;
+    min-width: 0; /* long titles ellipsize instead of pushing the priority pill and note badge out of view */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -2191,6 +2192,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-gc-item {
     display: flex;
     align-items: center;
+    min-width: 0;
     gap: 12px;
     padding: 4px 6px;
     border-radius: 4px;
@@ -2201,14 +2203,18 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-gc-item:hover {
     background-color: var(--background-modifier-hover);
 }
-.dp-gc-item.completed .dp-gc-item-title {
+.dp-gc-item.completed .dp-gc-item-title-text {
     text-decoration: line-through;
     color: var(--text-muted);
 }
-.dp-gc-item.cancelled .dp-gc-item-title {
+.dp-gc-item.cancelled .dp-gc-item-title-text {
     text-decoration: line-through;
     color: var(--text-muted);
     opacity: 0.6;
+}
+.dp-gc-item:is(.completed, .cancelled) .dp-gc-item-priority {
+    opacity: 0.5;
+    filter: grayscale(0.7);
 }
 .dp-gc-item-dot {
     width: 8px;
@@ -2223,14 +2229,43 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     flex-shrink: 0;
     white-space: nowrap;
 }
+/* List title row: the text takes what it needs (ellipsized), the priority pill trails right after it */
 .dp-gc-item-title {
     color: var(--text-normal);
     flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.dp-gc-item-title-text {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* Trailing priority pill: the emoji on a chip tinted by its level, one size on every List variant */
+.dp-gc-item-priority {
+    --dp-prio: var(--text-muted);
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    box-sizing: border-box;
+    font-size: 0.7rem;
+    line-height: 1;
+    background-color: color-mix(in srgb, var(--dp-prio) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--dp-prio) 30%, transparent);
+}
+.dp-gc-item-priority.is-highest { --dp-prio: var(--color-red, #e5484d); }
+.dp-gc-item-priority.is-high { --dp-prio: var(--color-orange, #f76b15); }
+.dp-gc-item-priority.is-medium { --dp-prio: var(--color-yellow, #e2a336); }
+.dp-gc-item-priority.is-low { --dp-prio: var(--color-blue, #3e8ef7); }
+.dp-gc-item-priority.is-lowest { --dp-prio: var(--text-faint); }
 .dp-gc-item-file {
     font-size: 0.78em;
     color: var(--text-muted);
@@ -2239,6 +2274,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     border-radius: 4px;
     cursor: pointer;
     max-width: 120px;
+    flex-shrink: 0; /* the title gives way first; the badge is capped by max-width */
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -3190,14 +3226,21 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     gap: 2px;
 }
 .dp-gc-list-container.is-day-agenda .dp-agenda-body .dp-gc-item-title {
+    align-items: flex-start;
     font-size: 0.95em;
     font-weight: 500;
     line-height: 1.3;
+}
+.dp-gc-list-container.is-day-agenda .dp-agenda-body .dp-gc-item-title-text {
     white-space: normal;
     word-break: break-word;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+}
+/* Two-line titles: the pill stays level with the first line */
+.dp-gc-list-container.is-day-agenda .dp-agenda-body .dp-gc-item-priority {
+    margin-top: 0.05em;
 }
 .dp-agenda-meta {
     display: flex;
@@ -14465,7 +14508,17 @@ ${e.calendarName ?? ""}`.toLowerCase();
         }
         const displayTitle = isTask ? cleanTaskTextForDisplay(item.task.text) : item.event.summary;
         const body = agendaLayout ? card.createDiv({ cls: "dp-agenda-body" }) : card;
-        renderTaskTitle(body.createDiv({ cls: "dp-gc-item-title" }), displayTitle, isTask ? item.task.priority : void 0);
+        const titleEl = body.createDiv({ cls: "dp-gc-item-title" });
+        titleEl.createSpan({ cls: "dp-gc-item-title-text", text: displayTitle });
+        const priority = isTask ? item.task.priority : void 0;
+        if (priority && PRIORITY_EMOJI[priority]) {
+          const label = t(`priority.${priority}`);
+          titleEl.createSpan({
+            cls: `dp-gc-item-priority is-${priority}`,
+            text: PRIORITY_EMOJI[priority],
+            attr: { "aria-label": label, title: label }
+          });
+        }
         let meta = null;
         if (agendaLayout) {
           meta = body.createDiv({ cls: "dp-agenda-meta" });
