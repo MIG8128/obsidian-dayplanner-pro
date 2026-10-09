@@ -14941,40 +14941,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
     }
     const sortedDates = Array.from(daysMap.keys()).sort();
     const formatTimeStr = (time) => {
-      const moment = window.moment;
-      const isKorean = moment.locale() === "ko";
-      const parsed = moment(time, "HH:mm");
-      if (!parsed.isValid())
-        return time;
-      if (isKorean) {
-        return parsed.minute() === 0 ? parsed.format("a h\uC2DC") : parsed.format("a h:mm");
-      } else {
-        return parsed.format("h:mm A");
-      }
+      const parsed = window.moment(time, "HH:mm");
+      return parsed.isValid() ? parsed.format("HH:mm") : time;
     };
-    const formatTimeRange = (start, end) => {
-      if (!end)
-        return formatTimeStr(start);
-      const moment = window.moment;
-      const isKorean = moment.locale() === "ko";
-      const s = moment(start, "HH:mm");
-      const e = moment(end, "HH:mm");
-      if (!s.isValid() || !e.isValid())
-        return `${start} - ${end}`;
-      if (isKorean) {
-        const sAmpm = s.format("a");
-        const eAmpm = e.format("a");
-        const sTime = s.minute() === 0 ? s.format("h\uC2DC") : s.format("h:mm");
-        const eTime = e.minute() === 0 ? e.format("h\uC2DC") : e.format("h:mm");
-        if (sAmpm === eAmpm) {
-          return `${sAmpm} ${sTime} - ${eTime}`;
-        } else {
-          return `${sAmpm} ${sTime} - ${eAmpm} ${eTime}`;
-        }
-      } else {
-        return `${s.format("h:mm A")} - ${e.format("h:mm A")}`;
-      }
-    };
+    const formatTimeRange = (start, end) => end ? `${formatTimeStr(start)} - ${formatTimeStr(end)}` : formatTimeStr(start);
     sortedDates.forEach((dateStr) => {
       const items = daysMap.get(dateStr);
       const loopDay = window.moment(dateStr);
