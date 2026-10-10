@@ -4766,6 +4766,22 @@ body.dp-pointer-dragging * {
     from { opacity: 0.4; clip-path: inset(0 0 0 calc(100% - 40px) round 999px); }
     to { opacity: 1; clip-path: inset(0 0 0 0 round 999px); }
 }
+/* Mobile: the keyboard animates in at the same moment, so the bar just fades (a clip-path sweep during the viewport
+   resize read as a jump). 16px text, or iOS zooms the whole app into the focused field. */
+.is-mobile .dp-search-float.is-open {
+    animation: dp-search-fade 0.18s ease-out;
+}
+@keyframes dp-search-fade {
+    from { opacity: 0; }
+}
+.is-mobile .dp-search-float input.dp-search-input {
+    font-size: 16px;
+}
+/* Phone / compact, typing: the bottom bar and the task bar would dock right above the keyboard and squeeze the panes
+   in between; they step aside until the field loses focus (keyboard down) */
+.dp-compact-shell.dp-search-mode:has(input.dp-search-input:focus) > :is(.dp-bottom-bar, .dp-current-task-bar) {
+    display: none;
+}
 .dp-search-float:focus-within {
     border-color: var(--interactive-accent);
     box-shadow: var(--dp-glass-shadow), 0 0 0 3px color-mix(in srgb, var(--interactive-accent) 22%, transparent);
@@ -9325,9 +9341,13 @@ function renderDrawerSection(body, view, id, title, tasks, empty, action, focus 
   head.createSpan({ cls: "dp-drawer-count", text: String(total) });
   if (action && tasks.length > 0) {
     const actionBtn = header.createEl("button", { cls: "dp-drawer-section-action", text: action.label, attr: { "aria-label": action.tooltip } });
-    actionBtn.addEventListener("click", () => action.run());
+    actionBtn.addEventListener("click", () => {
+      triggerHaptic("selection");
+      action.run();
+    });
   }
   head.addEventListener("click", () => {
+    triggerHaptic("selection");
     const nowCollapsed = !section.hasClass("is-collapsed");
     section.toggleClass("is-collapsed", nowCollapsed);
     head.setAttr("aria-expanded", String(!nowCollapsed));
@@ -9385,6 +9405,7 @@ function renderQuickCapture(body, view) {
       return;
     input.value = "";
     view.drawerCaptureDraft = "";
+    triggerHaptic("success");
     void view.captureUndatedTask(raw);
   });
   if (view.drawerCaptureFocused) {
@@ -9430,6 +9451,7 @@ function renderPriorityTrigger(card, task, view) {
     (0, import_obsidian5.setIcon)(trigger, "flag");
   trigger.addEventListener("click", (e) => {
     e.stopPropagation();
+    triggerHaptic("selection");
     togglePriorityPicker(trigger, task, view);
   });
   return trigger;
@@ -9453,6 +9475,7 @@ function togglePriorityPicker(anchor, task, view, viaKeyboard = false) {
     btn.createSpan({ cls: "dp-priority-option-label", text: priorityLabel(level.id) });
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
+      triggerHaptic("selection");
       close();
       if (level.id !== task.priority)
         void view.setTaskPriority(task, level.id);
@@ -10002,6 +10025,7 @@ function renderPanelSwitcher(drawer, view, panel) {
     const p = SIDE_DRAWER_PANELS[i];
     if (p === panel)
       return;
+    triggerHaptic("selection");
     const forward = i > SIDE_DRAWER_PANELS.indexOf(panel);
     panel = p;
     settings.sideDrawerPanel = p.id;
@@ -12481,6 +12505,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
       try {
         const oldHeight = this.getHourHeight();
         const newHeight = parseInt(slider.value, 10);
+        if (newHeight !== oldHeight)
+          triggerHaptic("selection");
         valueSpan.setText(`${newHeight}px`);
         const isCodeBlock = this.updateCodeBlockInFile !== void 0;
         if (isCodeBlock) {
@@ -15160,6 +15186,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.moreSheetOpen = false;
     this.moreSheetKeysBound = false;
     this.searchTimer = null;
+    this.searchViewportBound = false;
     this.drawerCaptureDraft = "";
     this.drawerCaptureFocused = false;
     this.swipeBound = false;
@@ -15371,6 +15398,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       (0, import_obsidian6.setIcon)(btn.createSpan({ cls: "dp-btn-icon" }), icon);
       btn.createSpan({ cls: "dp-btn-label", text: label });
       btn.addEventListener("click", () => {
+        triggerHaptic("selection");
         this.closeMoreSheet();
         run();
       });
@@ -15474,6 +15502,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       const linkBtn = card.createEl("button", { cls: "dp-task-link-btn dp-drawer-card-link", text: "\u2197", attr: { "aria-label": t("drawer.openInNote") } });
       linkBtn.addEventListener("click", (e) => {
         e.stopPropagation();
+        triggerHaptic("selection");
         void openTaskInEditor(this.app, task);
       });
     }
@@ -15516,6 +15545,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
         const btn = actions.createEl("button", { cls: "dp-drawer-card-action", text: label2, attr: { "aria-label": tooltip } });
         btn.addEventListener("click", (e) => {
           e.stopPropagation();
+          triggerHaptic("selection");
           void run();
         });
       };
@@ -15575,9 +15605,46 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     rootEl.addClass("dp-search-mode");
     bar.addClass("is-open");
     this.placeSearchBar(rootEl);
+    this.bindSearchViewport();
     const input = bar.querySelector("input");
-    input.focus();
+    input.focus({ preventScroll: true });
     input.select();
+  }
+  bindSearchViewport() {
+    if (this.searchViewportBound)
+      return;
+    this.searchViewportBound = true;
+    let frame = 0;
+    const onChange = () => {
+      if (frame)
+        return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const rootEl = this.containerEl.querySelector(".dp-container");
+        if (!rootEl?.hasClass("dp-search-mode"))
+          return;
+        this.resetLeafScroll(rootEl);
+        this.placeSearchBar(rootEl);
+      });
+    };
+    const vv = window.visualViewport;
+    vv?.addEventListener("resize", onChange);
+    vv?.addEventListener("scroll", onChange);
+    this.registerDomEvent(window, "resize", onChange);
+    this.register(() => {
+      vv?.removeEventListener("resize", onChange);
+      vv?.removeEventListener("scroll", onChange);
+      if (frame)
+        cancelAnimationFrame(frame);
+    });
+  }
+  resetLeafScroll(rootEl) {
+    for (let el = rootEl; el; el = el.parentElement) {
+      if (el.scrollTop !== 0)
+        el.scrollTop = 0;
+      if (el === this.containerEl)
+        break;
+    }
   }
   placeSearchBar(rootEl) {
     const bar = rootEl.querySelector(":scope > .dp-search-float");
@@ -15594,12 +15661,18 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     bar.style.height = `${Math.max(32, lineHeight)}px`;
   }
   closeSearch() {
-    this.containerEl.querySelector(".dp-container")?.removeClass("dp-search-mode");
+    const rootEl = this.containerEl.querySelector(".dp-container");
+    rootEl?.removeClass("dp-search-mode");
     const bar = this.getSearchBar();
     if (bar) {
       bar.removeClass("is-open");
-      bar.querySelector("input").value = "";
+      const input = bar.querySelector("input");
+      input.value = "";
+      if (input.ownerDocument.activeElement === input)
+        input.blur();
     }
+    if (rootEl)
+      this.resetLeafScroll(rootEl);
     if (this.searchTimer !== null)
       window.clearTimeout(this.searchTimer);
     this.searchTimer = null;
@@ -15633,7 +15706,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
           await this.switchTab("list");
         const doc = input.ownerDocument;
         if (bar.hasClass("is-open") && (!doc.activeElement || doc.activeElement === doc.body))
-          input.focus();
+          input.focus({ preventScroll: true });
       }, delay);
     };
     input.addEventListener("input", (e) => {
