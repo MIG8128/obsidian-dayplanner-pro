@@ -4039,6 +4039,35 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-drawer-card-date.is-time {
     color: var(--text-muted);
 }
+/* Today's Tasks: done tasks stay listed (undo in place), struck through and faded */
+.dp-drawer-card.is-done .dp-drawer-card-title {
+    text-decoration: line-through;
+    color: var(--text-faint);
+}
+.dp-drawer-card.is-done .dp-drawer-card-date {
+    opacity: 0.6;
+}
+/* \u2197 open in note (Today's Tasks) */
+.dp-side-drawer button.dp-drawer-card-link {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    font-size: var(--font-ui-small, 0.9em);
+    line-height: 1;
+    color: var(--text-faint);
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    box-shadow: none;
+    cursor: pointer;
+}
+.dp-side-drawer button.dp-drawer-card-link:hover {
+    color: var(--text-accent);
+    background-color: var(--background-modifier-hover);
+}
 
 /* Priority badge on a drawer card: one click opens the picker (Obsidian Tasks emoji); faint flag when unset */
 .dp-side-drawer button.dp-priority-trigger {
@@ -7096,6 +7125,9 @@ var en = {
   "drawer.modes": "Drawer mode",
   "drawer.focus": "Today's Focus",
   "drawer.focusEmpty": "No focus task today. Mark a task \u{1F53A} Highest to pin it here.",
+  "drawer.todayTasks": "Today's Tasks",
+  "drawer.todayEmpty": "Nothing scheduled for today.",
+  "drawer.openInNote": "Open in note",
   "priority.set": "Set priority",
   "calendar.toggle": "Fold / unfold the calendar",
   "calendar.previous": "Previous",
@@ -7406,6 +7438,9 @@ var ko = {
   "drawer.modes": "\uC11C\uB78D \uBAA8\uB4DC",
   "drawer.focus": "\uC624\uB298\uC758 \uD575\uC2EC",
   "drawer.focusEmpty": "\uC624\uB298\uC758 \uD575\uC2EC \uD560 \uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD560 \uC77C\uC744 \u{1F53A} \uCD5C\uC0C1\uC73C\uB85C \uD45C\uC2DC\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uACE0\uC815\uB429\uB2C8\uB2E4.",
+  "drawer.todayTasks": "\uC624\uB298 \uD560 \uC77C",
+  "drawer.todayEmpty": "\uC624\uB298 \uC608\uC815\uB41C \uD560 \uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
+  "drawer.openInNote": "\uB178\uD2B8\uC5D0\uC11C \uC5F4\uAE30",
   "priority.set": "\uC6B0\uC120\uC21C\uC704 \uC124\uC815",
   "calendar.toggle": "\uB2EC\uB825 \uC811\uAE30 / \uD3BC\uCE58\uAE30",
   "calendar.previous": "\uC774\uC804",
@@ -7716,6 +7751,9 @@ var ja = {
   "drawer.modes": "\u30C9\u30ED\u30EF\u30FC\u306E\u30E2\u30FC\u30C9",
   "drawer.focus": "\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9",
   "drawer.focusEmpty": "\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9\u30BF\u30B9\u30AF\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u30BF\u30B9\u30AF\u3092 \u{1F53A} \u6700\u9AD8 \u306B\u3059\u308B\u3068\u3053\u3053\u306B\u56FA\u5B9A\u3055\u308C\u307E\u3059\u3002",
+  "drawer.todayTasks": "\u4ECA\u65E5\u306E\u30BF\u30B9\u30AF",
+  "drawer.todayEmpty": "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093\u3002",
+  "drawer.openInNote": "\u30CE\u30FC\u30C8\u3067\u958B\u304F",
   "priority.set": "\u512A\u5148\u5EA6\u3092\u8A2D\u5B9A",
   "calendar.toggle": "\u30AB\u30EC\u30F3\u30C0\u30FC\u3092\u6298\u308A\u305F\u305F\u3080 / \u5E83\u3052\u308B",
   "calendar.previous": "\u524D\u3078",
@@ -8026,6 +8064,9 @@ var zh = {
   "drawer.modes": "\u62BD\u5C49\u6A21\u5F0F",
   "drawer.focus": "\u4ECA\u65E5\u7126\u70B9",
   "drawer.focusEmpty": "\u4ECA\u5929\u6CA1\u6709\u7126\u70B9\u4EFB\u52A1\u3002\u5C06\u4EFB\u52A1\u6807\u8BB0\u4E3A \u{1F53A} \u6700\u9AD8 \u5373\u53EF\u56FA\u5B9A\u5728\u8FD9\u91CC\u3002",
+  "drawer.todayTasks": "\u4ECA\u65E5\u4EFB\u52A1",
+  "drawer.todayEmpty": "\u4ECA\u5929\u6CA1\u6709\u5B89\u6392\u4EFB\u52A1\u3002",
+  "drawer.openInNote": "\u5728\u7B14\u8BB0\u4E2D\u6253\u5F00",
   "priority.set": "\u8BBE\u7F6E\u4F18\u5148\u7EA7",
   "calendar.toggle": "\u6298\u53E0 / \u5C55\u5F00\u65E5\u5386",
   "calendar.previous": "\u4E0A\u4E00\u4E2A",
@@ -9241,6 +9282,8 @@ var tasksPanel = {
     renderQuickCapture(body, view);
     const focus = view.tasks.filter((t2) => t2.date === todayStr && isFocusTask(t2)).sort((a, b) => (a.startTime ?? "99").localeCompare(b.startTime ?? "99") || cleanTaskTextForDisplay(a.text).localeCompare(cleanTaskTextForDisplay(b.text)));
     renderDrawerSection(body, view, "focus", `\u{1F3AF} ${t("drawer.focus")}`, focus, t("drawer.focusEmpty"));
+    const todayTasks = sortByPriorityThenTitle(view.tasks.filter((t2) => t2.date === todayStr && t2.statusChar !== "-")).sort((a, b) => Number(a.statusChar === "x") - Number(b.statusChar === "x") || (a.startTime ?? "99").localeCompare(b.startTime ?? "99"));
+    renderDrawerSection(body, view, "today", `\u{1F4C5} ${t("drawer.todayTasks")}`, todayTasks, t("drawer.todayEmpty"));
     const overdue = sortByPriorityThenTitle(view.tasks.filter((t2) => isOverdueTask(t2, todayStr)), true);
     renderDrawerSection(body, view, "overdue", `\u{1F6A8} ${t("drawer.overdueTasks")}`, overdue, t("drawer.allCaughtUp"), {
       label: t("drawer.rollToToday"),
@@ -9731,7 +9774,7 @@ function acceptBoardCardDrops(drawer, view) {
     el?.addClass("dp-drop-target");
     current = el;
   };
-  const targetOf = (e) => e.target.closest('.dp-mc-day[data-date], .dp-drawer-section[data-section="focus"]') ?? drawer.querySelector('.dp-drawer-section[data-section="undated"]') ?? drawer;
+  const targetOf = (e) => e.target.closest('.dp-mc-day[data-date], .dp-drawer-section[data-section="focus"], .dp-drawer-section[data-section="today"]') ?? drawer.querySelector('.dp-drawer-section[data-section="undated"]') ?? drawer;
   drawer.addEventListener("dragover", (e) => {
     if (view.activeTab !== "board" || !e.dataTransfer?.types.includes("text/plain"))
       return;
@@ -9757,6 +9800,8 @@ function acceptBoardCardDrops(drawer, view) {
       void view.moveTasksToDate(tasks, target.dataset.date);
     else if (target.dataset.section === "focus")
       void view.promoteToFocus(tasks);
+    else if (target.dataset.section === "today")
+      void view.moveTasksToDate(tasks, window.moment().format("YYYY-MM-DD"));
     else {
       const dated = tasks.filter((t2) => t2.date !== null);
       if (dated.length > 0)
@@ -9764,19 +9809,25 @@ function acceptBoardCardDrops(drawer, view) {
     }
   });
 }
-function renderSideDrawer(rootEl, view) {
+function renderDrawerPanelContent(containerEl, view, options) {
   const settings = view.plugin.settings;
   const panel = SIDE_DRAWER_PANELS.find((p) => p.id === settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0];
   openPicker?.close();
   statsMemo = null;
+  containerEl.setAttr("aria-label", panel.title());
+  containerEl.style.setProperty("--dp-task-color", settings.taskColor || "#ff9f1c");
+  if (options.showHeader !== false) {
+    if (options.showMiniCalendar)
+      mountMiniCalendar(containerEl, view);
+    else
+      mountPlainHeader(containerEl, view);
+  }
+  renderPanelSwitcher(containerEl, view, panel);
+}
+function renderSideDrawer(rootEl, view) {
   const drawer = rootEl.createDiv({ cls: "dp-side-drawer" });
   drawer.toggleClass("is-open", view.isSideDrawerOpen());
-  drawer.setAttr("aria-label", panel.title());
-  drawer.style.setProperty("--dp-task-color", settings.taskColor || "#ff9f1c");
-  if (view.activeTab === "board")
-    mountPlainHeader(drawer, view);
-  else
-    mountMiniCalendar(drawer, view);
+  renderDrawerPanelContent(drawer, view, { showMiniCalendar: view.activeTab !== "board" });
   acceptBoardCardDrops(drawer, view);
   drawer.tabIndex = -1;
   drawer.addEventListener("pointerdown", (e) => {
@@ -9792,13 +9843,10 @@ function renderSideDrawer(rootEl, view) {
     e.stopPropagation();
     view.dismissSelection();
   });
-  renderDrawerPanels(drawer, view, panel);
   return drawer;
 }
-function renderDrawerPanels(drawer, view, panel = SIDE_DRAWER_PANELS.find((p) => p.id === view.plugin.settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0]) {
+function renderPanelSwitcher(drawer, view, panel) {
   const settings = view.plugin.settings;
-  openPicker?.close();
-  statsMemo = null;
   const modes = drawer.createDiv({ cls: "dp-drawer-modes", attr: { role: "tablist", "aria-label": t("drawer.modes") } });
   modes.style.setProperty("--dp-mode-count", String(SIDE_DRAWER_PANELS.length));
   modes.createDiv({ cls: "dp-drawer-modes-thumb" });
@@ -11309,7 +11357,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       previewRoot = source.previewRoot;
       this.initDragPreview(null, source.refId, grabOffset, previewRoot);
     } else {
-      const fromDrawer = source.origin === "focus" || source.origin === "overdue" || source.origin === "undated";
+      const fromDrawer = source.origin === "focus" || source.origin === "today" || source.origin === "overdue" || source.origin === "undated";
       const selected = this.selectedTaskIds.has(source.task.id);
       const selection = fromDrawer && selected ? this.drawerSelection() : source.origin === "board" && selected ? this.tasks.filter((t2) => this.selectedTaskIds.has(t2.id)) : [];
       group = selection.length > 1 ? selection : [source.task];
@@ -11328,7 +11376,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     this.activeDragClickOffsetMin = grabOffset;
     doc.body.addClass("dp-pointer-dragging");
     const canUnschedule = source.kind === "timeline" || source.origin !== "undated";
-    const undatedOnly = source.kind === "task" && (source.origin === "overdue" || source.origin === "focus");
+    const undatedOnly = source.kind === "task" && (source.origin === "overdue" || source.origin === "focus" || source.origin === "today");
     let target = null;
     let scroller = null;
     let frame = 0;
@@ -11345,6 +11393,9 @@ ${e.calendarName ?? ""}`.toLowerCase();
         const focusSection = hit.closest('.dp-drawer-section[data-section="focus"]');
         if (focusSection)
           return { kind: "focus", el: focusSection, dateStr: "" };
+        const todaySection = source.kind === "task" && source.origin !== "today" ? hit.closest('.dp-drawer-section[data-section="today"]') : null;
+        if (todaySection)
+          return { kind: "day", el: todaySection, dateStr: window.moment().format("YYYY-MM-DD") };
         if (!canUnschedule)
           return null;
         const undatedSection = drawer.querySelector('.dp-drawer-section[data-section="undated"]');
@@ -15221,8 +15272,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
         this.syncZoomSlider(slider);
     }
     const panels = sheet.createDiv({ cls: "dp-side-drawer dp-sheet-drawer is-open" });
-    panels.style.setProperty("--dp-task-color", this.plugin.settings.taskColor || "#ff9f1c");
-    renderDrawerPanels(panels, this);
+    renderDrawerPanelContent(panels, this, { showMiniCalendar: false, showHeader: false });
     this.registerSheetDrag(handle, sheet);
     if (!this.moreSheetKeysBound) {
       this.moreSheetKeysBound = true;
@@ -15277,6 +15327,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   }
   renderDrawerTaskCard(list, task, section) {
     const card = list.createDiv({ cls: `dp-drawer-card${task.priority === "highest" ? " is-mit" : task.priority === "high" ? " is-high" : ""}` });
+    card.toggleClass("is-done", task.statusChar === "x");
     card.dataset.drawerTaskId = task.id;
     card.title = task.filePath;
     createCustomCheckbox(card, task, async (newStatus) => {
@@ -15286,12 +15337,20 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     card.createSpan({ cls: "dp-drawer-card-title", text: cleanTaskTextForDisplay(task.text) });
     if (section === "overdue" && task.date) {
       card.createSpan({ cls: "dp-drawer-card-date", text: window.moment(task.date, "YYYY-MM-DD").format("MMM D") });
-    } else if (section === "focus" && task.startTime) {
-      card.createSpan({ cls: "dp-drawer-card-date is-time", text: task.startTime });
+    } else if ((section === "focus" || section === "today") && task.startTime) {
+      const time = task.endTime && section === "today" ? `${task.startTime}\u2013${task.endTime}` : task.startTime;
+      card.createSpan({ cls: "dp-drawer-card-date is-time", text: time });
     }
     const priorityTrigger = renderPriorityTrigger(card, task, this);
+    if (section === "today") {
+      const linkBtn = card.createEl("button", { cls: "dp-task-link-btn dp-drawer-card-link", text: "\u2197", attr: { "aria-label": t("drawer.openInNote") } });
+      linkBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        void openTaskInEditor(this.app, task);
+      });
+    }
     card.addEventListener("click", (e) => {
-      if (e.target.closest(".dp-custom-cb, .dp-drawer-card-actions, .dp-priority-trigger"))
+      if (e.target.closest(".dp-custom-cb, .dp-drawer-card-actions, .dp-priority-trigger, .dp-task-link-btn"))
         return;
       if (e.ctrlKey || e.metaKey) {
         this.enterSelectionZone("drawer");
