@@ -4179,6 +4179,47 @@ body.dp-pointer-dragging .dp-drawer-focus-slot.is-empty,
 .dp-drawer-focus-slot.dp-drop-target {
     background-color: color-mix(in srgb, var(--color-red) 6%, transparent);
 }
+/* Focus hero card: same box as every drawer card (width, margins, radius), lifted by a translucent warm tint and a
+   soft ambient glow instead of a strong border; the \u{1F3AF} FOCUS pill sits inside it. .dp-side-drawer-qualified so it also
+   wins over the More sheet's glass cards. */
+.dp-side-drawer .dp-drawer-card.is-focus-hero {
+    background:
+        linear-gradient(120deg, color-mix(in srgb, var(--color-red) 9%, transparent), color-mix(in srgb, var(--color-orange) 4%, transparent) 55%, transparent 85%),
+        var(--dp-card-bg, var(--background-primary));
+    border-color: color-mix(in srgb, var(--color-red) 14%, var(--dp-glass-border, var(--background-modifier-border)));
+    box-shadow:
+        0 2px 6px color-mix(in srgb, var(--color-red) 8%, transparent),
+        0 8px 22px -6px color-mix(in srgb, var(--color-red) 18%, transparent),
+        inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-side-drawer .dp-drawer-card.is-focus-hero:hover {
+    border-color: color-mix(in srgb, var(--color-red) 24%, var(--dp-glass-border, var(--background-modifier-border)));
+    box-shadow:
+        0 2px 8px color-mix(in srgb, var(--color-red) 10%, transparent),
+        0 10px 26px -6px color-mix(in srgb, var(--color-red) 24%, transparent),
+        inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-side-drawer .dp-drawer-card.is-focus-hero::before {
+    content: none; /* the tint and the pill mark it; no accent bar */
+}
+.dp-focus-pill {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 18px;
+    padding: 0 7px;
+    font-size: 0.66em;
+    font-weight: var(--font-semibold, 600);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--color-red) 70%, var(--text-normal));
+    background-color: color-mix(in srgb, var(--color-red) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-red) 18%, transparent);
+    border-radius: 999px;
+}
 
 /* Priority picker: a frosted popover (in document.body, so it may overhang the drawer) */
 .dp-priority-popover {
@@ -7188,6 +7229,7 @@ var en = {
   "drawer.stats": "Stats",
   "drawer.modes": "Drawer mode",
   "drawer.focus": "Today's Focus",
+  "drawer.focusBadge": "Focus",
   "drawer.focusEmpty": "No focus task today. Mark a task \u{1F53A} Highest to pin it here.",
   "drawer.todayTasks": "Today's Tasks",
   "drawer.todayEmpty": "Nothing scheduled for today.",
@@ -7501,6 +7543,7 @@ var ko = {
   "drawer.stats": "\uD1B5\uACC4",
   "drawer.modes": "\uC11C\uB78D \uBAA8\uB4DC",
   "drawer.focus": "\uC624\uB298\uC758 \uD575\uC2EC",
+  "drawer.focusBadge": "\uD575\uC2EC",
   "drawer.focusEmpty": "\uC624\uB298\uC758 \uD575\uC2EC \uD560 \uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \uD560 \uC77C\uC744 \u{1F53A} \uCD5C\uC0C1\uC73C\uB85C \uD45C\uC2DC\uD558\uBA74 \uC5EC\uAE30\uC5D0 \uACE0\uC815\uB429\uB2C8\uB2E4.",
   "drawer.todayTasks": "\uC624\uB298 \uD560 \uC77C",
   "drawer.todayEmpty": "\uC624\uB298 \uC608\uC815\uB41C \uD560 \uC77C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.",
@@ -7814,6 +7857,7 @@ var ja = {
   "drawer.stats": "\u7D71\u8A08",
   "drawer.modes": "\u30C9\u30ED\u30EF\u30FC\u306E\u30E2\u30FC\u30C9",
   "drawer.focus": "\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9",
+  "drawer.focusBadge": "\u30D5\u30A9\u30FC\u30AB\u30B9",
   "drawer.focusEmpty": "\u4ECA\u65E5\u306E\u30D5\u30A9\u30FC\u30AB\u30B9\u30BF\u30B9\u30AF\u306F\u3042\u308A\u307E\u305B\u3093\u3002\u30BF\u30B9\u30AF\u3092 \u{1F53A} \u6700\u9AD8 \u306B\u3059\u308B\u3068\u3053\u3053\u306B\u56FA\u5B9A\u3055\u308C\u307E\u3059\u3002",
   "drawer.todayTasks": "\u4ECA\u65E5\u306E\u30BF\u30B9\u30AF",
   "drawer.todayEmpty": "\u4ECA\u65E5\u306E\u4E88\u5B9A\u306F\u3042\u308A\u307E\u305B\u3093\u3002",
@@ -8127,6 +8171,7 @@ var zh = {
   "drawer.stats": "\u7EDF\u8BA1",
   "drawer.modes": "\u62BD\u5C49\u6A21\u5F0F",
   "drawer.focus": "\u4ECA\u65E5\u7126\u70B9",
+  "drawer.focusBadge": "\u7126\u70B9",
   "drawer.focusEmpty": "\u4ECA\u5929\u6CA1\u6709\u7126\u70B9\u4EFB\u52A1\u3002\u5C06\u4EFB\u52A1\u6807\u8BB0\u4E3A \u{1F53A} \u6700\u9AD8 \u5373\u53EF\u56FA\u5B9A\u5728\u8FD9\u91CC\u3002",
   "drawer.todayTasks": "\u4ECA\u65E5\u4EFB\u52A1",
   "drawer.todayEmpty": "\u4ECA\u5929\u6CA1\u6709\u5B89\u6392\u4EFB\u52A1\u3002",
@@ -9306,9 +9351,8 @@ function renderDrawerSection(body, view, id, title, tasks, empty, action, focus 
 }
 function renderFocusSlot(inner, view, focus) {
   const slot = inner.createDiv({ cls: `dp-drawer-focus-slot${focus.length === 0 ? " is-empty" : ""}`, attr: { "data-section": "focus" } });
-  const label = slot.createDiv({ cls: "dp-drawer-focus-label" });
-  label.createSpan({ text: `\u{1F3AF} ${t("drawer.focus")}` });
   if (focus.length === 0) {
+    slot.createDiv({ cls: "dp-drawer-focus-label", text: `\u{1F3AF} ${t("drawer.focus")}` });
     slot.createDiv({ cls: "dp-drawer-focus-hint", text: t("drawer.focusEmpty") });
     return;
   }
@@ -15415,6 +15459,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       await this.refreshTasks();
     });
     card.createSpan({ cls: "dp-drawer-card-title", text: cleanTaskTextForDisplay(task.text) });
+    if (section === "focus") {
+      card.addClass("is-focus-hero");
+      card.createSpan({ cls: "dp-focus-pill", text: `\u{1F3AF} ${t("drawer.focusBadge")}` });
+    }
     if (section === "overdue" && task.date) {
       card.createSpan({ cls: "dp-drawer-card-date", text: window.moment(task.date, "YYYY-MM-DD").format("MMM D") });
     } else if ((section === "focus" || section === "today") && task.startTime) {
