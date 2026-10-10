@@ -4845,8 +4845,62 @@ body.dp-pointer-dragging * {
     color: var(--text-accent);
     background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
 }
-.dp-nav-buttons-group > button.dp-today-btn {
+/* Today: light and small beside the bold date pill (header-qualified to outrank Obsidian's button weight) */
+.dp-header-actions .dp-nav-buttons-group > button.dp-today-btn {
+    gap: 4px;
+    padding: 0 8px;
+    font-size: var(--font-ui-smaller, 12px);
+    font-weight: var(--font-medium, 500);
     color: var(--text-normal);
+}
+.dp-header-actions .dp-nav-buttons-group > button.dp-today-btn svg {
+    width: 13px;
+    height: 13px;
+}
+
+/* Desktop / tablet header in one row: [date] [view tabs, centred in the free space] [actions]. Tight on room, the
+   tabs shrink and scroll sideways; on a narrow pane (both sidebars open on a laptop) they drop to a slim second row */
+.dp-header-top.has-inline-tabs {
+    flex-wrap: nowrap;
+}
+.dp-header-top.has-inline-tabs > .dp-nav-date,
+.dp-header-top.has-inline-tabs > .dp-header-actions {
+    flex-shrink: 0;
+}
+.dp-header-top.has-inline-tabs > .dp-header-actions {
+    margin-left: 0;
+}
+.dp-header-top.has-inline-tabs > .dp-tabs {
+    flex: 0 1 auto;
+    width: auto;
+    min-width: 0;
+    margin: 0 auto;
+}
+.dp-header-top.has-inline-tabs > .dp-tabs > .dp-tab {
+    flex: 0 0 auto;
+}
+@container dp-planner (max-width: 900px) {
+    .dp-header-top.has-inline-tabs {
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+    .dp-header-top.has-inline-tabs > .dp-header-actions {
+        margin-left: auto;
+    }
+    /* Second row: one full-width segmented control, segments sharing the width evenly */
+    .dp-header-top.has-inline-tabs > .dp-tabs {
+        order: 3;
+        flex: 1 0 100%;
+        margin: 0;
+    }
+    .dp-header-top.has-inline-tabs > .dp-tabs > .dp-tab {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    /* Search covers the first line only: the tabs below stay visible */
+    .dp-search-mode > .dp-header .dp-header-top.has-inline-tabs > .dp-tabs {
+        visibility: visible;
+    }
 }
 .dp-nav-buttons-group svg,
 .dp-header-tools svg,
@@ -6912,16 +6966,16 @@ var en = {
   "notice.openViewFirst": "Open a Dayloom view first.",
   "notice.openDayloomFirst": "Open Dayloom first.",
   "view.daily": "Daily",
-  "view.dailyTimeline": "Daily Timeline",
+  "view.dailyTimeline": "Day",
   "view.twoDay": "2-Day View",
-  "view.nDay": "{n}-day View",
-  "view.nDaySuffix": "-day View",
-  "view.weekly": "Weekly View",
+  "view.nDay": "{n}-day",
+  "view.nDaySuffix": "-day",
+  "view.weekly": "Week",
   "view.monthly": "Monthly",
-  "view.monthlyCalendar": "Monthly Calendar",
+  "view.monthlyCalendar": "Month",
   "view.board": "Board",
   "view.list": "List",
-  "view.listView": "List View",
+  "view.listView": "List",
   "board.kanban": "Kanban",
   "board.kanbanTitle": "Standard Kanban",
   "board.priorityTitle": "Priority Focus",
@@ -7222,16 +7276,16 @@ var ko = {
   "notice.openViewFirst": "\uBA3C\uC800 Dayloom \uBDF0\uB97C \uC5EC\uC138\uC694.",
   "notice.openDayloomFirst": "\uBA3C\uC800 Dayloom\uC744 \uC5EC\uC138\uC694.",
   "view.daily": "\uC77C\uAC04",
-  "view.dailyTimeline": "\uC77C\uAC04 \uD0C0\uC784\uB77C\uC778",
+  "view.dailyTimeline": "\uC77C",
   "view.twoDay": "2\uC77C \uBCF4\uAE30",
-  "view.nDay": "{n}\uC77C \uBCF4\uAE30",
-  "view.nDaySuffix": "\uC77C \uBCF4\uAE30",
-  "view.weekly": "\uC8FC\uAC04 \uBCF4\uAE30",
+  "view.nDay": "{n}\uC77C",
+  "view.nDaySuffix": "\uC77C",
+  "view.weekly": "\uC8FC",
   "view.monthly": "\uC6D4\uAC04",
-  "view.monthlyCalendar": "\uC6D4\uAC04 \uB2EC\uB825",
+  "view.monthlyCalendar": "\uC6D4",
   "view.board": "\uBCF4\uB4DC",
   "view.list": "\uBAA9\uB85D",
-  "view.listView": "\uBAA9\uB85D \uBCF4\uAE30",
+  "view.listView": "\uBAA9\uB85D",
   "board.kanban": "\uCE78\uBC18",
   "board.kanbanTitle": "\uAE30\uBCF8 \uCE78\uBC18",
   "board.priorityTitle": "\uC6B0\uC120\uC21C\uC704 \uC9D1\uC911",
@@ -7532,16 +7586,16 @@ var ja = {
   "notice.openViewFirst": "\u5148\u306B Dayloom \u30D3\u30E5\u30FC\u3092\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
   "notice.openDayloomFirst": "\u5148\u306B Dayloom \u3092\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
   "view.daily": "\u65E5",
-  "view.dailyTimeline": "\u65E5\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3",
+  "view.dailyTimeline": "\u65E5",
   "view.twoDay": "2\u65E5\u30D3\u30E5\u30FC",
-  "view.nDay": "{n}\u65E5\u30D3\u30E5\u30FC",
-  "view.nDaySuffix": "\u65E5\u30D3\u30E5\u30FC",
-  "view.weekly": "\u9031\u30D3\u30E5\u30FC",
+  "view.nDay": "{n}\u65E5",
+  "view.nDaySuffix": "\u65E5",
+  "view.weekly": "\u9031",
   "view.monthly": "\u6708",
-  "view.monthlyCalendar": "\u6708\u30AB\u30EC\u30F3\u30C0\u30FC",
+  "view.monthlyCalendar": "\u6708",
   "view.board": "\u30DC\u30FC\u30C9",
   "view.list": "\u30EA\u30B9\u30C8",
-  "view.listView": "\u30EA\u30B9\u30C8\u30D3\u30E5\u30FC",
+  "view.listView": "\u30EA\u30B9\u30C8",
   "board.kanban": "\u30AB\u30F3\u30D0\u30F3",
   "board.kanbanTitle": "\u6A19\u6E96\u30AB\u30F3\u30D0\u30F3",
   "board.priorityTitle": "\u512A\u5148\u5EA6\u30D5\u30A9\u30FC\u30AB\u30B9",
@@ -7842,16 +7896,16 @@ var zh = {
   "notice.openViewFirst": "\u8BF7\u5148\u6253\u5F00 Dayloom \u89C6\u56FE\u3002",
   "notice.openDayloomFirst": "\u8BF7\u5148\u6253\u5F00 Dayloom\u3002",
   "view.daily": "\u65E5",
-  "view.dailyTimeline": "\u65E5\u65F6\u95F4\u7EBF",
+  "view.dailyTimeline": "\u65E5",
   "view.twoDay": "2 \u5929\u89C6\u56FE",
-  "view.nDay": "{n} \u5929\u89C6\u56FE",
-  "view.nDaySuffix": " \u5929\u89C6\u56FE",
-  "view.weekly": "\u5468\u89C6\u56FE",
+  "view.nDay": "{n} \u5929",
+  "view.nDaySuffix": " \u5929",
+  "view.weekly": "\u5468",
   "view.monthly": "\u6708",
-  "view.monthlyCalendar": "\u6708\u5386",
+  "view.monthlyCalendar": "\u6708",
   "view.board": "\u770B\u677F",
   "view.list": "\u5217\u8868",
-  "view.listView": "\u5217\u8868\u89C6\u56FE",
+  "view.listView": "\u5217\u8868",
   "board.kanban": "\u770B\u677F",
   "board.kanbanTitle": "\u6807\u51C6\u770B\u677F",
   "board.priorityTitle": "\u4F18\u5148\u7EA7\u805A\u7126",
@@ -14927,6 +14981,13 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       this.renderPhoneDateStrip(header);
     const bottomBar = phone ? rootEl.createDiv({ cls: "dp-bottom-bar" }) : null;
     const tabsContainer = bottomBar ? bottomBar.createDiv({ cls: "dp-tabs dp-bottom-nav" }) : header.createDiv({ cls: "dp-tabs" });
+    if (!bottomBar) {
+      const headerTop = header.querySelector(":scope > .dp-header-top");
+      if (headerTop) {
+        headerTop.addClass("has-inline-tabs");
+        headerTop.insertBefore(tabsContainer, headerTop.querySelector(":scope > .dp-header-actions"));
+      }
+    }
     const tabs = phone ? [
       { key: "daily", label: t("view.daily"), icon: "calendar-clock" },
       { key: "list", label: t("view.list"), icon: "list" },
@@ -15285,10 +15346,12 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       return;
     const rootRect = rootEl.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();
+    const actions = row.querySelector(":scope > .dp-header-actions");
+    const lineHeight = row.hasClass("has-inline-tabs") && actions ? actions.getBoundingClientRect().height : rowRect.height;
     bar.style.top = `${rowRect.top - rootRect.top}px`;
     bar.style.left = `${rowRect.left - rootRect.left}px`;
     bar.style.width = `${rowRect.width}px`;
-    bar.style.height = `${Math.max(32, rowRect.height)}px`;
+    bar.style.height = `${Math.max(32, lineHeight)}px`;
   }
   closeSearch() {
     this.containerEl.querySelector(".dp-container")?.removeClass("dp-search-mode");
