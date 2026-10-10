@@ -4876,8 +4876,15 @@ body.dp-pointer-dragging * {
     min-width: 0;
     margin: 0 auto;
 }
+/* Relaxed segments: wider padding and a common minimum, so short labels (Day, Week) don't read as squeezed */
+.dp-header-top.has-inline-tabs > .dp-tabs {
+    gap: 3px;
+    padding: 3px 4px;
+}
 .dp-header-top.has-inline-tabs > .dp-tabs > .dp-tab {
     flex: 0 0 auto;
+    min-width: 60px;
+    padding: 0 14px;
 }
 @container dp-planner (max-width: 900px) {
     .dp-header-top.has-inline-tabs {
@@ -4896,6 +4903,7 @@ body.dp-pointer-dragging * {
     .dp-header-top.has-inline-tabs > .dp-tabs > .dp-tab {
         flex: 1 1 0;
         min-width: 0;
+        padding: 0 8px;
     }
     /* Search covers the first line only: the tabs below stay visible */
     .dp-search-mode > .dp-header .dp-header-top.has-inline-tabs > .dp-tabs {
