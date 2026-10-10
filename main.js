@@ -2777,11 +2777,21 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
 /* Bottom navigation: floating pill lifted above Obsidian's own mobile toolbar (which overlays the view's bottom edge) */
-.dp-container.dp-compact-shell > .dp-bottom-nav {
+/* Two islands side by side: [Daily | List | Monthly | Board] and [\u22EF More] */
+.dp-container.dp-compact-shell > .dp-bottom-bar {
     flex-shrink: 0;
-    width: auto; /* .dp-tabs is 100% wide; auto lets the side margins inset the pill */
-    gap: 2px;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
     margin: 0 12px 0;
+    z-index: 30;
+}
+.dp-bottom-bar > .dp-bottom-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto; /* .dp-tabs is 100% wide; the bar's side margins inset the islands */
+    gap: 2px;
+    margin: 0;
     padding: 3px;
     border: 1px solid var(--dp-glass-border);
     border-radius: 12px;
@@ -2789,7 +2799,14 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight); /* no blur: nothing scrolls behind this row */
     z-index: 30;
 }
-.is-phone .dp-phone-shell > .dp-bottom-nav {
+/* The 4 view tabs and More share the width 4 : 1, so all five buttons come out the same size */
+.dp-bottom-bar > .dp-bottom-nav:not(.dp-bottom-more) {
+    flex: 4 1 0;
+}
+.dp-bottom-bar > .dp-bottom-nav.dp-bottom-more {
+    flex: 1 1 0;
+}
+.is-phone .dp-phone-shell > .dp-bottom-bar {
     margin-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
 }
 .dp-compact-shell .dp-bottom-nav > .dp-tab {
@@ -4903,14 +4920,24 @@ body.dp-pointer-dragging * {
 }
 
 /* Compact More sheet (bottom bar's 5th slot, see renderMoreSheet): utilities on top, the desktop drawer's panels below.
-   Above the header and the bottom bar (both z 30) and the current-task bar; Obsidian modals still open over it */
+   Above the header, the bottom bar (both z 30) and the current-task bar (100); Obsidian modals still open over it */
+/* Sheet open: the current-task bar (z 100) fades out from under it instead of floating over its cards */
+.dp-compact-shell > .dp-current-task-bar {
+    transition: opacity 0.18s ease;
+}
+.dp-container.dp-more-open > .dp-current-task-bar {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+}
 .dp-compact-shell .dp-bottom-nav > .dp-tab.dp-bottom-nav-more.is-active {
     color: var(--text-accent);
 }
 .dp-more-sheet-backdrop {
     position: absolute;
     inset: 0;
-    z-index: 40;
+    z-index: 110; /* above the current-task bar (100), the header and the bottom bar (30) */
     background-color: rgba(0, 0, 0, 0.32);
 }
 .dp-more-sheet-backdrop.is-entering {
@@ -4921,7 +4948,7 @@ body.dp-pointer-dragging * {
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 41;
+    z-index: 111;
     display: flex;
     flex-direction: column;
     height: min(80%, 680px);
@@ -12504,7 +12531,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     if (!bar || bar.dataset.trackerId !== identity) {
       bar?.remove();
       bar = this.buildCurrentTaskBar(activeTask, identity);
-      const nav = initial ? null : parent.querySelector(":scope > .dp-bottom-nav");
+      const nav = initial ? null : parent.querySelector(":scope > .dp-bottom-bar");
       if (nav)
         parent.insertBefore(bar, nav);
       else
@@ -14898,7 +14925,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.renderNavHeader(header, true);
     if (phone && (this.activeTab === "daily" || this.activeTab === "list"))
       this.renderPhoneDateStrip(header);
-    const tabsContainer = phone ? rootEl.createDiv({ cls: "dp-tabs dp-bottom-nav" }) : header.createDiv({ cls: "dp-tabs" });
+    const bottomBar = phone ? rootEl.createDiv({ cls: "dp-bottom-bar" }) : null;
+    const tabsContainer = bottomBar ? bottomBar.createDiv({ cls: "dp-tabs dp-bottom-nav" }) : header.createDiv({ cls: "dp-tabs" });
     const tabs = phone ? [
       { key: "daily", label: t("view.daily"), icon: "calendar-clock" },
       { key: "list", label: t("view.list"), icon: "list" },
@@ -14955,8 +14983,9 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
         });
       }
     });
-    if (phone) {
-      const moreBtn = tabsContainer.createEl("button", {
+    if (bottomBar) {
+      const moreIsland = bottomBar.createDiv({ cls: "dp-tabs dp-bottom-nav dp-bottom-more" });
+      const moreBtn = moreIsland.createEl("button", {
         cls: `dp-tab dp-bottom-nav-more${this.moreSheetOpen ? " is-active" : ""}`,
         attr: { "aria-label": t("header.more"), "aria-haspopup": "dialog", "aria-expanded": String(this.moreSheetOpen) }
       });
@@ -14977,17 +15006,19 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       this.renderCurrentTaskTracker(rootEl);
     else
       this.stopCurrentTaskTracker();
-    if (phone) {
-      rootEl.appendChild(tabsContainer);
+    if (bottomBar) {
+      rootEl.appendChild(bottomBar);
       this.registerSwipeNavigation(rootEl);
     }
     rootEl.toggleClass("dp-drawer-open", this.isSideDrawerOpen());
     if (this.hasSideDrawer())
       renderSideDrawer(rootEl, this);
-    if (phone && this.moreSheetOpen)
+    if (phone && this.moreSheetOpen) {
       this.renderMoreSheet(rootEl, false);
-    else
+    } else {
       this.moreSheetOpen = false;
+      rootEl.removeClass("dp-more-open");
+    }
     this.trackHeaderHeight(rootEl, header);
     this.syncSearchBar(rootEl);
   }
@@ -15019,6 +15050,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   closeMoreSheet() {
     this.moreSheetOpen = false;
     const rootEl = this.containerEl.querySelector(".dp-container");
+    rootEl?.removeClass("dp-more-open");
     const more = rootEl?.querySelector(".dp-bottom-nav-more");
     more?.removeClass("is-active");
     more?.setAttr("aria-expanded", "false");
@@ -15032,6 +15064,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   }
   renderMoreSheet(rootEl, animate) {
     rootEl.querySelectorAll(":scope > .dp-more-sheet, :scope > .dp-more-sheet-backdrop").forEach((el) => el.remove());
+    rootEl.addClass("dp-more-open");
     const more = rootEl.querySelector(".dp-bottom-nav-more");
     more?.addClass("is-active");
     more?.setAttr("aria-expanded", "true");
@@ -15532,7 +15565,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     let pane = this.panes.get(this.activeTab);
     if (!pane) {
       const el = rootEl.createDiv({ cls: `dp-content day-planner-view-pane day-planner-pane-${this.activeTab}` });
-      rootEl.insertBefore(el, rootEl.querySelector(":scope > .dp-current-task-bar, :scope > .dp-bottom-nav"));
+      rootEl.insertBefore(el, rootEl.querySelector(":scope > .dp-current-task-bar, :scope > .dp-bottom-bar"));
       pane = { el, version: -1, scroll: [] };
       this.panes.set(this.activeTab, pane);
     }
