@@ -4902,113 +4902,178 @@ body.dp-pointer-dragging * {
     width: 176px;
 }
 
-/* Compact \u22EF overflow menu: search, sync, zoom (and paging arrows without swipes) in a glass popover under the + */
-.dp-compact-shell .dp-header-actions {
-    position: relative;
+/* Compact More sheet (bottom bar's 5th slot, see renderMoreSheet): utilities on top, the desktop drawer's panels below.
+   Above the header and the bottom bar (both z 30) and the current-task bar; Obsidian modals still open over it */
+.dp-compact-shell .dp-bottom-nav > .dp-tab.dp-bottom-nav-more.is-active {
+    color: var(--text-accent);
 }
-.dp-overflow-menu {
+.dp-more-sheet-backdrop {
     position: absolute;
-    top: calc(100% + 8px);
+    inset: 0;
+    z-index: 40;
+    background-color: rgba(0, 0, 0, 0.32);
+}
+.dp-more-sheet-backdrop.is-entering {
+    animation: dp-sheet-fade-in 0.2s ease-out;
+}
+.dp-more-sheet {
+    position: absolute;
+    left: 0;
     right: 0;
-    z-index: 50; /* inside the header's stacking context (z 30), which already sits above panes and the task tracker */
-    display: none;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 220px;
-    padding: 6px;
-    box-sizing: border-box;
-    background-color: var(--dp-glass-bg);
-    backdrop-filter: var(--dp-glass-blur);
-    -webkit-backdrop-filter: var(--dp-glass-blur);
-    border: 1px solid var(--dp-glass-border);
-    border-radius: 14px;
-    box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
-    transform-origin: top right;
-}
-.dp-overflow-menu.is-open {
+    bottom: 0;
+    z-index: 41;
     display: flex;
-    animation: dp-overflow-in 0.14s ease-out;
+    flex-direction: column;
+    height: min(80%, 680px);
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
+    background-color: var(--background-secondary);
+    border: 1px solid var(--dp-glass-border);
+    border-bottom: none;
+    border-radius: 16px 16px 0 0;
+    box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
+    transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-@keyframes dp-overflow-in {
-    from { opacity: 0; transform: scale(0.96) translateY(-4px); }
-    to { opacity: 1; transform: none; }
+/* Phones: clear Obsidian's own bottom toolbar, which overlays the view's bottom edge */
+.is-phone .dp-phone-shell > .dp-more-sheet {
+    padding-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
 }
-.dp-overflow-menu .dp-overflow-item,
-.dp-overflow-zoom {
+.dp-more-sheet.is-entering {
+    animation: dp-sheet-up 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dp-more-sheet.is-dragging {
+    transition: none;
+}
+.dp-more-sheet.is-closing {
+    transform: translateY(100%) !important;
+    pointer-events: none;
+}
+.dp-more-sheet-backdrop.is-closing {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+}
+@keyframes dp-sheet-up {
+    from { transform: translateY(100%); }
+}
+@keyframes dp-sheet-fade-in {
+    from { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dp-more-sheet, .dp-more-sheet.is-entering, .dp-more-sheet-backdrop {
+        animation: none;
+        transition: none;
+    }
+}
+.dp-sheet-handle {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    padding: 8px 0 6px;
+    cursor: grab;
+    touch-action: none;
+}
+.dp-sheet-grabber {
+    width: 36px;
+    height: 5px;
+    border-radius: 999px;
+    background-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+}
+/* Section A: Search \xB7 Sync as two big tiles, the zoom slider as a full-width row under them */
+.dp-sheet-actions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 8px;
+    padding: 0 12px;
+}
+.dp-sheet-actions > button.dp-sheet-action {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    margin: 0;
+    padding: 0 12px;
+    font-size: var(--font-ui-small, 0.9em);
+    font-weight: var(--font-medium, 500);
+    color: var(--text-normal);
+    background-color: var(--dp-segment-track);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 12px;
+    box-shadow: none;
+    cursor: pointer;
+}
+.dp-sheet-actions > button.dp-sheet-action:active {
+    background-color: var(--background-modifier-hover);
+    transform: scale(0.98);
+}
+.dp-sheet-actions > button.dp-sheet-action.is-active {
+    color: var(--text-accent);
+}
+.dp-sheet-actions svg,
+.dp-sheet-zoom-label svg {
+    width: 17px;
+    height: 17px;
+}
+.dp-sheet-zoom {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     gap: 10px;
-    width: 100%;
-    min-height: 40px;
-    margin: 0;
-    padding: 0 10px;
-    box-sizing: border-box;
+    margin: 8px 12px 0;
+    padding: 0 6px 0 12px;
+    height: 44px;
+    background-color: var(--dp-segment-track);
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 12px;
+}
+.dp-sheet-zoom-label {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-size: var(--font-ui-small, 0.9em);
-    color: var(--text-normal);
-    background: transparent;
-    border: none;
-    border-radius: 10px;
-    box-shadow: none;
-    text-align: left;
-    cursor: pointer;
-}
-.dp-overflow-menu .dp-overflow-item:hover,
-.dp-overflow-menu .dp-overflow-item:active {
-    background-color: var(--background-modifier-hover);
-}
-.dp-overflow-menu .dp-overflow-item.is-active {
-    color: var(--text-accent);
-}
-.dp-overflow-menu .dp-btn-icon {
     color: var(--text-muted);
 }
-.dp-overflow-menu svg {
-    width: 16px;
-    height: 16px;
-}
-.dp-overflow-nav {
-    display: flex;
-    gap: 2px;
-}
-.dp-overflow-nav > .dp-overflow-item:last-child {
-    flex-direction: row-reverse;
-    justify-content: flex-start;
-}
-/* Zoom row: label, then the slider kept expanded (its tap-to-open icon is redundant here) */
-.dp-overflow-zoom {
-    flex-wrap: wrap;
-    row-gap: 0;
-    padding-bottom: 6px;
-    cursor: default;
-    border-top: 1px solid var(--background-modifier-border);
-    border-radius: 0;
-    margin-top: 2px;
-    padding-top: 8px;
-}
-.dp-overflow-zoom > .dp-zoom-slider-floating,
-.dp-compact-shell .dp-overflow-zoom > .dp-zoom-slider-floating {
-    flex: 1 1 100%;
+/* The slider stays expanded here; its tap-to-open icon is redundant */
+.dp-sheet-zoom > .dp-zoom-slider-floating,
+.dp-compact-shell .dp-sheet-zoom > .dp-zoom-slider-floating {
+    flex: 1;
     width: auto;
-    height: 28px;
+    height: 32px;
     margin: 0;
     background: transparent;
     border: none;
     overflow: visible;
 }
-.dp-overflow-zoom .dp-zoom-toggle {
+.dp-sheet-zoom .dp-zoom-toggle {
     display: none !important;
 }
-.dp-overflow-zoom .dp-zoom-popover {
+.dp-sheet-zoom .dp-zoom-popover {
     flex: 1;
     flex-direction: row;
 }
-.dp-overflow-zoom .dp-zoom-slider {
+.dp-sheet-zoom .dp-zoom-slider {
     flex: 1;
     width: auto;
     opacity: 1;
 }
-.dp-overflow-zoom .dp-zoom-value {
+.dp-sheet-zoom .dp-zoom-value {
     opacity: 1;
+}
+/* Section B: the drawer's mode switcher and panel body, in the flow of the sheet instead of sliding in from the right */
+.dp-side-drawer.dp-sheet-drawer {
+    position: static;
+    flex: 1;
+    min-height: 0;
+    width: auto;
+    margin-top: 10px;
+    transform: none;
+    visibility: visible;
+    transition: none;
+    background: transparent;
+    border-left: none;
 }
 
 /* Rounder controls everywhere, as on phones: view tabs and the Board mode toggle are pills */
@@ -7178,7 +7243,7 @@ var ko = {
   "shortcuts.drawerMulti": "\uCE74\uB4DC \uC5EC\uB7EC \uAC1C\uB97C \uC120\uD0DD\uD574 \uD0C0\uC784\uB77C\uC778\uC5D0 \uB193\uC73C\uBA74 \uC5F0\uB2EC\uC544 \uBC30\uCE58",
   "header.add": "\uD560 \uC77C \uB610\uB294 \uC77C\uC815 \uCD94\uAC00",
   "header.zoom": "\uD0C0\uC784\uB77C\uC778 \uD655\uB300/\uCD95\uC18C",
-  "header.more": "\uB354 \uBCF4\uAE30",
+  "header.more": "\uB354\uBCF4\uAE30",
   "header.search": "\uAC80\uC0C9",
   "search.close": "\uAC80\uC0C9 \uB2EB\uAE30 (Esc)",
   "search.open": "\uD560 \uC77C\uACFC \uC77C\uC815 \uAC80\uC0C9 (/)",
@@ -9567,7 +9632,7 @@ function acceptBoardCardDrops(drawer, view) {
 }
 function renderSideDrawer(rootEl, view) {
   const settings = view.plugin.settings;
-  let panel = SIDE_DRAWER_PANELS.find((p) => p.id === settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0];
+  const panel = SIDE_DRAWER_PANELS.find((p) => p.id === settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0];
   openPicker?.close();
   statsMemo = null;
   const drawer = rootEl.createDiv({ cls: "dp-side-drawer" });
@@ -9593,6 +9658,13 @@ function renderSideDrawer(rootEl, view) {
     e.stopPropagation();
     view.dismissSelection();
   });
+  renderDrawerPanels(drawer, view, panel);
+  return drawer;
+}
+function renderDrawerPanels(drawer, view, panel = SIDE_DRAWER_PANELS.find((p) => p.id === view.plugin.settings.sideDrawerPanel) ?? SIDE_DRAWER_PANELS[0]) {
+  const settings = view.plugin.settings;
+  openPicker?.close();
+  statsMemo = null;
   const modes = drawer.createDiv({ cls: "dp-drawer-modes", attr: { role: "tablist", "aria-label": t("drawer.modes") } });
   modes.style.setProperty("--dp-mode-count", String(SIDE_DRAWER_PANELS.length));
   modes.createDiv({ cls: "dp-drawer-modes-thumb" });
@@ -9640,7 +9712,6 @@ function renderSideDrawer(rootEl, view) {
     fillBody(nextBody);
     void view.plugin.saveSettings();
   }));
-  return drawer;
 }
 
 // views.ts
@@ -12028,114 +12099,11 @@ ${e.calendarName ?? ""}`.toLowerCase();
       const showSlider = tabType === "daily" || tabType === "weekly" || tabType === "multiDay";
       let sliderContainer = this.containerEl.querySelector(".dp-zoom-slider-floating");
       if (showSlider) {
-        if (!sliderContainer) {
-          const menuZoom = this.containerEl.querySelector(".dp-overflow-zoom");
-          const headerActions = this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
-          const viewContent = this.contentEl || this.containerEl;
-          sliderContainer = (menuZoom ?? headerActions ?? viewContent).createDiv({ cls: "dp-zoom-slider-floating" });
-          if (!menuZoom)
-            headerActions?.prepend(sliderContainer);
-          const zoomToggle = sliderContainer.createSpan({ cls: "dp-zoom-toggle", attr: { "aria-label": t("header.zoom") } });
-          (0, import_obsidian6.setIcon)(zoomToggle, "zoom-in");
-          const container = sliderContainer;
-          zoomToggle.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.zoomPopoverOpen = !this.zoomPopoverOpen;
-            container.toggleClass("is-open", this.zoomPopoverOpen);
-            triggerHaptic("selection");
-          });
-          if (!this.zoomOutsideBound) {
-            this.zoomOutsideBound = true;
-            this.registerDomEvent(document, "pointerdown", (e) => {
-              if (!this.zoomPopoverOpen)
-                return;
-              const own = this.containerEl.querySelector(".dp-zoom-slider-floating");
-              if (own?.contains(e.target))
-                return;
-              this.zoomPopoverOpen = false;
-              own?.removeClass("is-open");
-            });
-          }
-          const popover = sliderContainer.createDiv({ cls: "dp-zoom-popover" });
-          const slider2 = popover.createEl("input", {
-            type: "range",
-            cls: "dp-zoom-slider"
-          });
-          slider2.min = "30";
-          slider2.max = "180";
-          slider2.step = "5";
-          slider2.addEventListener("change", () => {
-            slider2.blur();
-          });
-          slider2.addEventListener("pointerup", () => {
-            slider2.blur();
-          });
-          slider2.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-          slider2.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
-          const valueSpan2 = popover.createSpan({
-            cls: "dp-zoom-value",
-            text: `${this.getHourHeight()}px`
-          });
-          slider2.addEventListener("input", async () => {
-            try {
-              const oldHeight = this.getHourHeight();
-              const newHeight = parseInt(slider2.value, 10);
-              valueSpan2.setText(`${newHeight}px`);
-              const isCodeBlock = this.updateCodeBlockInFile !== void 0;
-              if (isCodeBlock) {
-                this.hourHeight = newHeight;
-                this.rerenderForZoom(oldHeight);
-                this.debouncedUpdateCodeBlock(this.viewType, this.filters);
-              } else {
-                const isDaily = this.getViewType() === "day-planner-pro-daily";
-                const separate = this.plugin.settings.separateViewHeights;
-                if (separate) {
-                  if (isDaily) {
-                    this.plugin.settings.timelineHourHeightDaily = newHeight;
-                  } else {
-                    this.plugin.settings.timelineHourHeight = newHeight;
-                  }
-                } else {
-                  this.plugin.settings.timelineHourHeight = newHeight;
-                  this.plugin.settings.timelineHourHeightDaily = newHeight;
-                }
-                this.rerenderForZoom(oldHeight);
-                await this.plugin.saveSettings();
-                const targetTypes = separate ? [this.getViewType()] : ["day-planner-pro-view", "day-planner-pro-daily"];
-                targetTypes.forEach((viewType) => {
-                  this.app.workspace.getLeavesOfType(viewType).forEach((leaf) => {
-                    const view = leaf.view;
-                    if (view === this)
-                      return;
-                    if (view && typeof view.render === "function") {
-                      try {
-                        view.render();
-                      } catch (err) {
-                        console.error(`Failed to render leaf of type ${viewType}:`, err);
-                      }
-                    }
-                  });
-                });
-              }
-            } catch (err) {
-              console.error("Day Planner Pro: Error in slider event listener:", err);
-            }
-          });
-        }
-        const slider = sliderContainer.querySelector("input");
-        if (slider) {
-          slider.value = String(this.getHourHeight());
-        }
-        const valueSpan = sliderContainer.querySelector(".dp-zoom-value");
-        if (valueSpan) {
-          valueSpan.setText(`${this.getHourHeight()}px`);
-        }
-        sliderContainer.toggleClass("is-open", !!this.zoomPopoverOpen);
-        sliderContainer.style.display = "flex";
-      } else {
-        if (sliderContainer) {
-          sliderContainer.style.display = "none";
-        }
+        sliderContainer ?? (sliderContainer = this.mountZoomSlider());
+        if (sliderContainer)
+          this.syncZoomSlider(sliderContainer);
+      } else if (sliderContainer) {
+        sliderContainer.style.display = "none";
       }
       this.activePointerDrag?.refresh();
       this.applySelectionState();
@@ -12149,6 +12117,115 @@ ${e.calendarName ?? ""}`.toLowerCase();
   rebuildRoot(rootEl) {
     rootEl.empty();
     this.renderRoot(rootEl);
+  }
+  mountZoomSlider() {
+    const sheetZoom = this.containerEl.querySelector(".dp-sheet-zoom");
+    if (this.useCompactLayout() && !sheetZoom)
+      return null;
+    const headerActions = this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
+    const viewContent = this.contentEl || this.containerEl;
+    const sliderContainer = (sheetZoom ?? headerActions ?? viewContent).createDiv({ cls: "dp-zoom-slider-floating" });
+    if (!sheetZoom)
+      headerActions?.prepend(sliderContainer);
+    const zoomToggle = sliderContainer.createSpan({ cls: "dp-zoom-toggle", attr: { "aria-label": t("header.zoom") } });
+    (0, import_obsidian6.setIcon)(zoomToggle, "zoom-in");
+    const container = sliderContainer;
+    zoomToggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this.zoomPopoverOpen = !this.zoomPopoverOpen;
+      container.toggleClass("is-open", this.zoomPopoverOpen);
+      triggerHaptic("selection");
+    });
+    if (!this.zoomOutsideBound) {
+      this.zoomOutsideBound = true;
+      this.registerDomEvent(document, "pointerdown", (e) => {
+        if (!this.zoomPopoverOpen)
+          return;
+        const own = this.containerEl.querySelector(".dp-zoom-slider-floating");
+        if (own?.contains(e.target))
+          return;
+        this.zoomPopoverOpen = false;
+        own?.removeClass("is-open");
+      });
+    }
+    const popover = sliderContainer.createDiv({ cls: "dp-zoom-popover" });
+    const slider = popover.createEl("input", {
+      type: "range",
+      cls: "dp-zoom-slider"
+    });
+    slider.min = "30";
+    slider.max = "180";
+    slider.step = "5";
+    slider.addEventListener("change", () => {
+      slider.blur();
+    });
+    slider.addEventListener("pointerup", () => {
+      slider.blur();
+    });
+    slider.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+    slider.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
+    const valueSpan = popover.createSpan({
+      cls: "dp-zoom-value",
+      text: `${this.getHourHeight()}px`
+    });
+    slider.addEventListener("input", async () => {
+      try {
+        const oldHeight = this.getHourHeight();
+        const newHeight = parseInt(slider.value, 10);
+        valueSpan.setText(`${newHeight}px`);
+        const isCodeBlock = this.updateCodeBlockInFile !== void 0;
+        if (isCodeBlock) {
+          this.hourHeight = newHeight;
+          this.rerenderForZoom(oldHeight);
+          this.debouncedUpdateCodeBlock(this.viewType, this.filters);
+        } else {
+          const isDaily = this.getViewType() === "day-planner-pro-daily";
+          const separate = this.plugin.settings.separateViewHeights;
+          if (separate) {
+            if (isDaily) {
+              this.plugin.settings.timelineHourHeightDaily = newHeight;
+            } else {
+              this.plugin.settings.timelineHourHeight = newHeight;
+            }
+          } else {
+            this.plugin.settings.timelineHourHeight = newHeight;
+            this.plugin.settings.timelineHourHeightDaily = newHeight;
+          }
+          this.rerenderForZoom(oldHeight);
+          await this.plugin.saveSettings();
+          const targetTypes = separate ? [this.getViewType()] : ["day-planner-pro-view", "day-planner-pro-daily"];
+          targetTypes.forEach((viewType) => {
+            this.app.workspace.getLeavesOfType(viewType).forEach((leaf) => {
+              const view = leaf.view;
+              if (view === this)
+                return;
+              if (view && typeof view.render === "function") {
+                try {
+                  view.render();
+                } catch (err) {
+                  console.error(`Failed to render leaf of type ${viewType}:`, err);
+                }
+              }
+            });
+          });
+        }
+      } catch (err) {
+        console.error("Day Planner Pro: Error in slider event listener:", err);
+      }
+    });
+    return sliderContainer;
+  }
+  syncZoomSlider(sliderContainer) {
+    const slider = sliderContainer.querySelector("input");
+    if (slider) {
+      slider.value = String(this.getHourHeight());
+    }
+    const valueSpan = sliderContainer.querySelector(".dp-zoom-value");
+    if (valueSpan) {
+      valueSpan.setText(`${this.getHourHeight()}px`);
+    }
+    sliderContainer.toggleClass("is-open", !!this.zoomPopoverOpen);
+    sliderContainer.style.display = "flex";
   }
   renderNavHeader(parent, showTabs = false) {
     const headerTop = parent.createDiv({ cls: "dp-header-top" });
@@ -12184,45 +12261,15 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const headerActions = headerTop.createDiv({ cls: "dp-header-actions" });
     const navGroup = compact ? null : headerActions.createDiv({ cls: "dp-nav-buttons-group" });
     const tools = headerActions.createDiv({ cls: "dp-header-tools" });
-    const menu = compact ? headerActions.createDiv({ cls: "dp-overflow-menu", attr: { role: "menu" } }) : null;
-    const closeMenu = () => {
-      menu?.removeClass("is-open");
-      const btn = headerActions.querySelector(".dp-overflow-btn");
-      btn?.removeClass("is-active");
-      btn?.setAttr("aria-expanded", "false");
-    };
-    const addMenuItem = (icon, label, cls, onClick) => {
-      const item = menu.createEl("button", { cls: `dp-overflow-item ${cls}`, attr: { role: "menuitem" } });
-      (0, import_obsidian6.setIcon)(item.createSpan({ cls: "dp-btn-icon" }), icon);
-      item.createSpan({ cls: "dp-btn-label", text: label });
-      item.addEventListener("click", () => {
-        closeMenu();
-        onClick();
-      });
-      return item;
-    };
-    const showArrows = !compact || !import_obsidian6.Platform.isMobile || this.plugin.settings.swipeNavigation === false;
+    headerTop.toggleClass("has-nav-arrows", compact && this.getViewTabType() !== "board");
     if (this.getViewTabType() !== "board") {
       const navHost = navGroup ?? tools;
-      if (menu && showArrows) {
-        const arrows = menu.createDiv({ cls: "dp-overflow-nav" });
-        for (const [dir, icon, label] of [[-1, "chevron-left", t("nav.previous")], [1, "chevron-right", t("nav.next")]]) {
-          const btn = arrows.createEl("button", { cls: "dp-overflow-item", attr: { role: "menuitem", "aria-label": label } });
-          (0, import_obsidian6.setIcon)(btn.createSpan({ cls: "dp-btn-icon" }), icon);
-          btn.createSpan({ cls: "dp-btn-label", text: label });
-          btn.addEventListener("click", async () => {
-            triggerHaptic("selection");
-            await this.navigateWithSlide(dir);
-          });
-        }
-      } else if (showArrows) {
-        const prevBtn = navHost.createEl("button", { cls: "dp-nav-arrow", attr: { "aria-label": t("nav.previous") } });
-        (0, import_obsidian6.setIcon)(prevBtn, "chevron-left");
-        prevBtn.addEventListener("click", async () => {
-          triggerHaptic("selection");
-          await this.navigateWithSlide(-1);
-        });
-      }
+      const prevBtn = navHost.createEl("button", { cls: "dp-nav-arrow", attr: { "aria-label": t("nav.previous") } });
+      (0, import_obsidian6.setIcon)(prevBtn, "chevron-left");
+      prevBtn.addEventListener("click", async () => {
+        triggerHaptic("selection");
+        await this.navigateWithSlide(-1);
+      });
       const todayBtn = navHost.createEl("button", { cls: "dp-today-btn", attr: { "aria-label": t("common.today") } });
       (0, import_obsidian6.setIcon)(todayBtn.createSpan({ cls: "dp-btn-icon" }), "calendar-check");
       todayBtn.createSpan({ cls: "dp-btn-label", text: t("common.today") });
@@ -12230,68 +12277,14 @@ ${e.calendarName ?? ""}`.toLowerCase();
         triggerHaptic("selection");
         void this.goToToday();
       });
-      if (showArrows && !menu) {
-        const nextBtn = navHost.createEl("button", { cls: "dp-nav-arrow", attr: { "aria-label": t("nav.next") } });
-        (0, import_obsidian6.setIcon)(nextBtn, "chevron-right");
-        nextBtn.addEventListener("click", async () => {
-          triggerHaptic("selection");
-          await this.navigateWithSlide(1);
-        });
-      }
-    }
-    if (menu) {
-      const moreBtn = tools.createEl("button", {
-        cls: "dp-overflow-btn",
-        attr: { "aria-label": t("header.more"), "aria-haspopup": "menu", "aria-expanded": "false" }
-      });
-      setFirstIcon(moreBtn, ["ellipsis", "more-horizontal"]);
-      moreBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (menu.hasClass("is-open")) {
-          closeMenu();
-          return;
-        }
+      const nextBtn = navHost.createEl("button", { cls: "dp-nav-arrow", attr: { "aria-label": t("nav.next") } });
+      (0, import_obsidian6.setIcon)(nextBtn, "chevron-right");
+      nextBtn.addEventListener("click", async () => {
         triggerHaptic("selection");
-        menu.addClass("is-open");
-        moreBtn.addClass("is-active");
-        moreBtn.setAttr("aria-expanded", "true");
+        await this.navigateWithSlide(1);
       });
-      if (!this.overflowDismissBound) {
-        this.overflowDismissBound = true;
-        const openMenu = () => this.containerEl.querySelector(".dp-overflow-menu.is-open");
-        const dismiss = (m) => {
-          m.removeClass("is-open");
-          const btn = m.parentElement?.querySelector(".dp-overflow-btn");
-          btn?.removeClass("is-active");
-          btn?.setAttr("aria-expanded", "false");
-        };
-        const onPointerDown = (e) => {
-          const m = openMenu();
-          const target = e.target;
-          if (m && !m.contains(target) && !target.closest?.(".dp-overflow-btn"))
-            dismiss(m);
-        };
-        const onKeyDown = (e) => {
-          const m = openMenu();
-          if (!m || e.key !== "Escape")
-            return;
-          e.preventDefault();
-          e.stopPropagation();
-          dismiss(m);
-        };
-        document.addEventListener("pointerdown", onPointerDown, true);
-        document.addEventListener("keydown", onKeyDown, true);
-        this.register(() => {
-          document.removeEventListener("pointerdown", onPointerDown, true);
-          document.removeEventListener("keydown", onKeyDown, true);
-        });
-      }
     }
-    if (this instanceof DayPlannerCombinedView && menu) {
-      const view = this;
-      const searchItem = addMenuItem("search", t("header.search"), "dp-search-btn", () => view.openSearch());
-      searchItem.toggleClass("is-active", !!view.searchQuery);
-    } else if (this instanceof DayPlannerCombinedView) {
+    if (this instanceof DayPlannerCombinedView && !compact) {
       const view = this;
       const searchBtn = tools.createEl("button", {
         cls: `dp-search-btn${view.searchQuery ? " is-active" : ""}`,
@@ -12300,29 +12293,14 @@ ${e.calendarName ?? ""}`.toLowerCase();
       (0, import_obsidian6.setIcon)(searchBtn, "search");
       searchBtn.addEventListener("click", () => view.openSearch());
     }
-    if (this.plugin.settings.enableGoogleCalendar) {
-      let syncBtn;
-      if (menu) {
-        syncBtn = addMenuItem("refresh-cw", t("nav.sync"), "dp-sync-btn", () => void this.runSync());
-      } else {
-        syncBtn = tools.createEl("button", { cls: "dp-sync-btn", attr: { "aria-label": t("nav.sync") } });
-        (0, import_obsidian6.setIcon)(syncBtn.createSpan({ cls: "dp-btn-icon" }), "refresh-cw");
-        syncBtn.addEventListener("click", () => void this.runSync());
-      }
+    if (this.plugin.settings.enableGoogleCalendar && !compact) {
+      const syncBtn = tools.createEl("button", { cls: "dp-sync-btn", attr: { "aria-label": t("nav.sync") } });
+      (0, import_obsidian6.setIcon)(syncBtn.createSpan({ cls: "dp-btn-icon" }), "refresh-cw");
+      syncBtn.addEventListener("click", () => void this.runSync());
       syncBtn.addEventListener("contextmenu", (e) => {
         e.preventDefault();
-        closeMenu();
-        const modal = new TaskSyncModal(this.app, this.plugin, async () => {
-          await this.refreshTasks(null, true);
-        });
-        modal.open();
+        this.openSyncOptions();
       });
-    }
-    const tabType = this.getViewTabType();
-    if (menu && (tabType === "daily" || tabType === "weekly" || tabType === "multiDay")) {
-      const zoomRow = menu.createDiv({ cls: "dp-overflow-zoom" });
-      (0, import_obsidian6.setIcon)(zoomRow.createSpan({ cls: "dp-btn-icon" }), "zoom-in");
-      zoomRow.createSpan({ cls: "dp-btn-label", text: t("header.zoom") });
     }
     if (this.filters !== void 0) {
       const countRules = (g) => (g.children ?? []).reduce((n, c) => n + (isFilterGroup(c) ? countRules(c) : 1), 0);
@@ -12403,6 +12381,11 @@ ${e.calendarName ?? ""}`.toLowerCase();
       drawerBtn.addEventListener("click", () => void view.toggleSideDrawer());
     }
     return { dateLabel };
+  }
+  openSyncOptions() {
+    new TaskSyncModal(this.app, this.plugin, async () => {
+      await this.refreshTasks(null, true);
+    }).open();
   }
   async runSync() {
     if (this.syncInProgress)
@@ -14865,6 +14848,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.drawerCalendarAnchor = null;
     this.drawerStatsPct = 0;
     this.headerResizeObserver = null;
+    this.moreSheetOpen = false;
+    this.moreSheetKeysBound = false;
     this.searchTimer = null;
     this.drawerCaptureDraft = "";
     this.drawerCaptureFocused = false;
@@ -14970,6 +14955,21 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
         });
       }
     });
+    if (phone) {
+      const moreBtn = tabsContainer.createEl("button", {
+        cls: `dp-tab dp-bottom-nav-more${this.moreSheetOpen ? " is-active" : ""}`,
+        attr: { "aria-label": t("header.more"), "aria-haspopup": "dialog", "aria-expanded": String(this.moreSheetOpen) }
+      });
+      setFirstIcon(moreBtn.createSpan({ cls: "dp-bottom-nav-icon" }), ["ellipsis", "more-horizontal"]);
+      moreBtn.createSpan({ cls: "dp-bottom-nav-label", text: t("header.more") });
+      moreBtn.addEventListener("click", () => {
+        triggerHaptic("selection");
+        if (this.moreSheetOpen)
+          this.closeMoreSheet();
+        else
+          this.openMoreSheet();
+      });
+    }
     animateActiveTabPill(tabsContainer, this, this.activeTab);
     keepActiveTabInView(tabsContainer, this);
     this.mountActivePane(rootEl);
@@ -14984,6 +14984,10 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     rootEl.toggleClass("dp-drawer-open", this.isSideDrawerOpen());
     if (this.hasSideDrawer())
       renderSideDrawer(rootEl, this);
+    if (phone && this.moreSheetOpen)
+      this.renderMoreSheet(rootEl, false);
+    else
+      this.moreSheetOpen = false;
     this.trackHeaderHeight(rootEl, header);
     this.syncSearchBar(rootEl);
   }
@@ -15004,6 +15008,120 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     rootEl?.querySelector(":scope > .dp-side-drawer")?.toggleClass("is-open", open);
     rootEl?.querySelector(".dp-drawer-toggle")?.toggleClass("is-active", open);
     await this.plugin.saveSettings();
+  }
+  openMoreSheet() {
+    const rootEl = this.containerEl.querySelector(".dp-container");
+    if (!rootEl || !this.useCompactLayout())
+      return;
+    this.moreSheetOpen = true;
+    this.renderMoreSheet(rootEl, true);
+  }
+  closeMoreSheet() {
+    this.moreSheetOpen = false;
+    const rootEl = this.containerEl.querySelector(".dp-container");
+    const more = rootEl?.querySelector(".dp-bottom-nav-more");
+    more?.removeClass("is-active");
+    more?.setAttr("aria-expanded", "false");
+    const parts = rootEl?.querySelectorAll(":scope > .dp-more-sheet, :scope > .dp-more-sheet-backdrop");
+    parts?.forEach((el) => {
+      el.removeClass("is-entering");
+      el.addClass("is-closing");
+      el.style.removeProperty("transform");
+      window.setTimeout(() => el.remove(), 220);
+    });
+  }
+  renderMoreSheet(rootEl, animate) {
+    rootEl.querySelectorAll(":scope > .dp-more-sheet, :scope > .dp-more-sheet-backdrop").forEach((el) => el.remove());
+    const more = rootEl.querySelector(".dp-bottom-nav-more");
+    more?.addClass("is-active");
+    more?.setAttr("aria-expanded", "true");
+    const backdrop = rootEl.createDiv({ cls: `dp-more-sheet-backdrop${animate ? " is-entering" : ""}` });
+    backdrop.addEventListener("click", () => this.closeMoreSheet());
+    const sheet = rootEl.createDiv({
+      cls: `dp-more-sheet${animate ? " is-entering" : ""}`,
+      attr: { role: "dialog", "aria-label": t("header.more") }
+    });
+    const handle = sheet.createDiv({ cls: "dp-sheet-handle" });
+    handle.createDiv({ cls: "dp-sheet-grabber" });
+    const actions = sheet.createDiv({ cls: "dp-sheet-actions" });
+    const addAction = (icon, label, cls, run) => {
+      const btn = actions.createEl("button", { cls: `dp-sheet-action ${cls}` });
+      (0, import_obsidian6.setIcon)(btn.createSpan({ cls: "dp-btn-icon" }), icon);
+      btn.createSpan({ cls: "dp-btn-label", text: label });
+      btn.addEventListener("click", () => {
+        this.closeMoreSheet();
+        run();
+      });
+      return btn;
+    };
+    addAction("search", t("header.search"), `dp-search-btn${this.searchQuery ? " is-active" : ""}`, () => this.openSearch());
+    if (this.plugin.settings.enableGoogleCalendar) {
+      const syncBtn = addAction("refresh-cw", t("nav.sync"), "dp-sync-btn", () => void this.runSync());
+      syncBtn.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        this.closeMoreSheet();
+        this.openSyncOptions();
+      });
+    }
+    const tabType = this.getViewTabType();
+    if (tabType === "daily" || tabType === "weekly" || tabType === "multiDay") {
+      const zoomRow = sheet.createDiv({ cls: "dp-sheet-zoom" });
+      const label = zoomRow.createDiv({ cls: "dp-sheet-zoom-label" });
+      (0, import_obsidian6.setIcon)(label.createSpan({ cls: "dp-btn-icon" }), "zoom-in");
+      label.createSpan({ cls: "dp-btn-label", text: t("header.zoom") });
+      const slider = this.mountZoomSlider();
+      if (slider)
+        this.syncZoomSlider(slider);
+    }
+    const panels = sheet.createDiv({ cls: "dp-side-drawer dp-sheet-drawer is-open" });
+    panels.style.setProperty("--dp-task-color", this.plugin.settings.taskColor || "#ff9f1c");
+    renderDrawerPanels(panels, this);
+    this.registerSheetDrag(handle, sheet);
+    if (!this.moreSheetKeysBound) {
+      this.moreSheetKeysBound = true;
+      this.registerDomEvent(document, "keydown", (e) => {
+        if (e.key !== "Escape" || !this.moreSheetOpen || e.isComposing)
+          return;
+        if (e.target?.closest?.("input, textarea"))
+          return;
+        e.preventDefault();
+        e.stopPropagation();
+        this.closeMoreSheet();
+      }, { capture: true });
+    }
+  }
+  registerSheetDrag(handle, sheet) {
+    let startY = 0, startT = 0, dy = 0, pointerId = null;
+    handle.addEventListener("pointerdown", (e) => {
+      pointerId = e.pointerId;
+      startY = e.clientY;
+      startT = performance.now();
+      dy = 0;
+      handle.setPointerCapture(e.pointerId);
+      sheet.addClass("is-dragging");
+    });
+    handle.addEventListener("pointermove", (e) => {
+      if (e.pointerId !== pointerId)
+        return;
+      dy = Math.max(0, e.clientY - startY);
+      sheet.style.transform = `translateY(${dy}px)`;
+    });
+    const end = (e) => {
+      if (e.pointerId !== pointerId)
+        return;
+      pointerId = null;
+      sheet.removeClass("is-dragging");
+      const velocity = dy / Math.max(1, performance.now() - startT);
+      if (dy > 80 || dy > 20 && velocity > 0.5) {
+        this.closeMoreSheet();
+      } else {
+        sheet.style.removeProperty("transform");
+      }
+    };
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+    handle.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+    handle.addEventListener("touchmove", (e) => e.stopPropagation(), { passive: true });
   }
   trackHeaderHeight(rootEl, header) {
     this.headerResizeObserver?.disconnect();
@@ -15074,7 +15192,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       addAction(t("drawer.card.nextWeek"), t("drawer.card.moveNextWeek", { date: label(7) }), () => this.moveTasksToDate([task], day(7)));
       addAction(t("drawer.card.undate"), t("drawer.card.undateTooltip"), () => this.unscheduleTasks([task]));
     }
-    this.registerMouseDrag(card, { kind: "task", task, origin: section });
+    if (!this.useCompactLayout())
+      this.registerMouseDrag(card, { kind: "task", task, origin: section });
   }
   async setTaskPriority(task, priority) {
     if (await updateTaskInFile3(this.app, task, { priority }))
@@ -15090,7 +15209,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     const fromStr = from.format("YYYY-MM-DD");
     const toStr = to.format("YYYY-MM-DD");
     const todayStr = window.moment().format("YYYY-MM-DD");
-    const drawer = this.isSideDrawerOpen();
+    const drawer = this.isSideDrawerOpen() || this.moreSheetOpen;
     return tasks.filter((task) => task.date === null ? drawer : task.date >= fromStr && task.date <= toStr || task.date === todayStr || drawer && task.date < todayStr);
   }
   async goToDate(dateStr) {
