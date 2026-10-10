@@ -4870,21 +4870,27 @@ body.dp-pointer-dragging * {
 .dp-header-top.has-inline-tabs > .dp-header-actions {
     margin-left: 0;
 }
+/* Fluid tabs: the bar grows with the pane up to 640px, then auto margins keep it centred; the column gap (scaled to
+   the planner width) keeps balanced air between it, the date and the actions */
+.dp-header-top.has-inline-tabs {
+    column-gap: clamp(12px, 3cqw, 40px);
+}
 .dp-header-top.has-inline-tabs > .dp-tabs {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     width: auto;
     min-width: 0;
+    max-width: 640px;
     margin: 0 auto;
-}
-/* Relaxed segments: wider padding and a common minimum, so short labels (Day, Week) don't read as squeezed */
-.dp-header-top.has-inline-tabs > .dp-tabs {
     gap: 3px;
     padding: 3px 4px;
 }
+/* Equal shares of the bar (basis 0), never narrower than the label: on a tight pane the segments compress to their
+   text and padding, and only past that does the bar scroll */
 .dp-header-top.has-inline-tabs > .dp-tabs > .dp-tab {
-    flex: 0 0 auto;
-    min-width: 60px;
-    padding: 0 14px;
+    flex: 1 1 0;
+    min-width: max-content;
+    padding: 0 clamp(8px, 1.2cqw, 16px);
+    text-align: center;
 }
 @container dp-planner (max-width: 900px) {
     .dp-header-top.has-inline-tabs {
