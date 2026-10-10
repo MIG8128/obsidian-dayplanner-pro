@@ -5010,7 +5010,7 @@ body.dp-pointer-dragging * {
     position: absolute;
     inset: 0;
     z-index: 110; /* above the current-task bar (100), the header and the bottom bar (30) */
-    background-color: rgba(0, 0, 0, 0.32);
+    background-color: rgba(0, 0, 0, 0.18); /* light dim, like the plugin's modals: the frost picks up the planner behind */
 }
 .dp-more-sheet-backdrop.is-entering {
     animation: dp-sheet-fade-in 0.2s ease-out;
@@ -5026,10 +5026,12 @@ body.dp-pointer-dragging * {
     height: min(80%, 680px);
     padding: 0 0 env(safe-area-inset-bottom, 0px);
     box-sizing: border-box;
-    background-color: var(--background-secondary);
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
     border: 1px solid var(--dp-glass-border);
     border-bottom: none;
-    border-radius: 16px 16px 0 0;
+    border-radius: 20px 20px 0 0;
     box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
     transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -5173,6 +5175,39 @@ body.dp-pointer-dragging * {
     transition: none;
     background: transparent;
     border-left: none;
+}
+
+/* Sheet interior on the frosted surface: translucent inner cards with a hairline and a top highlight (the
+   stats cards' and modal sections' material) instead of the desktop drawer's opaque fills */
+.dp-sheet-actions > button.dp-sheet-action,
+.dp-sheet-zoom {
+    background-color: var(--dp-card-bg);
+    border-color: var(--dp-glass-border);
+    box-shadow: inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-sheet-actions > button.dp-sheet-action:active {
+    background-color: var(--dp-segment-active);
+}
+.dp-sheet-grabber {
+    background-color: var(--dp-glass-border);
+    box-shadow: inset 0 0 0 1px var(--dp-glass-border);
+}
+.dp-sheet-drawer .dp-drawer-body {
+    border-top-color: var(--dp-glass-border);
+    background: transparent;
+}
+.dp-sheet-drawer .dp-drawer-card {
+    background-color: var(--dp-card-bg);
+    border-color: var(--dp-glass-border);
+    box-shadow: inset 0 1px 0 var(--dp-glass-highlight);
+}
+.dp-sheet-drawer input.dp-drawer-capture {
+    background-color: var(--dp-card-bg);
+    border-color: var(--dp-glass-border);
+}
+.dp-sheet-drawer button.dp-drawer-card-action {
+    background-color: var(--dp-segment-track);
+    border-color: var(--dp-glass-border);
 }
 
 /* Rounder controls everywhere, as on phones: view tabs and the Board mode toggle are pills */
