@@ -8436,6 +8436,66 @@ function t(key, vars) {
 // releaseNotes.ts
 var RELEASE_NOTES = [
   {
+    version: "4.4.6",
+    date: "2026-10-10",
+    features: [
+      {
+        emoji: "\u22EF",
+        title: "More sheet on phones",
+        text: "The bottom bar gains a More button. It opens a frosted sheet with Search, Google Calendar Sync (long-press for options), the timeline zoom slider, and the drawer's Tasks and Stats panels, so Overdue and Undated tasks are now reachable on phones. Tap outside, drag it down or press Esc to close it."
+      },
+      {
+        emoji: "\u{1F4C5}",
+        title: "Today's Tasks",
+        text: "The Tasks panel lists everything dated today, timed or not. Today's \u{1F53A} Focus tasks sit on top as highlighted cards with a \u{1F3AF} FOCUS pill, never repeated below. Completed tasks stay, greyed out, so a checkbox can be undone; \u2197 opens a task in its note, and dropping a task here moves it to today."
+      },
+      {
+        emoji: "\u{1F9ED}",
+        title: "One-row desktop header",
+        text: "The view tabs now sit in the header row between the date and the buttons, with shorter names (Day, 4-day, Week, Month, Board, List). They grow with the window and move to their own full-width row when the pane gets narrow."
+      }
+    ],
+    improvements: [
+      {
+        emoji: "\u{1F4F1}",
+        title: "Phone header and bottom bar",
+        text: "The phone header is the date, \u2039 Today \u203A and +. The bottom bar is two islands: the four views, and More."
+      },
+      {
+        emoji: "\u{1F3A8}",
+        title: "Calmer priority colours",
+        text: "\u{1F53A} and \u23EB cards in the drawer use a softer tint and glow, and completed tasks turn grey whatever their priority."
+      },
+      {
+        emoji: "\u2611\uFE0F",
+        title: "Simpler checkboxes",
+        text: "A click on a checkbox toggles between done and to-do (any other status becomes done)."
+      },
+      {
+        emoji: "\u{1F558}",
+        title: "Tighter phone agenda",
+        text: "In the phone List, times use 24-hour format and sit closer to the edge, leaving more room for titles."
+      },
+      {
+        emoji: "\u{1F4F3}",
+        title: "Haptics in the More sheet",
+        text: "Buttons, the panel switcher, section folds and zoom steps give a light tick on Android (follows the haptics setting)."
+      }
+    ],
+    fixes: [
+      {
+        emoji: "\u{1F504}",
+        title: "Fewer Syncthing conflicts",
+        text: "Google access tokens are no longer written to data.json every hour, unchanged settings are never rewritten, and a data.json changed by another device is reloaded. An unreadable data.json no longer breaks loading or gets replaced by defaults."
+      },
+      {
+        emoji: "\u2328\uFE0F",
+        title: "Mobile search and the keyboard",
+        text: "Opening search on a phone no longer makes the planner jump or the search bar slip out of place when the keyboard appears."
+      }
+    ]
+  },
+  {
     version: "4.4.5",
     date: "2026-10-09",
     features: [
