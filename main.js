@@ -4901,15 +4901,19 @@ body.dp-pointer-dragging * {
         margin-left: auto;
     }
     /* Second row: one full-width segmented control, segments sharing the width evenly */
+    /* Edge to edge, aligned with the first row and the task bar (the 640px cap is for the one-row layout only) */
     .dp-header-top.has-inline-tabs > .dp-tabs {
         order: 3;
         flex: 1 0 100%;
+        width: 100%;
+        max-width: none;
         margin: 0;
     }
     .dp-header-top.has-inline-tabs > .dp-tabs > .dp-tab {
         flex: 1 1 0;
         min-width: 0;
         padding: 0 8px;
+        text-align: center;
     }
     /* Search covers the first line only: the tabs below stay visible */
     .dp-search-mode > .dp-header .dp-header-top.has-inline-tabs > .dp-tabs {
