@@ -140,8 +140,8 @@ var STYLES = `
 .dp-header {
     display: flex;
     flex-direction: column;
-    padding: 12px 16px;
-    gap: 10px;
+    padding: 10px 12px;
+    gap: 8px;
     position: relative;
     z-index: 30; /* above sticky hour column so the ambient shadow stays visible */
     border-bottom: 1px solid var(--dp-glass-border);
@@ -180,11 +180,11 @@ var STYLES = `
 .dp-nav-date {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    height: 38px;
-    padding: 0 16px 0 13px;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px 0 10px;
     box-sizing: border-box;
-    font-size: 1.05em;
+    font-size: 1em;
     font-weight: 600;
     color: var(--text-normal);
     background-color: var(--interactive-normal);
@@ -213,8 +213,8 @@ var STYLES = `
     color: var(--text-muted);
 }
 .dp-nav-date-icon svg {
-    width: 17px;
-    height: 17px;
+    width: 14px;
+    height: 14px;
 }
 .dp-nav-date.is-clickable:hover .dp-nav-date-icon {
     color: var(--interactive-accent);
@@ -1155,8 +1155,8 @@ var STYLES = `
     display: flex;
     align-items: center;
     gap: 2px;
-    height: 38px;
-    padding: 3px;
+    height: 26px;
+    padding: 2px;
     margin-right: 4px;
     box-sizing: border-box;
     background-color: var(--dp-segment-track);
@@ -1165,10 +1165,10 @@ var STYLES = `
     flex-shrink: 0;
 }
 .dp-board-toggle > .dp-board-toggle-btn {
-    height: 30px;
-    padding: 0 12px;
+    height: 20px;
+    padding: 0 8px;
     margin: 0;
-    font-size: var(--font-ui-small, 0.9em);
+    font-size: 0.75em;
     line-height: 1;
     border-radius: 6px;
     border: none;
@@ -1962,8 +1962,8 @@ var STYLES = `
 
 /* Zoom control: first item of the header actions (same contextual slot as .dp-board-toggle); expands leftward on hover */
 .dp-zoom-slider-floating {
-    width: 30px;
-    height: 30px;
+    width: 26px;
+    height: 26px;
     margin-right: 4px;
     flex-shrink: 0;
     border-radius: 8px;
@@ -1980,8 +1980,8 @@ var STYLES = `
 }
 /* Center the icon in collapsed state */
 .dp-zoom-slider-floating span:first-child {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2665,12 +2665,12 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    ------------------------------------------------------------- */
 @container dp-planner (max-width: 400px) {
     .dp-header {
-        padding: 10px 12px;
-        gap: 8px;
+        padding: 8px 10px;
+        gap: 6px;
     }
     .dp-nav-date {
-        font-size: 1em;
-        padding: 0 12px 0 10px;
+        font-size: 0.92em;
+        padding: 0 10px 0 8px;
     }
     .dp-tabs > .dp-tab {
         padding: 0 8px;
@@ -2776,358 +2776,41 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Compact shell (.dp-compact-shell root): the combined view on phones and the Sidebar Day Planner Pro view.
    .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
-/* One bar size for the header row and the bottom toolbar: both rows, every control in them and every icon share it */
-.dp-container.dp-compact-shell {
-    --dp-bar-h: 40px;
-    --dp-bar-icon: 16px;
-    --dp-head-h: 30px; /* header row controls: smaller than the toolbar islands */
-}
-/* Header: the bottom toolbar's 12px side inset; a 44px band for the 30px row (7px above and below) */
-.dp-container.dp-compact-shell > .dp-header {
-    padding: 7px 12px;
-    gap: 6px;
-}
-/* Bottom toolbar (Safari-style): three floating glass islands [\u2039 \u203A] [view tabs] [\u2630], lifted above Obsidian's own
-   mobile toolbar (which overlays the view's bottom edge) and the home-indicator safe area */
+/* Bottom navigation: floating pill lifted above Obsidian's own mobile toolbar (which overlays the view's bottom edge) */
 .dp-container.dp-compact-shell > .dp-bottom-nav {
-    display: flex;
-    align-items: center;
     flex-shrink: 0;
-    gap: 8px;
-    margin: 0 12px max(8px, env(safe-area-inset-bottom, 0px));
+    width: auto; /* .dp-tabs is 100% wide; auto lets the side margins inset the pill */
+    gap: 2px;
+    margin: 0 12px 0;
+    padding: 3px;
+    border: 1px solid var(--dp-glass-border);
+    border-radius: 12px;
+    background-color: var(--dp-glass-bg);
+    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight); /* no blur: nothing scrolls behind this row */
     z-index: 30;
 }
 .is-phone .dp-phone-shell > .dp-bottom-nav {
     margin-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
 }
-/* Shared island material */
-.dp-bottom-nav > .dp-bottom-island {
-    flex-shrink: 0;
-    height: var(--dp-bar-h, 40px);
-    box-sizing: border-box;
-    background-color: var(--dp-glass-bg);
-    backdrop-filter: var(--dp-glass-blur);
-    -webkit-backdrop-filter: var(--dp-glass-blur);
-    border: 1px solid var(--dp-glass-border);
-    border-radius: 999px;
-    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
-}
-/* Left: \u2039 \u203A capsule */
-.dp-bottom-nav > .dp-bottom-pager {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    padding: 3px;
-}
-.dp-bottom-pager > .dp-bottom-bar-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 32px;
-    min-height: 0;
-    margin: 0;
-    padding: 0;
-    color: var(--text-normal);
-    background: transparent;
-    border: none;
-    border-radius: 999px;
-    box-shadow: none;
-    cursor: pointer;
-    transition: background-color 0.15s ease, transform 0.1s ease;
-}
-/* Center: the view tabs fill the middle island */
-.dp-compact-shell .dp-bottom-nav > .dp-tabs.dp-bottom-tabs {
-    flex: 1 1 auto;
-    min-width: 0;
-    width: auto;
-    gap: 2px;
-    padding: 3px;
-}
-/* Text-only pills (the label span ellipsizes; the button stays unclipped for the sliding pill) */
-.dp-compact-shell .dp-bottom-tabs > .dp-tab {
+.dp-compact-shell .dp-bottom-nav > .dp-tab {
     flex: 1 1 0;
     min-width: 0;
-    height: 32px;
-    padding: 0 6px;
-    border-radius: 999px;
-    font-size: var(--font-ui-smaller, 12px);
-}
-.dp-compact-shell .dp-bottom-tabs > .dp-tab.active {
-    color: var(--text-accent);
-}
-/* Right: standalone round \u2630 */
-.dp-bottom-nav > button.dp-bottom-menu-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--dp-bar-h, 40px);
-    min-width: var(--dp-bar-h, 40px);
-    margin: 0;
-    padding: 0;
-    color: var(--text-normal);
-    cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
-}
-.dp-bottom-nav > button.dp-bottom-menu-btn.is-active {
-    color: var(--text-accent);
-    background-color: color-mix(in srgb, var(--interactive-accent) 16%, var(--dp-glass-bg));
-}
-@media (hover: hover) {
-    .dp-bottom-pager > .dp-bottom-bar-btn:hover,
-    .dp-bottom-nav > button.dp-bottom-menu-btn:hover {
-        background-color: var(--background-modifier-hover);
-    }
-}
-.dp-bottom-pager > .dp-bottom-bar-btn:active,
-.dp-bottom-nav > button.dp-bottom-menu-btn:active {
-    transform: scale(0.92);
-    background-color: var(--background-modifier-hover);
-}
-.dp-bottom-pager svg,
-.dp-bottom-menu-btn svg {
-    width: var(--dp-bar-icon, 16px);
-    height: var(--dp-bar-icon, 16px);
-}
-/* Narrow sidebars: tighter islands so the four tabs keep their labels */
-@container dp-planner (max-width: 340px) {
-    .dp-container.dp-compact-shell > .dp-header {
-        padding: 7px 8px;
-    }
-    .dp-container.dp-compact-shell > .dp-bottom-nav {
-        gap: 6px;
-        margin-left: 8px;
-        margin-right: 8px;
-    }
-    .dp-bottom-pager > .dp-bottom-bar-btn {
-        width: 30px;
-    }
-    .dp-compact-shell .dp-bottom-tabs > .dp-tab {
-        padding: 0 3px;
-    }
-}
-
-/* \u2630 bottom sheet: full width (12px margins), slides up over the toolbar and the current-task bar (z-index 100)
-   above a dimming backdrop; content passes behind it, so it gets the glass blur */
-.dp-sheet-backdrop {
-    position: absolute;
-    inset: 0;
-    z-index: 200;
-    background-color: rgba(0, 0, 0, 0.28);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.24s ease, visibility 0s linear 0.24s;
-}
-.dp-sheet-open > .dp-sheet-backdrop {
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.24s ease, visibility 0s;
-}
-.dp-bottom-sheet {
-    position: absolute;
-    left: 12px;
-    right: 12px;
-    bottom: max(8px, env(safe-area-inset-bottom, 0px));
-    z-index: 201;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 0 12px 12px;
-    box-sizing: border-box;
-    background-color: var(--dp-glass-bg);
-    backdrop-filter: var(--dp-glass-blur);
-    -webkit-backdrop-filter: var(--dp-glass-blur);
-    border: 1px solid var(--dp-glass-border);
-    border-radius: 22px;
-    box-shadow: var(--dp-glass-shadow-lg), inset 0 1px 0 var(--dp-glass-highlight);
-    transform: translateY(calc(100% + 140px));
-    visibility: hidden;
-    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1), visibility 0s linear 0.34s;
-}
-.is-phone .dp-phone-shell > .dp-bottom-sheet {
-    bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
-}
-.dp-sheet-open > .dp-bottom-sheet {
-    transform: none;
-    visibility: visible;
-    transition: transform 0.34s cubic-bezier(0.32, 0.72, 0, 1), visibility 0s;
-}
-.dp-bottom-sheet.is-dragging {
-    transition: none;
-}
-/* The current-task bar steps aside under an open sheet */
-.dp-compact-shell > .dp-current-task-bar {
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-.dp-compact-shell.dp-sheet-open > .dp-current-task-bar {
-    opacity: 0;
-    transform: translateY(8px);
-    pointer-events: none;
-}
-@media (prefers-reduced-motion: reduce) {
-    .dp-bottom-sheet,
-    .dp-sheet-open > .dp-bottom-sheet {
-        transition: opacity 0.15s ease, visibility 0s linear 0.15s;
-        transform: none;
-        opacity: 0;
-    }
-    .dp-sheet-open > .dp-bottom-sheet {
-        opacity: 1;
-        transition: opacity 0.15s ease, visibility 0s;
-    }
-}
-/* Grabber: drag it down to dismiss */
-.dp-sheet-grabber {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 26px;
-    margin: 0 -12px;
-    cursor: grab;
-    touch-action: none;
-}
-.dp-sheet-grabber-bar {
-    width: 38px;
-    height: 5px;
-    border-radius: 3px;
-    background-color: var(--background-modifier-border-hover, var(--text-faint));
-}
-.dp-sheet-icon {
-    display: inline-flex;
-    flex-shrink: 0;
-    color: var(--text-muted);
-}
-.dp-sheet-icon svg,
-.dp-sheet-zoom .dp-zoom-toggle svg {
-    width: 20px;
-    height: 20px;
-}
-/* One grouped surface for Search, Zoom and Sync (iOS grouped list): a single fill and border, hairline dividers */
-.dp-sheet-group {
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background-color: var(--dp-segment-track);
-    border: 1px solid var(--dp-glass-border);
-    border-radius: 16px;
-}
-.dp-sheet-group > .dp-sheet-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-    min-height: 54px;
-    margin: 0;
-    padding: 0 16px;
-    box-sizing: border-box;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    box-shadow: none;
-}
-.dp-sheet-group > .dp-sheet-row + .dp-sheet-row {
-    border-top: 1px solid var(--dp-glass-border);
-}
-/* Tappable rows (Search, Sync): press feedback across the full row */
-.dp-sheet-group > button.dp-sheet-row {
     height: auto;
-    justify-content: flex-start;
-    text-align: left;
-    font: inherit;
-    color: var(--text-normal);
-    cursor: pointer;
-    -webkit-touch-callout: none; /* Sync: a long-press opens the sync options, not the iOS callout */
-    transition: background-color 0.15s ease;
-}
-.dp-sheet-group > button.dp-sheet-row:active {
-    background-color: var(--background-modifier-hover);
-}
-@media (hover: hover) {
-    .dp-sheet-group > button.dp-sheet-row:hover {
-        background-color: var(--background-modifier-hover);
-    }
-}
-.dp-sheet-group > button.dp-sheet-search {
-    font-size: var(--font-ui-medium, 1em);
-    color: var(--text-muted);
-}
-.dp-sheet-group > button.dp-sheet-sync {
-    padding-top: 8px;
-    padding-bottom: 8px;
-}
-.dp-bottom-sheet .dp-sheet-zoom > .dp-zoom-slider-floating {
-    flex-direction: row;
-    gap: 12px;
-    width: 100%;
-    height: 54px;
-    margin: 0;
-    overflow: visible;
-    background: transparent;
-    border: none;
-}
-.dp-bottom-sheet .dp-zoom-slider-floating span:first-child {
-    width: 20px;
-    color: var(--text-muted);
-    pointer-events: none;
-}
-.dp-bottom-sheet .dp-zoom-popover {
-    flex: 1 1 auto;
-    flex-direction: row;
-    gap: 10px;
-    min-width: 0;
-}
-.dp-bottom-sheet .dp-zoom-slider {
-    flex: 1 1 auto;
-    width: auto;
-    min-width: 0;
-    opacity: 1;
-}
-.dp-bottom-sheet .dp-zoom-value {
-    opacity: 1;
-    width: auto;
-    min-width: 44px;
-    padding-left: 0;
-    font-variant-numeric: tabular-nums;
-}
-.dp-sheet-sync-text {
-    display: flex;
-    flex: 1 1 auto;
+    padding: 4px 8px;
     flex-direction: column;
     gap: 2px;
-    min-width: 0;
+    border-radius: 9px;
+    font-size: 11px;
 }
-.dp-sheet-sync-title {
-    font-size: var(--font-ui-medium, 1em);
-    font-weight: 600;
+.dp-compact-shell .dp-bottom-nav > .dp-tab.active {
+    color: var(--text-accent);
 }
-.dp-sheet-sync-status {
-    font-size: var(--font-ui-smaller, 0.8em);
-    color: var(--text-muted);
+.dp-bottom-nav-icon {
+    display: inline-flex;
 }
-/* Status dot: green = fetched within the cache window, amber = stale / never, accent pulse = syncing */
-.dp-sheet-sync-dot {
-    flex-shrink: 0;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background-color: var(--color-orange, #d29922);
-}
-.dp-sheet-sync[data-sync-state="fresh"] .dp-sheet-sync-dot {
-    background-color: var(--color-green, #3fb950);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-green, #3fb950) 22%, transparent);
-}
-.dp-sheet-sync[data-sync-state="syncing"] .dp-sheet-sync-dot {
-    background-color: var(--interactive-accent);
-    animation: dp-sheet-pulse 1s ease-in-out infinite;
-}
-.dp-sheet-sync[data-sync-state="syncing"] .dp-sheet-sync-icon svg {
-    animation: dp-sheet-spin 0.9s linear infinite;
-}
-@keyframes dp-sheet-spin {
-    to { transform: rotate(360deg); }
-}
-@keyframes dp-sheet-pulse {
-    50% { opacity: 0.35; }
+.dp-bottom-nav-icon svg {
+    width: 20px;
+    height: 20px;
 }
 .dp-bottom-nav-label {
     max-width: 100%;
@@ -3142,9 +2825,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 }
 .dp-compact-shell .dp-header-actions > button {
     flex-shrink: 0;
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
     margin: 0;
     padding: 0;
     display: inline-flex;
@@ -3157,8 +2840,8 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 /* The zoom control is the desktop one (tap toggles .is-open, which expands it inline to the left); collapsed it is
    the same 30px square as its neighbours, and open it still fits a phone-width actions row */
 .dp-compact-shell .dp-header-actions > .dp-zoom-slider-floating {
-    height: 36px;
-    width: 36px;
+    height: 30px;
+    width: 30px;
     margin: 0;
 }
 .dp-compact-shell .dp-header-actions > .dp-zoom-slider-floating.is-open {
@@ -3169,7 +2852,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     height: 28px;
 }
 .dp-compact-shell .dp-board-toggle {
-    height: var(--dp-head-h, 30px);
+    height: 30px;
 }
 .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
     width: 30px;
@@ -3178,108 +2861,27 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     font-size: 0.95em;
 }
 
-/* Single header row (phone views, sidebar view): [date pill] ... [\u{1F4C5} Today] [+] (Board: [mode toggle] [+]); the other
-   tools live in the bottom bar. Never wraps: the actions never shrink, the date pill gives way only on the narrowest panes */
+/* Single header row (phone views, compact Board): [date pill] ... [\u{1F50D}] [\u{1F4C5}] [Sync] [+]; never wraps: the actions
+   never shrink, the date pill gives way (clipped) on the narrowest screens */
 .dp-compact-shell .dp-header-top {
     flex-wrap: nowrap;
     justify-content: space-between;
     align-items: center;
     gap: var(--size-4-2, 8px);
-    height: var(--dp-head-h, 30px); /* the compact header row: 30px controls (the size before this redesign) */
-}
-/* Date pill and Today wear the toolbar islands' material: raised fill, glass hairline, the same two-layer shadow */
-.dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact,
-.dp-compact-shell .dp-header-actions > button.dp-today-btn {
-    background-color: var(--dp-segment-active);
-    border: 1px solid var(--dp-glass-border);
-    box-shadow: var(--dp-glass-shadow), inset 0 1px 0 var(--dp-glass-highlight);
-}
-.dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact.is-clickable:active {
-    background-color: var(--background-modifier-hover);
-    box-shadow: none;
-}
-@media (hover: hover) {
-    .dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact.is-clickable:hover {
-        background-color: var(--interactive-hover);
-    }
 }
 .dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact {
     flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
-    height: var(--dp-head-h, 30px);
     padding: 0 var(--size-4-3, 12px) 0 var(--size-4-2, 8px);
-    font-size: var(--font-ui-medium, 1em);
+    font-size: var(--font-ui-small, 0.9em);
 }
 .dp-compact-shell .dp-header-top > .dp-header-actions {
     flex-shrink: 0;
 }
-.dp-compact-shell .dp-header-actions > button.dp-today-btn {
-    gap: 6px;
-    width: auto;
-    min-width: var(--dp-head-h, 30px);
-    height: var(--dp-head-h, 30px);
-    padding: 0 14px;
-    font-size: var(--font-ui-small, 0.9em);
-    font-weight: var(--font-medium, 500);
-    color: var(--text-normal);
-    border-radius: 999px;
-    transition: transform 0.1s ease, background-color 0.15s ease;
-}
-.dp-compact-shell .dp-header-actions > button.dp-today-btn:active {
-    transform: scale(0.95);
-    background-color: var(--background-modifier-hover);
-}
-.dp-compact-shell .dp-header-actions > button.dp-today-btn .dp-btn-label {
-    display: inline;
-}
-.dp-compact-shell .dp-header-actions > button.dp-today-btn svg {
-    width: 18px;
-    height: 18px;
-}
-.dp-compact-shell .dp-header-actions > button.dp-add-btn {
-    width: var(--dp-head-h, 30px);
-    min-width: var(--dp-head-h, 30px);
-    height: var(--dp-head-h, 30px);
-}
-/* Header row at the toolbar's scale: the same icon size, toolbar-sized type, no Obsidian min-height or line-height
-   stretching a control past the bar height */
-.dp-compact-shell .dp-header-top > .dp-nav-date.dp-header-date-compact {
-    gap: 6px;
-    padding: 0 12px 0 8px;
-    font-size: var(--font-ui-small, 13px);
-    line-height: 1;
-}
-/* Header icons at their original scale for the 30px row: calendar 14px, + 17px */
-.dp-compact-shell .dp-header-top .dp-nav-date-icon svg,
-.dp-compact-shell .dp-header-actions > button.dp-today-btn svg {
-    width: 14px;
-    height: 14px;
-}
-.dp-compact-shell .dp-header-actions > button.dp-add-btn svg {
-    width: 17px;
-    height: 17px;
-}
-.dp-compact-shell .dp-header-actions > button:is(.dp-today-btn, .dp-add-btn) {
-    min-height: 0;
-    max-height: var(--dp-head-h, 30px);
-    line-height: 1;
-}
-.dp-compact-shell .dp-header-actions > button.dp-today-btn {
-    gap: 5px;
-    padding: 0 10px;
-    font-size: var(--font-ui-smaller, 12px);
-    font-weight: 600; /* as bold as the date pill */
-}
-/* The narrowest panes: Today goes icon-only so the date keeps its room */
-@container dp-planner (max-width: 360px) {
-    .dp-compact-shell .dp-header-actions > button.dp-today-btn {
-        width: var(--dp-head-h, 30px);
-        padding: 0;
-    }
-    .dp-compact-shell .dp-header-actions > button.dp-today-btn .dp-btn-label {
-        display: none;
-    }
+/* Phones with the < > buttons (swipes turned off): the "(Wk 41)" suffix makes room so the date itself stays readable */
+.dp-phone-shell .dp-header-top.has-nav-arrows .dp-nav-date-sub {
+    display: none;
 }
 /* Daily / 2-Day: 7-day date strip under the header nav */
 .dp-compact-shell .dp-date-strip {
@@ -5034,29 +4636,6 @@ body.dp-pointer-dragging * {
     display: flex;
     animation: dp-search-expand 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-/* Compact shell (Safari-style): the field docks over the bottom toolbar, in thumb reach and above the keyboard; the
-   header row stays, the toolbar steps aside. placeSearchBar anchors it by its bottom offset, so it rides up with the
-   pane when the keyboard shrinks it */
-.dp-compact-shell.dp-search-mode > .dp-header .dp-header-top {
-    visibility: visible;
-}
-.dp-compact-shell.dp-search-mode > .dp-bottom-nav {
-    visibility: hidden;
-}
-.dp-compact-shell > .dp-search-float {
-    z-index: 150; /* over the current-task bar (100) */
-    padding-left: 14px;
-}
-.dp-compact-shell > .dp-search-float.is-open {
-    animation: dp-search-rise 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-.dp-compact-shell > .dp-search-float input.dp-search-input {
-    font-size: max(16px, var(--font-ui-medium, 16px)); /* 16px+: iOS never zooms the page into the field */
-}
-@keyframes dp-search-rise {
-    from { opacity: 0; transform: translateY(8px) scale(0.98); }
-    to { opacity: 1; transform: none; }
-}
 /* Grows leftward out of the toolbar's search button, at the row's right end */
 @keyframes dp-search-expand {
     from { opacity: 0.4; clip-path: inset(0 0 0 calc(100% - 40px) round 999px); }
@@ -5197,9 +4776,9 @@ body.dp-pointer-dragging * {
     flex-shrink: 0;
     align-items: center;
     gap: 2px;
-    height: 38px;
+    height: 32px;
     margin: 0;
-    padding: 3px;
+    padding: 2px;
     box-sizing: border-box;
     background-color: var(--dp-segment-track);
     border: 1px solid var(--dp-glass-border);
@@ -5213,12 +4792,12 @@ body.dp-pointer-dragging * {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    height: 30px;
-    min-width: 30px;
+    gap: 5px;
+    height: 26px;
+    min-width: 26px;
     margin: 0;
-    padding: 0 12px;
-    font-size: var(--font-ui-medium, 1em);
+    padding: 0 10px;
+    font-size: var(--font-ui-small, 0.9em);
     font-weight: var(--font-medium, 500);
     line-height: 1;
     color: var(--text-muted);
@@ -5232,7 +4811,7 @@ body.dp-pointer-dragging * {
 /* Icon-only tools are round */
 .dp-nav-buttons-group > button.dp-nav-arrow,
 .dp-header-tools > button:is(.dp-search-btn, .dp-sync-btn, .dp-help-btn, .dp-drawer-toggle) {
-    width: 30px;
+    width: 26px;
     padding: 0;
 }
 .dp-nav-buttons-group > button:hover,
@@ -5255,8 +4834,8 @@ body.dp-pointer-dragging * {
 .dp-nav-buttons-group svg,
 .dp-header-tools svg,
 .dp-zoom-toggle svg {
-    width: 18px;
-    height: 18px;
+    width: 15px;
+    height: 15px;
 }
 .dp-btn-icon {
     display: inline-flex;
@@ -5280,9 +4859,9 @@ body.dp-pointer-dragging * {
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 38px;
-    min-width: 38px;
-    height: 38px;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
     margin: 0;
     padding: 0;
     color: var(--text-on-accent);
@@ -5302,22 +4881,21 @@ body.dp-pointer-dragging * {
     transform: scale(0.94);
 }
 .dp-add-btn svg {
-    width: 20px;
-    height: 20px;
+    width: 17px;
+    height: 17px;
 }
 /* Compact shell (phones, sidebar): same capsules, 30px row */
 .dp-compact-shell .dp-header-tools {
-    height: 36px;
-    padding: 2px;
+    height: 30px;
 }
 .dp-compact-shell .dp-header-tools > button {
-    width: 30px;
+    width: 26px;
     padding: 0;
 }
 .dp-compact-shell .dp-header-actions > button.dp-add-btn {
-    width: 36px;
-    min-width: 36px;
-    height: 36px;
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
     border-radius: 999px;
 }
 .dp-compact-shell .dp-header-tools > .dp-zoom-slider-floating.is-open {
@@ -5330,50 +4908,6 @@ body.dp-pointer-dragging * {
 .dp-board-toggle,
 .dp-board-toggle > .dp-board-toggle-btn {
     border-radius: 999px;
-}
-
-/* Desktop combined view: one header row [date pill] [view tabs] [\u2039 Today \u203A \xB7 tools \xB7 +]. Equal side columns keep the
-   tabs in the true center (they don't jump as the date label changes width); short of room, the tabs shrink into a
-   scroller before they ever push the side controls */
-.dp-header-top.has-view-tabs {
-    display: grid;
-    grid-template-columns: minmax(max-content, 1fr) minmax(0, max-content) minmax(max-content, 1fr);
-}
-.dp-header-top.has-view-tabs > .dp-nav-date {
-    justify-self: start;
-}
-.dp-header-top.has-view-tabs > .dp-header-actions {
-    justify-self: end;
-    margin-left: 0;
-}
-.dp-header-top > .dp-tabs.dp-header-tabs {
-    width: auto;
-    min-width: 0;
-    height: 38px; /* the same capsule height as the nav group and the toolbar */
-    padding: 3px;
-}
-.dp-header-top > .dp-header-tabs > .dp-tab {
-    flex: 0 0 auto;
-    height: 30px;
-    padding: 0 15px;
-    font-size: var(--font-ui-small, 0.9em);
-}
-/* Narrow panes: the tabs take their own full-width row under the date and the actions */
-@container dp-planner (max-width: 860px) {
-    .dp-header-top.has-view-tabs {
-        display: flex;
-    }
-    .dp-header-top.has-view-tabs > .dp-header-actions {
-        margin-left: auto;
-    }
-    .dp-header-top > .dp-tabs.dp-header-tabs {
-        order: 1;
-        flex: 1 1 100%;
-    }
-    .dp-header-top > .dp-header-tabs > .dp-tab {
-        flex: 1 0 auto;
-        padding: 0 10px;
-    }
 }
 
 /* Weekday labels and week numbers in the phone date-pill style */
@@ -7170,26 +6704,23 @@ var en = {
   "nav.previous": "Previous",
   "nav.next": "Next",
   "nav.sync": "Sync",
-  "nav.menu": "Menu",
-  "nav.search": "Search",
-  "sheet.search": "Search tasks and events",
-  "sheet.syncing": "Syncing\u2026",
-  "sheet.lastSynced": "Updated {time}",
-  "sheet.notSynced": "Not synced yet",
   "nav.filter": "Filter",
   "nav.shortcuts": "Keyboard Shortcuts (?)",
   "nav.toggleDrawer": "Toggle side drawer (S)",
   "notice.taskAdded": "New task added successfully.",
   "notice.openViewFirst": "Open a Dayloom view first.",
   "notice.openDayloomFirst": "Open Dayloom first.",
-  "view.daily": "Day",
-  "view.twoDay": "2-day",
-  "view.nDay": "{n}-day",
-  "view.nDaySuffix": "-day",
-  "view.weekly": "Week",
-  "view.monthly": "Month",
+  "view.daily": "Daily",
+  "view.dailyTimeline": "Daily Timeline",
+  "view.twoDay": "2-Day View",
+  "view.nDay": "{n}-day View",
+  "view.nDaySuffix": "-day View",
+  "view.weekly": "Weekly View",
+  "view.monthly": "Monthly",
+  "view.monthlyCalendar": "Monthly Calendar",
   "view.board": "Board",
   "view.list": "List",
+  "view.listView": "List View",
   "board.kanban": "Kanban",
   "board.kanbanTitle": "Standard Kanban",
   "board.priorityTitle": "Priority Focus",
@@ -7481,26 +7012,23 @@ var ko = {
   "nav.previous": "\uC774\uC804",
   "nav.next": "\uB2E4\uC74C",
   "nav.sync": "\uB3D9\uAE30\uD654",
-  "nav.menu": "\uBA54\uB274",
-  "nav.search": "\uAC80\uC0C9",
-  "sheet.search": "\uD560 \uC77C\uACFC \uC77C\uC815 \uAC80\uC0C9",
-  "sheet.syncing": "\uB3D9\uAE30\uD654 \uC911\u2026",
-  "sheet.lastSynced": "{time} \uC5C5\uB370\uC774\uD2B8\uB428",
-  "sheet.notSynced": "\uC544\uC9C1 \uB3D9\uAE30\uD654\uB418\uC9C0 \uC54A\uC74C",
   "nav.filter": "\uD544\uD130",
   "nav.shortcuts": "\uD0A4\uBCF4\uB4DC \uB2E8\uCD95\uD0A4 (?)",
   "nav.toggleDrawer": "\uC0AC\uC774\uB4DC \uC11C\uB78D \uC5F4\uAE30/\uB2EB\uAE30 (S)",
   "notice.taskAdded": "\uC0C8 \uD560 \uC77C\uC774 \uCD94\uAC00\uB418\uC5C8\uC2B5\uB2C8\uB2E4.",
   "notice.openViewFirst": "\uBA3C\uC800 Dayloom \uBDF0\uB97C \uC5EC\uC138\uC694.",
   "notice.openDayloomFirst": "\uBA3C\uC800 Dayloom\uC744 \uC5EC\uC138\uC694.",
-  "view.daily": "\uC77C",
-  "view.twoDay": "2\uC77C",
-  "view.nDay": "{n}\uC77C",
-  "view.nDaySuffix": "\uC77C",
-  "view.weekly": "\uC8FC",
-  "view.monthly": "\uC6D4",
+  "view.daily": "\uC77C\uAC04",
+  "view.dailyTimeline": "\uC77C\uAC04 \uD0C0\uC784\uB77C\uC778",
+  "view.twoDay": "2\uC77C \uBCF4\uAE30",
+  "view.nDay": "{n}\uC77C \uBCF4\uAE30",
+  "view.nDaySuffix": "\uC77C \uBCF4\uAE30",
+  "view.weekly": "\uC8FC\uAC04 \uBCF4\uAE30",
+  "view.monthly": "\uC6D4\uAC04",
+  "view.monthlyCalendar": "\uC6D4\uAC04 \uB2EC\uB825",
   "view.board": "\uBCF4\uB4DC",
   "view.list": "\uBAA9\uB85D",
+  "view.listView": "\uBAA9\uB85D \uBCF4\uAE30",
   "board.kanban": "\uCE78\uBC18",
   "board.kanbanTitle": "\uAE30\uBCF8 \uCE78\uBC18",
   "board.priorityTitle": "\uC6B0\uC120\uC21C\uC704 \uC9D1\uC911",
@@ -7792,12 +7320,6 @@ var ja = {
   "nav.previous": "\u524D\u3078",
   "nav.next": "\u6B21\u3078",
   "nav.sync": "\u540C\u671F",
-  "nav.menu": "\u30E1\u30CB\u30E5\u30FC",
-  "nav.search": "\u691C\u7D22",
-  "sheet.search": "\u30BF\u30B9\u30AF\u3068\u4E88\u5B9A\u3092\u691C\u7D22",
-  "sheet.syncing": "\u540C\u671F\u4E2D\u2026",
-  "sheet.lastSynced": "{time}\u306B\u66F4\u65B0",
-  "sheet.notSynced": "\u307E\u3060\u540C\u671F\u3055\u308C\u3066\u3044\u307E\u305B\u3093",
   "nav.filter": "\u30D5\u30A3\u30EB\u30BF\u30FC",
   "nav.shortcuts": "\u30AD\u30FC\u30DC\u30FC\u30C9\u30B7\u30E7\u30FC\u30C8\u30AB\u30C3\u30C8 (?)",
   "nav.toggleDrawer": "\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u306E\u5207\u308A\u66FF\u3048 (S)",
@@ -7805,13 +7327,16 @@ var ja = {
   "notice.openViewFirst": "\u5148\u306B Dayloom \u30D3\u30E5\u30FC\u3092\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
   "notice.openDayloomFirst": "\u5148\u306B Dayloom \u3092\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002",
   "view.daily": "\u65E5",
-  "view.twoDay": "2\u65E5",
-  "view.nDay": "{n}\u65E5",
-  "view.nDaySuffix": "\u65E5",
-  "view.weekly": "\u9031",
+  "view.dailyTimeline": "\u65E5\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3",
+  "view.twoDay": "2\u65E5\u30D3\u30E5\u30FC",
+  "view.nDay": "{n}\u65E5\u30D3\u30E5\u30FC",
+  "view.nDaySuffix": "\u65E5\u30D3\u30E5\u30FC",
+  "view.weekly": "\u9031\u30D3\u30E5\u30FC",
   "view.monthly": "\u6708",
+  "view.monthlyCalendar": "\u6708\u30AB\u30EC\u30F3\u30C0\u30FC",
   "view.board": "\u30DC\u30FC\u30C9",
   "view.list": "\u30EA\u30B9\u30C8",
+  "view.listView": "\u30EA\u30B9\u30C8\u30D3\u30E5\u30FC",
   "board.kanban": "\u30AB\u30F3\u30D0\u30F3",
   "board.kanbanTitle": "\u6A19\u6E96\u30AB\u30F3\u30D0\u30F3",
   "board.priorityTitle": "\u512A\u5148\u5EA6\u30D5\u30A9\u30FC\u30AB\u30B9",
@@ -8103,12 +7628,6 @@ var zh = {
   "nav.previous": "\u4E0A\u4E00\u4E2A",
   "nav.next": "\u4E0B\u4E00\u4E2A",
   "nav.sync": "\u540C\u6B65",
-  "nav.menu": "\u83DC\u5355",
-  "nav.search": "\u641C\u7D22",
-  "sheet.search": "\u641C\u7D22\u4EFB\u52A1\u548C\u65E5\u7A0B",
-  "sheet.syncing": "\u6B63\u5728\u540C\u6B65\u2026",
-  "sheet.lastSynced": "{time}\u66F4\u65B0",
-  "sheet.notSynced": "\u5C1A\u672A\u540C\u6B65",
   "nav.filter": "\u7B5B\u9009",
   "nav.shortcuts": "\u952E\u76D8\u5FEB\u6377\u952E (?)",
   "nav.toggleDrawer": "\u5207\u6362\u4FA7\u8FB9\u62BD\u5C49 (S)",
@@ -8116,13 +7635,16 @@ var zh = {
   "notice.openViewFirst": "\u8BF7\u5148\u6253\u5F00 Dayloom \u89C6\u56FE\u3002",
   "notice.openDayloomFirst": "\u8BF7\u5148\u6253\u5F00 Dayloom\u3002",
   "view.daily": "\u65E5",
-  "view.twoDay": "2 \u5929",
-  "view.nDay": "{n} \u5929",
-  "view.nDaySuffix": " \u5929",
-  "view.weekly": "\u5468",
+  "view.dailyTimeline": "\u65E5\u65F6\u95F4\u7EBF",
+  "view.twoDay": "2 \u5929\u89C6\u56FE",
+  "view.nDay": "{n} \u5929\u89C6\u56FE",
+  "view.nDaySuffix": " \u5929\u89C6\u56FE",
+  "view.weekly": "\u5468\u89C6\u56FE",
   "view.monthly": "\u6708",
+  "view.monthlyCalendar": "\u6708\u5386",
   "view.board": "\u770B\u677F",
   "view.list": "\u5217\u8868",
+  "view.listView": "\u5217\u8868\u89C6\u56FE",
   "board.kanban": "\u770B\u677F",
   "board.kanbanTitle": "\u6807\u51C6\u770B\u677F",
   "board.priorityTitle": "\u4F18\u5148\u7EA7\u805A\u7126",
@@ -12390,7 +11912,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       let sliderContainer = this.containerEl.querySelector(".dp-zoom-slider-floating");
       if (showSlider) {
         if (!sliderContainer) {
-          const headerActions = this.containerEl.querySelector(".dp-sheet-zoom") ?? this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
+          const headerActions = this.containerEl.querySelector(".dp-header-tools") ?? this.containerEl.querySelector(".dp-header-actions");
           const viewContent = this.contentEl || this.containerEl;
           sliderContainer = (headerActions ?? viewContent).createDiv({ cls: "dp-zoom-slider-floating" });
           headerActions?.prepend(sliderContainer);
@@ -12543,9 +12065,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const headerActions = headerTop.createDiv({ cls: "dp-header-actions" });
     const navGroup = compact ? null : headerActions.createDiv({ cls: "dp-nav-buttons-group" });
     const tools = headerActions.createDiv({ cls: "dp-header-tools" });
-    const showArrows = !compact;
+    const showArrows = !compact || !import_obsidian6.Platform.isMobile || this.plugin.settings.swipeNavigation === false;
+    headerTop.toggleClass("has-nav-arrows", compact && showArrows && this.getViewTabType() !== "board");
     if (this.getViewTabType() !== "board") {
-      const navHost = navGroup ?? headerActions;
+      const navHost = navGroup ?? tools;
       if (showArrows) {
         const prevBtn = navHost.createEl("button", { cls: "dp-nav-arrow", attr: { "aria-label": t("nav.previous") } });
         (0, import_obsidian6.setIcon)(prevBtn, "chevron-left");
@@ -12570,7 +12093,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         });
       }
     }
-    if (this instanceof DayPlannerCombinedView && !compact) {
+    if (this instanceof DayPlannerCombinedView) {
       const view = this;
       const searchBtn = tools.createEl("button", {
         cls: `dp-search-btn${view.searchQuery ? " is-active" : ""}`,
@@ -12579,7 +12102,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       (0, import_obsidian6.setIcon)(searchBtn, "search");
       searchBtn.addEventListener("click", () => view.openSearch());
     }
-    if (this.plugin.settings.enableGoogleCalendar && !compact) {
+    if (this.plugin.settings.enableGoogleCalendar) {
       const syncBtn = tools.createEl("button", { cls: "dp-sync-btn", attr: { "aria-label": t("nav.sync") } });
       (0, import_obsidian6.setIcon)(syncBtn.createSpan({ cls: "dp-btn-icon" }), "refresh-cw");
       syncBtn.addEventListener("click", () => void this.runSync());
@@ -12669,7 +12192,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       setFirstIcon(drawerBtn, ["panel-right", "sidebar-right", "layout-sidebar-right"]);
       drawerBtn.addEventListener("click", () => void view.toggleSideDrawer());
     }
-    return { dateLabel, headerTop };
+    return { dateLabel };
   }
   async runSync() {
     if (this.syncInProgress)
@@ -15126,8 +14649,6 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   constructor() {
     super(...arguments);
     this.activeTab = "daily";
-    this.bottomSheetOpen = false;
-    this.bottomSheetKeysBound = false;
     this.drawerScrollTop = 0;
     this.drawerSectionOverrides = /* @__PURE__ */ new Map();
     this.drawerSectionState = /* @__PURE__ */ new Map();
@@ -15179,31 +14700,22 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     rootEl.toggleClass("dp-phone-shell", phone && import_obsidian6.Platform.isPhone);
     const header = rootEl.createDiv({ cls: "dp-header" });
     rootEl.prepend(header);
-    const { headerTop } = this.renderNavHeader(header, true);
+    this.renderNavHeader(header, true);
     if (phone && (this.activeTab === "daily" || this.activeTab === "list"))
       this.renderPhoneDateStrip(header);
-    let tabsContainer;
-    const bottomBar = phone ? rootEl.createDiv({ cls: "dp-bottom-nav" }) : null;
-    if (bottomBar) {
-      this.renderBottomPager(bottomBar);
-      tabsContainer = bottomBar.createDiv({ cls: "dp-tabs dp-bottom-tabs dp-bottom-island" });
-    } else {
-      tabsContainer = headerTop.createDiv({ cls: "dp-tabs dp-header-tabs" });
-      headerTop.insertBefore(tabsContainer, headerTop.querySelector(":scope > .dp-header-actions"));
-      headerTop.addClass("has-view-tabs");
-    }
+    const tabsContainer = phone ? rootEl.createDiv({ cls: "dp-tabs dp-bottom-nav" }) : header.createDiv({ cls: "dp-tabs" });
     const tabs = phone ? [
-      { key: "daily", label: t("view.daily") },
-      { key: "list", label: t("view.list") },
-      { key: "monthly", label: t("view.monthly") },
-      { key: "board", label: t("view.board") }
+      { key: "daily", label: t("view.daily"), icon: "calendar-clock" },
+      { key: "list", label: t("view.list"), icon: "list" },
+      { key: "monthly", label: t("view.monthly"), icon: "calendar-days" },
+      { key: "board", label: t("view.board"), icon: "layout-dashboard" }
     ] : [
-      { key: "daily", label: t("view.daily") },
+      { key: "daily", label: t("view.dailyTimeline") },
       { key: "multiDay", label: t("view.nDay", { n: this.plugin.settings.nDayViewDays || 4 }) },
       { key: "weekly", label: t("view.weekly") },
-      { key: "monthly", label: t("view.monthly") },
+      { key: "monthly", label: t("view.monthlyCalendar") },
       { key: "board", label: t("view.board") },
-      { key: "list", label: t("view.list") }
+      { key: "list", label: t("view.listView") }
     ];
     tabs.forEach((tab) => {
       if (tab.key === "multiDay" && !phone) {
@@ -15237,17 +14749,17 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       } else {
         const btn = tabsContainer.createEl("button", {
           cls: `dp-tab ${this.activeTab === tab.key ? "active" : ""}`,
-          text: phone ? "" : tab.label
+          text: tab.icon ? "" : tab.label
         });
-        if (phone)
+        if (tab.icon) {
+          (0, import_obsidian6.setIcon)(btn.createSpan({ cls: "dp-bottom-nav-icon" }), tab.icon);
           btn.createSpan({ cls: "dp-bottom-nav-label", text: tab.label });
+        }
         btn.addEventListener("click", async () => {
           await this.switchTab(tab.key);
         });
       }
     });
-    if (bottomBar)
-      this.renderBottomMenuButton(bottomBar);
     animateActiveTabPill(tabsContainer, this, this.activeTab);
     keepActiveTabInView(tabsContainer, this);
     this.mountActivePane(rootEl);
@@ -15255,9 +14767,8 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       this.renderCurrentTaskTracker(rootEl);
     else
       this.stopCurrentTaskTracker();
-    if (bottomBar) {
-      rootEl.appendChild(bottomBar);
-      this.renderBottomSheet(rootEl);
+    if (phone) {
+      rootEl.appendChild(tabsContainer);
       this.registerSwipeNavigation(rootEl);
     }
     rootEl.toggleClass("dp-drawer-open", this.isSideDrawerOpen());
@@ -15265,164 +14776,6 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
       renderSideDrawer(rootEl, this);
     this.trackHeaderHeight(rootEl, header);
     this.syncSearchBar(rootEl);
-  }
-  renderBottomPager(bar) {
-    const pager = bar.createDiv({ cls: "dp-bottom-island dp-bottom-pager" });
-    [-1, 1].forEach((step) => {
-      const btn = pager.createEl("button", {
-        cls: "dp-bottom-bar-btn",
-        attr: { "aria-label": t(step < 0 ? "nav.previous" : "nav.next") }
-      });
-      (0, import_obsidian6.setIcon)(btn, step < 0 ? "chevron-left" : "chevron-right");
-      btn.addEventListener("click", () => {
-        if (this.activeTab === "board") {
-          this.navigateBoardTab(step);
-          return;
-        }
-        triggerHaptic("selection");
-        void this.navigateWithSlide(step);
-      });
-    });
-  }
-  renderBottomMenuButton(bar) {
-    const btn = bar.createEl("button", {
-      cls: `dp-bottom-island dp-bottom-menu-btn${this.bottomSheetOpen ? " is-active" : ""}`,
-      attr: { "aria-label": t("nav.menu"), "aria-haspopup": "dialog", "aria-expanded": String(this.bottomSheetOpen) }
-    });
-    (0, import_obsidian6.setIcon)(btn, "menu");
-    btn.addEventListener("click", () => {
-      triggerHaptic("selection");
-      this.setBottomSheetOpen(!this.bottomSheetOpen);
-    });
-  }
-  renderBottomSheet(rootEl) {
-    const backdrop = rootEl.createDiv({ cls: "dp-sheet-backdrop" });
-    backdrop.addEventListener("click", () => this.setBottomSheetOpen(false));
-    const sheet = rootEl.createDiv({ cls: "dp-bottom-sheet", attr: { role: "dialog", "aria-label": t("nav.menu") } });
-    const grabber = sheet.createDiv({ cls: "dp-sheet-grabber" });
-    grabber.createDiv({ cls: "dp-sheet-grabber-bar" });
-    this.registerSheetDragDismiss(sheet, grabber);
-    const group = sheet.createDiv({ cls: "dp-sheet-group" });
-    const search = group.createEl("button", { cls: "dp-sheet-row dp-sheet-search" });
-    (0, import_obsidian6.setIcon)(search.createSpan({ cls: "dp-sheet-icon" }), "search");
-    search.createSpan({ text: t("sheet.search") });
-    search.addEventListener("click", () => {
-      this.setBottomSheetOpen(false);
-      this.openSearch();
-    });
-    if (this.activeTab === "daily" || this.activeTab === "weekly" || this.activeTab === "multiDay") {
-      group.createDiv({ cls: "dp-sheet-row dp-sheet-zoom" });
-    }
-    if (this.plugin.settings.enableGoogleCalendar) {
-      const sync = group.createEl("button", { cls: "dp-sheet-row dp-sheet-sync" });
-      (0, import_obsidian6.setIcon)(sync.createSpan({ cls: "dp-sheet-icon dp-sheet-sync-icon" }), "refresh-cw");
-      const text = sync.createDiv({ cls: "dp-sheet-sync-text" });
-      text.createDiv({ cls: "dp-sheet-sync-title", text: t("nav.sync") });
-      text.createDiv({ cls: "dp-sheet-sync-status" });
-      sync.createSpan({ cls: "dp-sheet-sync-dot" });
-      let pressTimer = null;
-      let longPressed = false;
-      const cancelPress = () => {
-        if (pressTimer !== null)
-          window.clearTimeout(pressTimer);
-        pressTimer = null;
-      };
-      const openSyncModal = () => {
-        longPressed = true;
-        cancelPress();
-        this.setBottomSheetOpen(false);
-        new TaskSyncModal(this.app, this.plugin, async () => {
-          await this.refreshTasks(null, true);
-        }).open();
-      };
-      sync.addEventListener("click", () => {
-        if (longPressed || this.syncInProgress)
-          return;
-        const run = this.runSync();
-        this.updateSheetSyncStatus();
-        void run.finally(() => this.updateSheetSyncStatus());
-      });
-      sync.addEventListener("pointerdown", (e) => {
-        longPressed = false;
-        cancelPress();
-        if (e.button !== 0)
-          return;
-        pressTimer = window.setTimeout(() => {
-          triggerHaptic("selection");
-          openSyncModal();
-        }, 550);
-      });
-      ["pointerup", "pointerleave", "pointercancel"].forEach((type) => sync.addEventListener(type, cancelPress));
-      sync.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        if (!longPressed)
-          openSyncModal();
-      });
-    }
-    rootEl.toggleClass("dp-sheet-open", this.bottomSheetOpen);
-    this.updateSheetSyncStatus();
-    if (!this.bottomSheetKeysBound) {
-      this.bottomSheetKeysBound = true;
-      this.registerDomEvent(document, "keydown", (e) => {
-        if (e.key !== "Escape" || !this.bottomSheetOpen)
-          return;
-        this.setBottomSheetOpen(false);
-        this.containerEl.querySelector(".dp-bottom-menu-btn")?.focus({ preventScroll: true });
-      });
-    }
-  }
-  setBottomSheetOpen(open) {
-    this.bottomSheetOpen = open;
-    const rootEl = this.containerEl.querySelector(".dp-container");
-    if (!rootEl)
-      return;
-    rootEl.toggleClass("dp-sheet-open", open);
-    const btn = rootEl.querySelector(".dp-bottom-menu-btn");
-    btn?.toggleClass("is-active", open);
-    btn?.setAttr("aria-expanded", String(open));
-    if (open) {
-      this.updateSheetSyncStatus();
-      rootEl.querySelector(".dp-sheet-search")?.focus({ preventScroll: true });
-    }
-  }
-  updateSheetSyncStatus() {
-    const row = this.containerEl.querySelector(".dp-sheet-sync");
-    if (!row)
-      return;
-    const fetchedAt = this.plugin.gcalRanges.get(this.getGCalRange().cacheKey)?.fetchedAt;
-    const state = this.syncInProgress ? "syncing" : fetchedAt && Date.now() - fetchedAt <= GCAL_CACHE_TTL_MS ? "fresh" : "stale";
-    row.dataset.syncState = state;
-    row.querySelector(".dp-sheet-sync-status")?.setText(state === "syncing" ? t("sheet.syncing") : fetchedAt ? t("sheet.lastSynced", { time: window.moment(fetchedAt).fromNow() }) : t("sheet.notSynced"));
-  }
-  registerSheetDragDismiss(sheet, handle) {
-    let startY = null;
-    let startTime = 0;
-    let dy = 0;
-    handle.addEventListener("pointerdown", (e) => {
-      startY = e.clientY;
-      startTime = performance.now();
-      dy = 0;
-      handle.setPointerCapture(e.pointerId);
-      sheet.addClass("is-dragging");
-    });
-    handle.addEventListener("pointermove", (e) => {
-      if (startY === null)
-        return;
-      dy = Math.max(0, e.clientY - startY);
-      sheet.style.transform = `translateY(${dy}px)`;
-    });
-    const end = () => {
-      if (startY === null)
-        return;
-      startY = null;
-      const flick = dy > 20 && dy / Math.max(1, performance.now() - startTime) > 0.5;
-      sheet.removeClass("is-dragging");
-      sheet.style.transform = "";
-      if (dy > 80 || flick)
-        this.setBottomSheetOpen(false);
-    };
-    handle.addEventListener("pointerup", end);
-    handle.addEventListener("pointercancel", end);
   }
   hasSideDrawer() {
     return !this.useCompactLayout() && SIDE_DRAWER_TABS.includes(this.activeTab);
@@ -15565,14 +14918,12 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   }
   placeSearchBar(rootEl) {
     const bar = rootEl.querySelector(":scope > .dp-search-float");
-    const compact = this.useCompactLayout();
-    const row = rootEl.querySelector(compact ? ":scope > .dp-bottom-nav" : ":scope > .dp-header .dp-header-top");
+    const row = rootEl.querySelector(":scope > .dp-header .dp-header-top");
     if (!bar || !row || !bar.hasClass("is-open"))
       return;
     const rootRect = rootEl.getBoundingClientRect();
     const rowRect = row.getBoundingClientRect();
-    bar.style.top = compact ? "" : `${rowRect.top - rootRect.top}px`;
-    bar.style.bottom = compact ? `${rootRect.bottom - rowRect.bottom}px` : "";
+    bar.style.top = `${rowRect.top - rootRect.top}px`;
     bar.style.left = `${rowRect.left - rootRect.left}px`;
     bar.style.width = `${rowRect.width}px`;
     bar.style.height = `${Math.max(32, rowRect.height)}px`;
@@ -16510,12 +15861,12 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
     this.renderNavHeader(header, false);
     const tabsContainer = header.createDiv({ cls: "dp-tabs" });
     const tabs = [
-      { key: "daily", label: t("view.daily") },
+      { key: "daily", label: t("view.dailyTimeline") },
       { key: "multiDay", label: t("view.nDay", { n: this.plugin.settings.nDayViewDays || 4 }) },
       { key: "weekly", label: t("view.weekly") },
-      { key: "monthly", label: t("view.monthly") },
+      { key: "monthly", label: t("view.monthlyCalendar") },
       { key: "board", label: t("view.board") },
-      { key: "list", label: t("view.list") }
+      { key: "list", label: t("view.listView") }
     ];
     tabs.forEach((tab) => {
       if (tab.key === "multiDay") {
