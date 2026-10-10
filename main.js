@@ -4136,10 +4136,46 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-drawer-card.is-mit .dp-drawer-card-actions {
     background: linear-gradient(to right, transparent, var(--background-primary) 12px);
 }
-/* Today's Focus section: a soft red-tinted well once it holds tasks */
-.dp-drawer-section[data-section="focus"]:not(.is-collapsed) {
+/* Today's Focus, embedded at the top of Today's Tasks: a soft red-tinted well holding the hero cards, a small
+   \u{1F3AF} label above them. Empty, it only appears while a task is dragged (as the "make it \u{1F53A} Highest" drop zone). */
+.dp-drawer-focus-slot {
+    position: relative;
+    margin: 2px 2px 8px;
+    padding: 6px 2px 2px;
+    border-radius: var(--radius-m, 8px);
     background-color: color-mix(in srgb, var(--color-red) 5%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-red) 16%, transparent);
+}
+.dp-drawer-focus-label {
+    padding: 0 8px 2px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    font-weight: var(--font-semibold, 600);
+    letter-spacing: 0.02em;
+    color: var(--color-red);
+}
+.dp-drawer-focus-hint {
+    padding: 0 8px 6px;
+    font-size: var(--font-ui-smaller, 0.8em);
+    color: var(--text-muted);
+}
+.dp-drawer-focus-slot.is-empty {
+    display: none;
+}
+body.dp-pointer-dragging .dp-drawer-focus-slot.is-empty,
+.dp-drawer-focus-slot.is-empty.dp-drop-target {
+    display: block;
+}
+.dp-drawer-focus-slot.dp-drop-target::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border: 2px dashed var(--color-red);
+    border-radius: inherit;
+    pointer-events: none;
+}
+.dp-drawer-focus-slot.dp-drop-target {
+    background-color: color-mix(in srgb, var(--color-red) 10%, transparent);
 }
 
 /* Priority picker: a frosted popover (in document.body, so it may overhang the drawer) */
@@ -9200,8 +9236,9 @@ function formatDuration(minutes) {
     return t("duration.m", { m });
   return m === 0 ? t("duration.h", { h }) : t("duration.hm", { h, m });
 }
-function renderDrawerSection(body, view, id, title, tasks, empty, action) {
-  const isEmpty = tasks.length === 0;
+function renderDrawerSection(body, view, id, title, tasks, empty, action, focus = []) {
+  const total = tasks.length + focus.length;
+  const isEmpty = total === 0;
   if (view.drawerSectionOverrides.get(id)?.empty !== isEmpty)
     view.drawerSectionOverrides.delete(id);
   const collapsed = view.drawerSectionOverrides.get(id)?.collapsed ?? isEmpty;
@@ -9212,7 +9249,7 @@ function renderDrawerSection(body, view, id, title, tasks, empty, action) {
   const head = header.createEl("button", { cls: "dp-drawer-section-toggle", attr: { "aria-expanded": String(!collapsed) } });
   head.createSpan({ cls: "dp-drawer-chevron", text: "\u25BE" });
   head.createSpan({ cls: "dp-drawer-section-title", text: title });
-  head.createSpan({ cls: "dp-drawer-count", text: String(tasks.length) });
+  head.createSpan({ cls: "dp-drawer-count", text: String(total) });
   if (action && tasks.length > 0) {
     const actionBtn = header.createEl("button", { cls: "dp-drawer-section-action", text: action.label, attr: { "aria-label": action.tooltip } });
     actionBtn.addEventListener("click", () => action.run());
@@ -9228,12 +9265,27 @@ function renderDrawerSection(body, view, id, title, tasks, empty, action) {
     requestAnimationFrame(() => requestAnimationFrame(() => section.toggleClass("is-collapsed", collapsed)));
   }
   const inner = section.createDiv({ cls: "dp-drawer-section-body" }).createDiv({ cls: "dp-drawer-section-inner" });
-  if (tasks.length === 0) {
+  if (id === "today")
+    renderFocusSlot(inner, view, focus);
+  if (isEmpty) {
     inner.createDiv({ cls: "dp-drawer-empty", text: empty });
     return;
   }
+  if (tasks.length === 0)
+    return;
   const list = inner.createDiv({ cls: "dp-drawer-list" });
   tasks.forEach((task) => view.renderDrawerTaskCard(list, task, id));
+}
+function renderFocusSlot(inner, view, focus) {
+  const slot = inner.createDiv({ cls: `dp-drawer-focus-slot${focus.length === 0 ? " is-empty" : ""}`, attr: { "data-section": "focus" } });
+  const label = slot.createDiv({ cls: "dp-drawer-focus-label" });
+  label.createSpan({ text: `\u{1F3AF} ${t("drawer.focus")}` });
+  if (focus.length === 0) {
+    slot.createDiv({ cls: "dp-drawer-focus-hint", text: t("drawer.focusEmpty") });
+    return;
+  }
+  const list = slot.createDiv({ cls: "dp-drawer-list" });
+  focus.forEach((task) => view.renderDrawerTaskCard(list, task, "focus"));
 }
 function renderQuickCapture(body, view) {
   const input = body.createEl("input", {
@@ -9281,9 +9333,9 @@ var tasksPanel = {
     const todayStr = window.moment().format("YYYY-MM-DD");
     renderQuickCapture(body, view);
     const focus = view.tasks.filter((t2) => t2.date === todayStr && isFocusTask(t2)).sort((a, b) => (a.startTime ?? "99").localeCompare(b.startTime ?? "99") || cleanTaskTextForDisplay(a.text).localeCompare(cleanTaskTextForDisplay(b.text)));
-    renderDrawerSection(body, view, "focus", `\u{1F3AF} ${t("drawer.focus")}`, focus, t("drawer.focusEmpty"));
-    const todayTasks = sortByPriorityThenTitle(view.tasks.filter((t2) => t2.date === todayStr && t2.statusChar !== "-")).sort((a, b) => Number(a.statusChar === "x") - Number(b.statusChar === "x") || (a.startTime ?? "99").localeCompare(b.startTime ?? "99"));
-    renderDrawerSection(body, view, "today", `\u{1F4C5} ${t("drawer.todayTasks")}`, todayTasks, t("drawer.todayEmpty"));
+    const focusIds = new Set(focus.map((f) => f.id));
+    const todayTasks = sortByPriorityThenTitle(view.tasks.filter((t2) => t2.date === todayStr && t2.statusChar !== "-" && !focusIds.has(t2.id))).sort((a, b) => Number(a.statusChar === "x") - Number(b.statusChar === "x") || (a.startTime ?? "99").localeCompare(b.startTime ?? "99"));
+    renderDrawerSection(body, view, "today", `\u{1F4C5} ${t("drawer.todayTasks")}`, todayTasks, t("drawer.todayEmpty"), void 0, focus);
     const overdue = sortByPriorityThenTitle(view.tasks.filter((t2) => isOverdueTask(t2, todayStr)), true);
     renderDrawerSection(body, view, "overdue", `\u{1F6A8} ${t("drawer.overdueTasks")}`, overdue, t("drawer.allCaughtUp"), {
       label: t("drawer.rollToToday"),
@@ -9774,7 +9826,7 @@ function acceptBoardCardDrops(drawer, view) {
     el?.addClass("dp-drop-target");
     current = el;
   };
-  const targetOf = (e) => e.target.closest('.dp-mc-day[data-date], .dp-drawer-section[data-section="focus"], .dp-drawer-section[data-section="today"]') ?? drawer.querySelector('.dp-drawer-section[data-section="undated"]') ?? drawer;
+  const targetOf = (e) => e.target.closest('.dp-mc-day[data-date], .dp-drawer-focus-slot[data-section="focus"], .dp-drawer-section[data-section="today"]') ?? drawer.querySelector('.dp-drawer-section[data-section="undated"]') ?? drawer;
   drawer.addEventListener("dragover", (e) => {
     if (view.activeTab !== "board" || !e.dataTransfer?.types.includes("text/plain"))
       return;
@@ -11390,7 +11442,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         return { kind: "day", el: miniDay, dateStr: miniDay.dataset.date };
       const drawer = hit.closest(".dp-side-drawer.is-open");
       if (drawer) {
-        const focusSection = hit.closest('.dp-drawer-section[data-section="focus"]');
+        const focusSection = hit.closest('.dp-drawer-focus-slot[data-section="focus"]');
         if (focusSection)
           return { kind: "focus", el: focusSection, dateStr: "" };
         const todaySection = source.kind === "task" && source.origin !== "today" ? hit.closest('.dp-drawer-section[data-section="today"]') : null;
