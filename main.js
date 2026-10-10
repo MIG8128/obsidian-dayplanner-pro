@@ -4115,9 +4115,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 /* MIT: an open \u{1F53A} Highest task reads as today's core focus wherever its card appears */
 .dp-drawer-card.is-mit {
     overflow: hidden;
-    background: linear-gradient(120deg, color-mix(in srgb, var(--color-red) 10%, var(--background-primary)), var(--background-primary) 65%);
-    border-color: color-mix(in srgb, var(--color-red) 40%, var(--background-modifier-border));
-    box-shadow: 0 2px 10px color-mix(in srgb, var(--color-red) 14%, transparent);
+    background: linear-gradient(120deg, color-mix(in srgb, var(--color-red) 5%, var(--background-primary)), var(--background-primary) 60%);
+    border-color: color-mix(in srgb, var(--color-red) 20%, var(--background-modifier-border));
+    box-shadow: 0 1px 6px color-mix(in srgb, var(--color-red) 6%, transparent);
 }
 .dp-drawer-card.is-mit::before {
     content: '';
@@ -4127,10 +4127,11 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     left: 0;
     width: 3px;
     background: linear-gradient(to bottom, var(--color-red), var(--color-orange));
+    opacity: 0.55;
 }
 .dp-drawer-card.is-mit:hover {
-    border-color: var(--color-red);
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--color-red) 24%, transparent);
+    border-color: color-mix(in srgb, var(--color-red) 38%, var(--background-modifier-border));
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--color-red) 10%, transparent);
 }
 .dp-drawer-card.is-mit .dp-drawer-card-title {
     font-weight: var(--font-semibold, 600);
@@ -4138,22 +4139,21 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-drawer-card.is-mit .dp-drawer-card-actions {
     background: linear-gradient(to right, transparent, var(--background-primary) 12px);
 }
-/* Today's Focus, embedded at the top of Today's Tasks: a soft red-tinted well holding the hero cards, a small
-   \u{1F3AF} label above them. Empty, it only appears while a task is dragged (as the "make it \u{1F53A} Highest" drop zone). */
+/* Today's Focus, embedded at the top of Today's Tasks: no box of its own (its cards keep the list's exact edges),
+   just a small \u{1F3AF} label line above the hero cards. Empty, it only appears while a task
+   is dragged (as the "make it \u{1F53A} Highest" drop zone). */
 .dp-drawer-focus-slot {
     position: relative;
-    margin: 2px 2px 8px;
-    padding: 6px 2px 2px;
+    margin: 0 0 4px;
+    padding: 2px 0 2px;
     border-radius: var(--radius-m, 8px);
-    background-color: color-mix(in srgb, var(--color-red) 5%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-red) 16%, transparent);
 }
 .dp-drawer-focus-label {
-    padding: 0 8px 2px;
+    padding: 2px 12px 0; /* card margin 4px + card padding 8px: lines up with the checkboxes */
     font-size: var(--font-ui-smaller, 0.8em);
     font-weight: var(--font-semibold, 600);
     letter-spacing: 0.02em;
-    color: var(--color-red);
+    color: color-mix(in srgb, var(--color-red) 60%, var(--text-muted));
 }
 .dp-drawer-focus-hint {
     padding: 0 8px 6px;
@@ -4172,12 +4172,12 @@ body.dp-pointer-dragging .dp-drawer-focus-slot.is-empty,
     position: absolute;
     inset: 0;
     z-index: 3;
-    border: 2px dashed var(--color-red);
+    border: 2px dashed color-mix(in srgb, var(--color-red) 55%, transparent);
     border-radius: inherit;
     pointer-events: none;
 }
 .dp-drawer-focus-slot.dp-drop-target {
-    background-color: color-mix(in srgb, var(--color-red) 10%, transparent);
+    background-color: color-mix(in srgb, var(--color-red) 6%, transparent);
 }
 
 /* Priority picker: a frosted popover (in document.body, so it may overhang the drawer) */
@@ -5381,9 +5381,9 @@ body.dp-pointer-dragging * {
 /* \u23EB High: the amber sibling of the \u{1F53A} Highest (MIT) card, one step quieter */
 .dp-drawer-card.is-high {
     overflow: hidden;
-    background: linear-gradient(120deg, color-mix(in srgb, var(--color-orange) 9%, var(--background-primary)), var(--background-primary) 65%);
-    border-color: color-mix(in srgb, var(--color-orange) 38%, var(--background-modifier-border));
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--color-orange) 12%, transparent);
+    background: linear-gradient(120deg, color-mix(in srgb, var(--color-orange) 4%, var(--background-primary)), var(--background-primary) 60%);
+    border-color: color-mix(in srgb, var(--color-orange) 18%, var(--background-modifier-border));
+    box-shadow: 0 1px 5px color-mix(in srgb, var(--color-orange) 5%, transparent);
 }
 .dp-drawer-card.is-high::before {
     content: '';
@@ -5393,10 +5393,11 @@ body.dp-pointer-dragging * {
     left: 0;
     width: 3px;
     background: linear-gradient(to bottom, var(--color-orange), var(--color-yellow));
+    opacity: 0.5;
 }
 .dp-drawer-card.is-high:hover {
-    border-color: var(--color-orange);
-    box-shadow: 0 4px 14px color-mix(in srgb, var(--color-orange) 22%, transparent);
+    border-color: color-mix(in srgb, var(--color-orange) 34%, var(--background-modifier-border));
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--color-orange) 9%, transparent);
 }
 .dp-drawer-card.is-high .dp-drawer-card-title {
     font-weight: var(--font-medium, 500);
@@ -5410,12 +5411,12 @@ body.dp-pointer-dragging * {
     border-radius: 999px;
 }
 .dp-side-drawer .dp-drawer-card.is-mit button.dp-priority-trigger {
-    background-color: color-mix(in srgb, var(--color-red) 14%, transparent);
-    border-color: color-mix(in srgb, var(--color-red) 30%, transparent);
+    background-color: color-mix(in srgb, var(--color-red) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-red) 16%, transparent);
 }
 .dp-side-drawer .dp-drawer-card.is-high button.dp-priority-trigger {
-    background-color: color-mix(in srgb, var(--color-orange) 14%, transparent);
-    border-color: color-mix(in srgb, var(--color-orange) 30%, transparent);
+    background-color: color-mix(in srgb, var(--color-orange) 8%, transparent);
+    border-color: color-mix(in srgb, var(--color-orange) 16%, transparent);
 }
 /* Done (Today's Tasks keeps them for undo): settled and grey whatever the priority. No red / amber well, accent bar
    or glow, a neutral hairline, dimmed card and a desaturated badge. Wins over .is-mit / .is-high and the sheet glass. */
