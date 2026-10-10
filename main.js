@@ -3134,8 +3134,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    meta line. The header and the date strip already name the day, so the day column goes.
    ------------------------------------------------------------- */
 .dp-gc-list-container.is-day-agenda {
-    --dp-agenda-gutter: 58px;
-    --dp-agenda-gap: 10px;
+    /* Sized to the 24-hour times (HH:mm, always five digits): the times start flush with the summary card's edge */
+    --dp-agenda-gutter: 42px;
+    --dp-agenda-gap: 8px;
     --dp-agenda-rail-x: calc(var(--dp-agenda-gutter) + var(--dp-agenda-gap)); /* left edge of the 3px rail */
 }
 .dp-gc-list-container.is-day-agenda .dp-gc-list-scroll {
@@ -3171,7 +3172,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     grid-template-areas: "when rail mark body";
     column-gap: var(--dp-agenda-gap);
     align-items: start;
-    padding: 10px 8px 10px 0;
+    padding: 10px 8px 10px 2px;
     border: none;
     border-radius: 10px;
     background: transparent;
@@ -3197,7 +3198,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     grid-area: when;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 1px;
     padding-top: 1px;
     white-space: nowrap;
@@ -3210,6 +3211,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     color: var(--text-normal);
 }
 .dp-agenda-start.is-allday {
+    font-size: 0.72em; /* "All day" fits the narrow gutter */
     font-weight: 500;
     color: var(--text-muted);
 }
