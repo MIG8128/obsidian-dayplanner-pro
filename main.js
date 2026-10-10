@@ -5415,6 +5415,31 @@ body.dp-pointer-dragging * {
     background-color: color-mix(in srgb, var(--color-orange) 14%, transparent);
     border-color: color-mix(in srgb, var(--color-orange) 30%, transparent);
 }
+/* Done (Today's Tasks keeps them for undo): settled and grey whatever the priority. No red / amber well, accent bar
+   or glow, a neutral hairline, dimmed card and a desaturated badge. Wins over .is-mit / .is-high and the sheet glass. */
+.dp-side-drawer .dp-drawer-card.is-done,
+.dp-side-drawer .dp-drawer-card.is-done:hover {
+    background: var(--dp-segment-track);
+    border-color: var(--background-modifier-border);
+    box-shadow: none;
+    opacity: 0.55;
+}
+.dp-side-drawer .dp-drawer-card.is-done:hover {
+    opacity: 0.75; /* still clearly clickable (undo, edit) */
+}
+.dp-side-drawer .dp-drawer-card.is-done::before {
+    content: none;
+}
+.dp-side-drawer .dp-drawer-card.is-done .dp-drawer-card-title {
+    font-weight: var(--font-normal, 400);
+    color: var(--text-muted);
+}
+.dp-side-drawer .dp-drawer-card.is-done button.dp-priority-trigger {
+    background-color: transparent;
+    border-color: transparent;
+    filter: grayscale(1);
+    opacity: 0.6;
+}
 
 
 /* -------------------------------------------------------------
