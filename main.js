@@ -17167,6 +17167,7 @@ function gcalIdHider(isEnabled) {
     });
     return found;
   };
+  const cursorTouchesTag = (state) => state.selection.ranges.some((r) => TAG_PROBE_RE.test(state.doc.sliceString(state.doc.lineAt(r.from).from, state.doc.lineAt(r.to).to)));
   return import_view.ViewPlugin.fromClass(class {
     constructor(view) {
       this.decorations = import_view.Decoration.none;
@@ -17183,15 +17184,18 @@ function gcalIdHider(isEnabled) {
       }
       if (!active)
         return;
-      const relevant = u.docChanged && (this.hasVisibleTag || editTouchesTag(u));
-      if (u.docChanged && u.view.composing) {
-        if (relevant) {
+      if (u.docChanged) {
+        const relevant = this.stale || editTouchesTag(u) || u.selectionSet && this.hasVisibleTag && cursorTouchesTag(u.startState);
+        if (!relevant || u.view.composing) {
           this.decorations = this.decorations.map(u.changes);
-          this.stale = true;
+          if (relevant)
+            this.stale = true;
+          return;
         }
+        this.build(u.view);
         return;
       }
-      if (relevant || this.stale || u.selectionSet && this.hasVisibleTag)
+      if (this.stale && !u.view.composing || u.selectionSet && this.hasVisibleTag)
         this.build(u.view);
     }
     build(view) {
@@ -17444,7 +17448,10 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.app.workspace.onLayoutReady(() => this.onLayoutReadyInit());
   }
   onLayoutReadyInit() {
-    this.registerInterval(window.setInterval(() => this.updateStatusBar(), 3e4));
+    this.registerInterval(window.setInterval(() => {
+      if (this.msUntilTypingIdle() === 0)
+        this.updateStatusBar();
+    }, 3e4));
     this.registerInterval(window.setInterval(() => this.checkReminders(), 15e3));
     this.checkReminders();
     this.ensureTasksCache().then(() => this.updateStatusBar());
