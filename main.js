@@ -17157,22 +17157,58 @@ var DayPlannerSettingTab = class extends import_obsidian7.PluginSettingTab {
 };
 function gcalIdHider(isEnabled) {
   const hide = import_view.Decoration.replace({});
+  const TAG_PROBE_RE = /gcalid::/i;
+  const editTouchesTag = (u) => {
+    const doc = u.state.doc;
+    let found = false;
+    u.changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+      if (!found)
+        found = TAG_PROBE_RE.test(doc.sliceString(doc.lineAt(fromB).from, doc.lineAt(toB).to));
+    });
+    return found;
+  };
   return import_view.ViewPlugin.fromClass(class {
     constructor(view) {
-      this.decorations = this.build(view);
+      this.decorations = import_view.Decoration.none;
+      this.active = false;
+      this.hasVisibleTag = false;
+      this.stale = false;
+      this.build(view);
     }
     update(u) {
-      if (u.docChanged || u.viewportChanged || u.selectionSet || u.transactions.some((t2) => t2.reconfigured)) {
-        this.decorations = this.build(u.view);
+      const active = isEnabled() && !!u.state.field(import_obsidian7.editorLivePreviewField, false);
+      if (active !== this.active || u.viewportChanged || u.transactions.some((t2) => t2.reconfigured)) {
+        this.build(u.view);
+        return;
       }
+      if (!active)
+        return;
+      const relevant = u.docChanged && (this.hasVisibleTag || editTouchesTag(u));
+      if (u.docChanged && u.view.composing) {
+        if (relevant) {
+          this.decorations = this.decorations.map(u.changes);
+          this.stale = true;
+        }
+        return;
+      }
+      if (relevant || this.stale || u.selectionSet && this.hasVisibleTag)
+        this.build(u.view);
     }
     build(view) {
+      this.stale = false;
+      this.hasVisibleTag = false;
+      this.active = isEnabled() && !!view.state.field(import_obsidian7.editorLivePreviewField, false);
+      if (!this.active) {
+        this.decorations = import_view.Decoration.none;
+        return;
+      }
       const builder = new import_state.RangeSetBuilder();
-      if (!isEnabled() || !view.state.field(import_obsidian7.editorLivePreviewField, false))
-        return builder.finish();
       const selection = view.state.selection.ranges;
       for (const { from, to } of view.visibleRanges) {
         const text = view.state.doc.sliceString(from, to);
+        if (!TAG_PROBE_RE.test(text))
+          continue;
+        this.hasVisibleTag = true;
         for (const m of text.matchAll(GCAL_ID_TAG_RE)) {
           const start = from + (m.index ?? 0);
           const end = start + m[0].length;
@@ -17181,7 +17217,7 @@ function gcalIdHider(isEnabled) {
           builder.add(start, end, hide);
         }
       }
-      return builder.finish();
+      this.decorations = builder.finish();
     }
   }, { decorations: (v) => v.decorations });
 }
@@ -17192,6 +17228,7 @@ var whenIdle = () => new Promise((resolve) => {
   else
     window.setTimeout(resolve, 1e3);
 });
+var TYPING_IDLE_MS = 2e3;
 var DayPlannerPlugin = class extends import_obsidian7.Plugin {
   constructor() {
     super(...arguments);
@@ -17223,15 +17260,21 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     else
       window.clearTimeout(this.viewRefreshTimer);
     const delay = Math.max(0, Math.min(250, this.viewRefreshFirstAt + 1500 - now));
-    const TYPING_PAUSE_MS = 1200;
     const run = () => {
-      const sinceTyping = Date.now() - this.lastEditorInputAt;
-      if (sinceTyping < TYPING_PAUSE_MS) {
-        this.viewRefreshTimer = window.setTimeout(run, TYPING_PAUSE_MS - sinceTyping);
+      const wait = this.msUntilTypingIdle();
+      if (wait > 0) {
+        this.viewRefreshTimer = window.setTimeout(run, wait);
         return;
       }
       this.viewRefreshTimer = null;
       const refresh = () => {
+        if (this.viewRefreshTimer !== null)
+          return;
+        const waitAgain = this.msUntilTypingIdle();
+        if (waitAgain > 0) {
+          this.viewRefreshTimer = window.setTimeout(run, waitAgain);
+          return;
+        }
         this.updateStatusBar();
         this.refreshActiveViews(false, true);
         this.codeBlockRenderers.forEach((r) => r.refreshContentOnly(true));
@@ -17242,6 +17285,14 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
         refresh();
     };
     this.viewRefreshTimer = window.setTimeout(run, delay);
+  }
+  msUntilTypingIdle() {
+    return Math.max(0, this.lastEditorInputAt + TYPING_IDLE_MS - Date.now());
+  }
+  async waitForTypingIdle() {
+    for (let wait = this.msUntilTypingIdle(); wait > 0; wait = this.msUntilTypingIdle()) {
+      await new Promise((resolve) => window.setTimeout(resolve, wait));
+    }
   }
   removeCachedEvents(keys) {
     this.gcalRanges.forEach((range) => {
@@ -17254,7 +17305,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     if (this.tasksCache)
       return Promise.resolve(this.tasksCache);
     if (!this.scanPromise) {
-      this.scanPromise = this.layoutReady.then(whenIdle).then(() => scanVaultTasks(this.app)).then((tasks) => {
+      this.scanPromise = this.layoutReady.then(whenIdle).then(() => this.waitForTypingIdle()).then(() => scanVaultTasks(this.app)).then((tasks) => {
         if (!this.tasksCache)
           this.tasksCache = tasks;
         return this.tasksCache;
@@ -17416,10 +17467,16 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     const modifyTimeouts = /* @__PURE__ */ new Map();
     const scheduleFileUpdate = (file, run) => {
       window.clearTimeout(modifyTimeouts.get(file.path));
-      modifyTimeouts.set(file.path, window.setTimeout(() => {
+      const fire = () => {
+        const wait = this.msUntilTypingIdle();
+        if (wait > 0) {
+          modifyTimeouts.set(file.path, window.setTimeout(fire, wait));
+          return;
+        }
         modifyTimeouts.delete(file.path);
         run();
-      }, 350));
+      };
+      modifyTimeouts.set(file.path, window.setTimeout(fire, 350));
     };
     this.registerEvent(this.app.vault.on("modify", (file) => {
       if (file instanceof import_obsidian7.TFile && file.extension === "md" && !isSyncConflictPath(file.path)) {
@@ -17887,6 +17944,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.settingsUnreadable = false;
     this.applySettingsData(data);
     if (this.exclusionKey !== exclusionKey) {
+      await this.waitForTypingIdle();
       this.tasksCache = await scanVaultTasks(this.app);
       this.updateStatusBar();
     }
