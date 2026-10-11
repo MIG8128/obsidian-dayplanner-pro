@@ -4163,7 +4163,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-drawer-focus-slot.is-empty {
     display: none;
 }
-body.dp-pointer-dragging .dp-drawer-focus-slot.is-empty,
+.dp-pointer-dragging .dp-drawer-focus-slot.is-empty,
 .dp-drawer-focus-slot.is-empty.dp-drop-target {
     display: block;
 }
@@ -4552,8 +4552,10 @@ body.dp-pointer-dragging .dp-drawer-focus-slot.is-empty,
     outline-offset: -2px;
     background-color: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
 }
-body.dp-pointer-dragging,
-body.dp-pointer-dragging * {
+/* Set on the dragging view's container (views.ts beginPointerDrag), never on body: toggling a body class that a
+   universal selector keys off restyles every element in the app, the editor's included */
+.dp-pointer-dragging,
+.dp-pointer-dragging * {
     cursor: grabbing !important;
 }
 
@@ -10898,7 +10900,7 @@ function isTypingContext(e) {
     const el = node;
     if (!el || typeof el.closest !== "function")
       return false;
-    return el.isContentEditable || !!el.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .cm-editor');
+    return !!el.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), .cm-editor') || el.isContentEditable;
   });
 }
 var DayPlannerBaseView = class extends import_obsidian6.ItemView {
@@ -11582,7 +11584,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const ghostText = this.selectedTaskIds.size > 1 ? `${this.selectedTaskIds.size} items` : this.activeDragItems[0]?.title ?? "";
     const ghost = doc.body.createDiv({ cls: "dp-drag-ghost", text: ghostText });
     this.activeDragClickOffsetMin = grabOffset;
-    doc.body.addClass("dp-pointer-dragging");
+    const dragHost = this.containerEl;
+    dragHost.addClass("dp-pointer-dragging");
     const canUnschedule = source.kind === "timeline" || source.origin !== "undated";
     const undatedOnly = source.kind === "task" && (source.origin === "overdue" || source.origin === "focus" || source.origin === "today");
     let target = null;
@@ -11709,7 +11712,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       if (frame)
         win.cancelAnimationFrame(frame);
       win.cancelAnimationFrame(scrollFrame);
-      doc.body.removeClass("dp-pointer-dragging");
+      dragHost.removeClass("dp-pointer-dragging");
       ghost.remove();
       card.removeClass("is-dragging");
       opts.onEnd?.(movedSinceStart);
@@ -12242,12 +12245,10 @@ ${e.calendarName ?? ""}`.toLowerCase();
     }, true);
     void this.refreshTasks(null, true);
     this.keydownHandler = async (e) => {
+      if (this.app.workspace.getActiveViewOfType(DayPlannerBaseView) !== this)
+        return;
       if (isTypingContext(e))
         return;
-      const activeView = this.app.workspace.getActiveViewOfType(DayPlannerBaseView);
-      if (activeView !== this) {
-        return;
-      }
       const syncKey = e.key === "F5" || (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "r";
       if (syncKey) {
         e.preventDefault();
@@ -12437,8 +12438,6 @@ ${e.calendarName ?? ""}`.toLowerCase();
   render() {
     try {
       const contentOnly = !!this.contentOnlyRender;
-      if (!contentOnly)
-        document.querySelectorAll(".dp-sugg-container").forEach((el) => el.remove());
       const scrollPositions = /* @__PURE__ */ new Map();
       const counts = /* @__PURE__ */ new Map();
       const isTabSwitch = !!this.isTabSwitch;
@@ -16068,6 +16067,8 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
     this.filtersDirty = false;
     this.filterPanelEl = null;
     this.filterDismissCleanup = null;
+    this.staleWhileHidden = false;
+    this.unloaded = false;
     this.filterEditingId = null;
     this.plugin = plugin;
     this.app = plugin.app;
@@ -16178,9 +16179,17 @@ var DayPlannerCodeBlockRenderer = class extends import_obsidian6.MarkdownRenderC
       }
     });
     this.plugin.codeBlockRenderers.add(this);
-    this.refreshTasks();
+    const firstRender = () => {
+      if (!this.unloaded)
+        void this.refreshTasks();
+    };
+    if (typeof window.requestIdleCallback === "function")
+      window.requestIdleCallback(firstRender, { timeout: 150 });
+    else
+      window.setTimeout(firstRender, 0);
   }
   onunload() {
+    this.unloaded = true;
     this.plugin.codeBlockRenderers.delete(this);
     window.clearTimeout(this.filterRefreshTimer);
     this.detachFilterDismissListeners();
@@ -17167,7 +17176,17 @@ function gcalIdHider(isEnabled) {
     });
     return found;
   };
-  const cursorTouchesTag = (state) => state.selection.ranges.some((r) => TAG_PROBE_RE.test(state.doc.sliceString(state.doc.lineAt(r.from).from, state.doc.lineAt(r.to).to)));
+  const cursorTouchesTag = (state, viewport) => state.selection.ranges.some((r) => {
+    let from = state.doc.lineAt(r.from).from;
+    let to = state.doc.lineAt(r.to).to;
+    if (viewport) {
+      from = Math.max(from, viewport.from);
+      to = Math.min(to, viewport.to);
+      if (from > to)
+        return false;
+    }
+    return TAG_PROBE_RE.test(state.doc.sliceString(from, to));
+  });
   return import_view.ViewPlugin.fromClass(class {
     constructor(view) {
       this.decorations = import_view.Decoration.none;
@@ -17195,7 +17214,11 @@ function gcalIdHider(isEnabled) {
         this.build(u.view);
         return;
       }
-      if (this.stale && !u.view.composing || u.selectionSet && this.hasVisibleTag)
+      if (this.stale && !u.view.composing) {
+        this.build(u.view);
+        return;
+      }
+      if (u.selectionSet && this.hasVisibleTag && (cursorTouchesTag(u.startState, u.view.viewport) || cursorTouchesTag(u.state, u.view.viewport)))
         this.build(u.view);
     }
     build(view) {
@@ -17232,6 +17255,12 @@ var whenIdle = () => new Promise((resolve) => {
   else
     window.setTimeout(resolve, 1e3);
 });
+var onIdle = (fn, timeout) => {
+  if (typeof window.requestIdleCallback === "function")
+    window.requestIdleCallback(() => fn(), { timeout });
+  else
+    window.setTimeout(fn, 0);
+};
 var TYPING_IDLE_MS = 2e3;
 var DayPlannerPlugin = class extends import_obsidian7.Plugin {
   constructor() {
@@ -17247,6 +17276,7 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.scanPromise = null;
     this.viewRefreshTimer = null;
     this.viewRefreshFirstAt = 0;
+    this.viewRefreshPass = 0;
     this.lastEditorInputAt = 0;
     this.codeBlockRenderers = /* @__PURE__ */ new Set();
     this.notifiedReminders = /* @__PURE__ */ new Set();
@@ -17280,8 +17310,11 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
           return;
         }
         this.updateStatusBar();
-        this.refreshActiveViews(false, true);
-        this.codeBlockRenderers.forEach((r) => r.refreshContentOnly(true));
+        const targets = [
+          ...this.plannerViews().map((view) => () => this.refreshIfShown(view, () => view.refreshTasks(null, false, true))),
+          ...Array.from(this.codeBlockRenderers, (r) => () => this.refreshIfShown(r, () => r.refreshContentOnly(true)))
+        ];
+        void this.runRefreshPass(targets);
       };
       if (typeof window.requestIdleCallback === "function")
         window.requestIdleCallback(refresh, { timeout: 500 });
@@ -17289,6 +17322,34 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
         refresh();
     };
     this.viewRefreshTimer = window.setTimeout(run, delay);
+  }
+  async runRefreshPass(targets) {
+    const pass = ++this.viewRefreshPass;
+    for (let i = 0; i < targets.length; i++) {
+      if (i > 0)
+        await new Promise((resolve) => onIdle(resolve, 200));
+      if (pass !== this.viewRefreshPass)
+        return;
+      if (this.msUntilTypingIdle() > 0) {
+        this.requestViewRefresh();
+        return;
+      }
+      try {
+        await targets[i]();
+      } catch (err) {
+        console.error("Day Planner Pro: background refresh failed", err);
+      }
+    }
+  }
+  async refreshIfShown(target, refresh) {
+    if (!isElementShown(target.containerEl)) {
+      target.staleWhileHidden = true;
+      return;
+    }
+    await refresh();
+  }
+  plannerViews() {
+    return [VIEW_TYPES.COMBINED, VIEW_TYPES.DAILY].flatMap((viewType) => this.app.workspace.getLeavesOfType(viewType)).map((leaf) => leaf.view).filter((view) => view && typeof view.refreshTasks === "function");
   }
   msUntilTypingIdle() {
     return Math.max(0, this.lastEditorInputAt + TYPING_IDLE_MS - Date.now());
@@ -17458,16 +17519,23 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     this.registerEvent(this.app.workspace.on("editor-change", () => {
       this.lastEditorInputAt = Date.now();
     }));
+    let catchUpQueued = false;
     const catchUpHiddenViews = () => {
-      [VIEW_TYPES.COMBINED, VIEW_TYPES.DAILY].forEach((viewType) => {
-        this.app.workspace.getLeavesOfType(viewType).forEach((leaf) => {
-          const view = leaf.view;
-          if (view?.staleWhileHidden && isElementShown(view.containerEl)) {
-            view.staleWhileHidden = false;
-            view.refreshTasks(null, false, true);
-          }
+      if (catchUpQueued)
+        return;
+      catchUpQueued = true;
+      onIdle(() => {
+        catchUpQueued = false;
+        const shownAgain = (target) => target.staleWhileHidden && isElementShown(target.containerEl);
+        this.plannerViews().filter(shownAgain).forEach((view) => {
+          view.staleWhileHidden = false;
+          void view.refreshTasks(null, false, true);
         });
-      });
+        Array.from(this.codeBlockRenderers).filter(shownAgain).forEach((r) => {
+          r.staleWhileHidden = false;
+          void r.refreshContentOnly(true);
+        });
+      }, 300);
     };
     this.registerEvent(this.app.workspace.on("active-leaf-change", catchUpHiddenViews));
     this.registerEvent(this.app.workspace.on("layout-change", catchUpHiddenViews));
@@ -18037,18 +18105,11 @@ var DayPlannerPlugin = class extends import_obsidian7.Plugin {
     return promise;
   }
   refreshActiveViews(forceFetchGCal = false, skipIfUnchanged = false) {
-    const { workspace } = this.app;
-    [VIEW_TYPES.COMBINED, VIEW_TYPES.DAILY].forEach((viewType) => {
-      workspace.getLeavesOfType(viewType).forEach((leaf) => {
-        const view = leaf.view;
-        if (view && typeof view.refreshTasks === "function") {
-          if (skipIfUnchanged && !isElementShown(view.containerEl)) {
-            view.staleWhileHidden = true;
-            return;
-          }
-          view.refreshTasks(null, forceFetchGCal, skipIfUnchanged);
-        }
-      });
+    this.plannerViews().forEach((view) => {
+      if (skipIfUnchanged)
+        void this.refreshIfShown(view, () => view.refreshTasks(null, forceFetchGCal, true));
+      else
+        void view.refreshTasks(null, forceFetchGCal, false);
     });
   }
 };
