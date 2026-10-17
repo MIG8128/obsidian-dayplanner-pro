@@ -2690,23 +2690,23 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     }
 }
 
-/* Touch devices (Obsidian sets .is-mobile on <body>): no resize handles on idle cards. A long-press makes a card
+/* Touch devices (Obsidian sets .is-mobile on <body>; touchscreen laptops get .dp-touch-screen on the view): no resize handles on idle cards. A long-press makes a card
    touch-active (position & resize mode, see setTouchActive): its top / bottom bars appear, styled like the desktop
    bars, each with a 24px-tall touch target reaching into the card (the card clips anything outside it). */
-.is-mobile .dp-timeline-event:not(.is-touch-active) > .dp-resize-handle {
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event:not(.is-touch-active) > .dp-resize-handle {
     display: none;
 }
 /* A tablet with a trackpad or mouse attached: the desktop bars on hover, since a mouse cannot long-press */
 @media (any-pointer: fine) {
-    .is-mobile .dp-timeline-event:not(.is-touch-active):hover > .dp-resize-handle {
+    :is(.is-mobile, .dp-touch-screen) .dp-timeline-event:not(.is-touch-active):hover > .dp-resize-handle {
         display: block;
     }
 }
-.is-mobile .dp-timeline-event.is-touch-active {
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event.is-touch-active {
     touch-action: none; /* a finger on the active card drags it instead of scrolling the timeline */
 }
-.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle,
-.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle:hover {
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event.is-touch-active > .dp-resize-handle,
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event.is-touch-active > .dp-resize-handle:hover {
     width: 36px;
     height: 5px;
     border-radius: 3px;
@@ -2714,23 +2714,23 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     box-shadow: 0 0 0 1px var(--dp-glass-border), 0 1px 4px rgba(0, 0, 0, 0.25);
     animation: dp-touch-handle-in 0.16s ease-out;
 }
-.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle.top::after {
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event.is-touch-active > .dp-resize-handle.top::after {
     top: -3px;
     bottom: -16px;
     left: -24px;
     right: -24px;
 }
-.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle.bottom::after {
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event.is-touch-active > .dp-resize-handle.bottom::after {
     top: -16px;
     bottom: -3px;
     left: -24px;
     right: -24px;
 }
 /* Short cards: smaller targets, so the body between them can still be dragged */
-.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle.dp-small-handle.top::after {
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event.is-touch-active > .dp-resize-handle.dp-small-handle.top::after {
     bottom: -8px;
 }
-.is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle.dp-small-handle.bottom::after {
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event.is-touch-active > .dp-resize-handle.dp-small-handle.bottom::after {
     top: -8px;
 }
 @keyframes dp-touch-handle-in {
@@ -2738,18 +2738,18 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     to { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-    .is-mobile .dp-timeline-event.is-touch-active > .dp-resize-handle {
+    :is(.is-mobile, .dp-touch-screen) .dp-timeline-event.is-touch-active > .dp-resize-handle {
         animation: none;
     }
 }
 /* The checkbox and the open-note arrow stay tappable where the top bar's touch target reaches them */
-.is-mobile .dp-timeline-event .dp-custom-cb,
-.is-mobile .dp-timeline-event .dp-task-link-btn {
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event .dp-custom-cb,
+:is(.is-mobile, .dp-touch-screen) .dp-timeline-event .dp-task-link-btn {
     position: relative;
     z-index: 13;
 }
 /* Hold-to-drag: no iOS callout or text selection on a long-pressed card */
-.is-mobile .dp-container :is(.dp-timeline-event, .dp-kanban-card, .dp-drawer-card, .dp-grid-task-item, .dp-allday-item) {
+:is(.is-mobile .dp-container, .dp-container.dp-touch-screen) :is(.dp-timeline-event, .dp-kanban-card, .dp-drawer-card, .dp-grid-task-item, .dp-allday-item) {
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
@@ -10260,6 +10260,7 @@ async function deletePlannerItems(plugin, tasks, events = []) {
   });
 }
 var isTimedTask = (task) => !!(task.date && task.startTime && task.endTime);
+var hasTouchScreen = () => import_obsidian6.Platform.isMobile || navigator.maxTouchPoints > 0;
 function showTaskUndoNotice(app, task, previous) {
   const notice = new import_obsidian6.Notice("", 8e3);
   const messageEl = notice.noticeEl || notice.messageEl;
@@ -11399,6 +11400,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       return;
     card.setAttribute("draggable", "false");
     this.attachMousePenDrag(card, source);
+    this.registerTouchHoldDrag(card, source);
   }
   attachMousePenDrag(card, source) {
     card.addEventListener("pointerdown", (e) => {
@@ -11431,12 +11433,16 @@ ${e.calendarName ?? ""}`.toLowerCase();
     });
   }
   registerTouchHoldDrag(card, source) {
-    if (!import_obsidian6.Platform.isMobile || !(this instanceof DayPlannerBaseView) || this.useCompactLayout())
+    if (!hasTouchScreen() || !(this instanceof DayPlannerBaseView) || this.useCompactLayout())
       return;
     const HOLD_MS = 320;
     const SLOP = 8;
-    card.setAttribute("draggable", "false");
-    this.attachMousePenDrag(card, source);
+    if (import_obsidian6.Platform.isMobile) {
+      card.setAttribute("draggable", "false");
+      this.attachMousePenDrag(card, source);
+    } else if (card.getAttribute("draggable") === "true") {
+      card.addEventListener("pointerdown", (e) => card.setAttribute("draggable", String(e.pointerType !== "touch")), true);
+    }
     const refId = source.kind === "timeline" ? source.refId : null;
     let holdTimer = 0, pointerId = -1, lifted = false, armed = false;
     let startX = 0, startY = 0, lastX = 0, lastY = 0;
@@ -12165,6 +12171,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const container = this.contentEl;
     container.empty();
     const rootEl = container.createDiv({ cls: "dp-container" });
+    rootEl.toggleClass("dp-touch-screen", hasTouchScreen());
     this.renderRoot(rootEl);
     this.registerScrollIdleClass(rootEl);
     let emptyTap = null;
@@ -13019,6 +13026,8 @@ ${e.calendarName ?? ""}`.toLowerCase();
     }
     const handle = eventCard.createDiv({ cls: handleCls });
     handle.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "touch" && hasTouchScreen() && !eventCard.hasClass("is-touch-active"))
+        return;
       e.stopPropagation();
       e.preventDefault();
       handle.setPointerCapture(e.pointerId);
