@@ -961,10 +961,6 @@ var STYLES = `
     padding: 12px;
     transition: background-color 0.2s, border-color 0.2s;
 }
-.dp-kanban-column.drag-over {
-    background-color: var(--background-modifier-hover);
-    border: 2px dashed var(--interactive-accent);
-}
 .dp-kanban-col-header {
     flex-shrink: 0;
     font-weight: bold;
@@ -4547,10 +4543,25 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     font-variant-numeric: tabular-nums;
     color: var(--interactive-accent);
 }
-.dp-grid-cell.dp-drop-target {
-    outline: 2px dashed var(--interactive-accent);
-    outline-offset: -2px;
-    background-color: color-mix(in srgb, var(--interactive-accent) 10%, transparent);
+/* Drop targets in Month (day cells) and the Board (columns; pointer drag and native drag-over): the drawer's look, a
+   tint plus a dashed ring drawn on a layer ABOVE the cards, so cards filling the cell / column cannot hide it */
+.dp-grid-cell,
+.dp-kanban-column {
+    position: relative;
+}
+:is(.dp-grid-cell, .dp-kanban-column).dp-drop-target,
+.dp-kanban-column.drag-over {
+    background-color: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-primary));
+}
+:is(.dp-grid-cell, .dp-kanban-column).dp-drop-target::after,
+.dp-kanban-column.drag-over::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    border: 2px dashed var(--interactive-accent);
+    border-radius: inherit;
+    pointer-events: none;
 }
 /* Set on the dragging view's container (views.ts beginPointerDrag), never on body: toggling a body class that a
    universal selector keys off restyles every element in the app, the editor's included */
@@ -4694,12 +4705,6 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     display: inline-flex;
     width: 14px;
     height: 14px;
-}
-
-/* Board columns as drop targets for drawer cards (pointer drag), like the native drag-over look */
-.dp-kanban-column.dp-drop-target {
-    background-color: var(--background-modifier-hover);
-    border: 2px dashed var(--interactive-accent);
 }
 
 /* -------------------------------------------------------------
