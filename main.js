@@ -4609,40 +4609,6 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     }
 }
 
-/* Progressive disclosure: once a timeline card's content box drops under ~85px (a card ~105px wide), location,
-   description and the open-note arrow go; the title (led by its priority mark) wraps up to three bold lines.
-   Each card is its own size container, so overlapping (side-by-side) events collapse as well as narrow columns. */
-.dp-timeline-event {
-    container: dp-card / inline-size;
-}
-@container dp-card (max-width: 85px) {
-    .dp-event-meta,
-    .dp-event-main .dp-task-link-btn {
-        display: none !important;
-    }
-    .dp-event-main {
-        display: flex;
-        align-items: flex-start;
-        min-width: 0;
-    }
-    /* Up to three wrapped lines before the ellipsis (a single line hid most of a title in an 84px day column) */
-    .dp-event-title,
-    .dp-event-main .dp-task-text {
-        min-width: 0;
-        overflow: hidden;
-        white-space: normal;
-        word-break: break-word;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-        font-weight: var(--font-bold, 700);
-        line-height: 1.25;
-    }
-    .dp-event-main .dp-task-text {
-        flex: 1;
-    }
-}
-
 /* Done / cancelled tasks are locked (views.ts isLockedTask): no grab hand, a click still opens the editor */
 .dp-timeline-event.completed,
 .dp-timeline-event.cancelled {
