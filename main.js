@@ -4956,31 +4956,56 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     height: 13px;
 }
 
-/* Desktop / tablet header in one row: [date] [view tabs, centred in the free space] [actions]. Tight on room, the
-   tabs shrink and scroll sideways; on a narrow pane (both sidebars open on a laptop) they drop to a slim second row */
+/* Desktop / tablet header in one row: [date] [view tabs] [actions] on a three-column grid. Each side column is at
+   least as wide as the widest date pill / actions group this view has drawn (--dp-head-l / --dp-head-r, kept by
+   views.ts reserveHeaderSides), so the tabs never move or resize when the view changes the date text or the buttons.
+   Spare room is shared equally by both sides: on a wide pane the tabs (up to 640px) sit at the header's true centre.
+   Tight on room they shrink and scroll sideways; on a narrow pane (both sidebars open on a laptop) they drop to a slim
+   second row. The column gap scales with the planner width. */
 .dp-header-top.has-inline-tabs {
-    flex-wrap: nowrap;
+    display: grid;
+    grid-template-columns:
+        minmax(var(--dp-head-l, max-content), 1fr)
+        minmax(0, 640px)
+        minmax(var(--dp-head-r, max-content), 1fr);
+    column-gap: clamp(12px, 3cqw, 40px);
 }
 .dp-header-top.has-inline-tabs > .dp-nav-date,
 .dp-header-top.has-inline-tabs > .dp-header-actions {
-    flex-shrink: 0;
+    width: max-content; /* natural width: what reserveHeaderSides measures */
+}
+.dp-header-top.has-inline-tabs > .dp-nav-date {
+    justify-self: start;
 }
 .dp-header-top.has-inline-tabs > .dp-header-actions {
+    justify-self: end;
     margin-left: 0;
 }
-/* Fluid tabs: the bar grows with the pane up to 640px, then auto margins keep it centred; the column gap (scaled to
-   the planner width) keeps balanced air between it, the date and the actions */
-.dp-header-top.has-inline-tabs {
-    column-gap: clamp(12px, 3cqw, 40px);
-}
 .dp-header-top.has-inline-tabs > .dp-tabs {
-    flex: 1 1 auto;
-    width: auto;
+    width: 100%;
     min-width: 0;
-    max-width: 640px;
-    margin: 0 auto;
+    margin: 0;
     gap: 3px;
     padding: 3px 4px;
+}
+/* The zoom control opens leftward over the gap (and the tabs' end) instead of widening the actions: its layout width
+   stays 26px, so hovering it never shoves the tabs aside. Width and margin share one transition, their sum constant. */
+.dp-header-top.has-inline-tabs .dp-zoom-slider-floating {
+    position: relative;
+    z-index: 2;
+    margin-left: 0;
+}
+@media (hover: hover) {
+    .dp-header-top.has-inline-tabs .dp-zoom-slider-floating:hover {
+        margin-left: -159px; /* 26px - 185px */
+        background-color: var(--background-primary);
+        box-shadow: var(--dp-glass-shadow);
+    }
+}
+.dp-header-top.has-inline-tabs .dp-zoom-slider-floating:is(.is-open, :focus-within) {
+    margin-left: -159px;
+    background-color: var(--background-primary);
+    box-shadow: var(--dp-glass-shadow);
 }
 /* Equal shares of the bar (basis 0), never narrower than the label: on a tight pane the segments compress to their
    text and padding, and only past that does the bar scroll */
@@ -4992,6 +5017,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 }
 @container dp-planner (max-width: 900px) {
     .dp-header-top.has-inline-tabs {
+        display: flex;
         flex-wrap: wrap;
         row-gap: 6px;
     }
@@ -15273,6 +15299,7 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
     this.headerResizeObserver = null;
     this.moreSheetOpen = false;
     this.moreSheetKeysBound = false;
+    this.headerSideWidths = { left: 0, right: 0 };
     this.searchTimer = null;
     this.searchViewportBound = false;
     this.drawerCaptureDraft = "";
@@ -15562,8 +15589,28 @@ var DayPlannerCombinedView = class extends DayPlannerBaseView {
   }
   trackHeaderHeight(rootEl, header) {
     this.headerResizeObserver?.disconnect();
-    this.headerResizeObserver = new ResizeObserver(() => rootEl.style.setProperty("--dp-header-h", `${header.offsetHeight}px`));
+    this.headerResizeObserver = new ResizeObserver(() => {
+      rootEl.style.setProperty("--dp-header-h", `${header.offsetHeight}px`);
+      this.reserveHeaderSides(rootEl, header);
+    });
     this.headerResizeObserver.observe(header);
+    header.querySelectorAll(":scope > .dp-header-top.has-inline-tabs > :is(.dp-nav-date, .dp-header-actions)").forEach((el) => this.headerResizeObserver.observe(el));
+  }
+  reserveHeaderSides(rootEl, header) {
+    const row = header.querySelector(":scope > .dp-header-top.has-inline-tabs");
+    if (!row)
+      return;
+    const sides = this.headerSideWidths;
+    const left = Math.ceil(row.querySelector(":scope > .dp-nav-date")?.getBoundingClientRect().width ?? 0);
+    const right = Math.ceil(row.querySelector(":scope > .dp-header-actions")?.getBoundingClientRect().width ?? 0);
+    if (left > sides.left) {
+      sides.left = left;
+      rootEl.style.setProperty("--dp-head-l", `${left}px`);
+    }
+    if (right > sides.right) {
+      sides.right = right;
+      rootEl.style.setProperty("--dp-head-r", `${right}px`);
+    }
   }
   renderDrawerTaskCard(list, task, section) {
     const card = list.createDiv({ cls: `dp-drawer-card${task.priority === "highest" ? " is-mit" : task.priority === "high" ? " is-high" : ""}` });
