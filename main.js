@@ -11141,7 +11141,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
     let tapStart = null;
     const onDown = (e) => {
       tapStart = null;
-      if (!isOutside(e))
+      if (this.activePointerDrag || this.touchDragActive || !isOutside(e))
         return;
       if (e.pointerType === "touch")
         tapStart = { id: e.pointerId, x: e.clientX, y: e.clientY };
@@ -11677,6 +11677,35 @@ ${e.calendarName ?? ""}`.toLowerCase();
       void finish(false);
       this.dismissSelection();
     };
+    let otherTap = null;
+    const onOtherDown = (e) => {
+      if (e.pointerId === pointerId || e.pointerType !== "touch")
+        return;
+      const target2 = e.target;
+      const el = target2?.closest("select") ? null : target2?.closest('.dp-tab, .dp-day-pill, button, [role="button"], .clickable-icon');
+      otherTap = el && this.containerEl.contains(el) ? { id: e.pointerId, x: e.clientX, y: e.clientY, el } : null;
+    };
+    const onOtherUp = (e) => {
+      const tap = otherTap;
+      if (!tap || e.pointerId !== tap.id)
+        return;
+      otherTap = null;
+      if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 10 || !tap.el.isConnected)
+        return;
+      const dropNative = (ce) => {
+        if (ce.isTrusted && tap.el.contains(ce.target)) {
+          ce.stopPropagation();
+          ce.preventDefault();
+        }
+      };
+      doc.addEventListener("click", dropNative, true);
+      win.setTimeout(() => doc.removeEventListener("click", dropNative, true), 500);
+      tap.el.click();
+    };
+    const holdStill = (e) => {
+      if (e.cancelable)
+        e.preventDefault();
+    };
     const teardown = () => {
       this.activePointerDrag = null;
       doc.removeEventListener("pointermove", onMove);
@@ -11684,6 +11713,9 @@ ${e.calendarName ?? ""}`.toLowerCase();
       doc.removeEventListener("pointercancel", onCancel);
       doc.removeEventListener("keydown", onKey, true);
       doc.removeEventListener("scroll", schedule, true);
+      doc.removeEventListener("pointerdown", onOtherDown, true);
+      doc.removeEventListener("pointerup", onOtherUp, true);
+      doc.removeEventListener("touchmove", holdStill, true);
       if (frame)
         win.cancelAnimationFrame(frame);
       win.cancelAnimationFrame(scrollFrame);
@@ -11767,6 +11799,11 @@ ${e.calendarName ?? ""}`.toLowerCase();
     doc.addEventListener("pointercancel", onCancel);
     doc.addEventListener("keydown", onKey, true);
     doc.addEventListener("scroll", schedule, true);
+    if (ev.pointerType === "touch") {
+      doc.addEventListener("pointerdown", onOtherDown, true);
+      doc.addEventListener("pointerup", onOtherUp, true);
+      doc.addEventListener("touchmove", holdStill, { capture: true, passive: false });
+    }
     this.activePointerDrag = {
       refresh: () => {
         scroller = null;
