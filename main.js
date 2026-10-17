@@ -7285,8 +7285,8 @@ var en = {
   "shortcuts.group.panels": "Panels",
   "shortcuts.group.drawerCard": "Side drawer card (Tab to focus)",
   "shortcuts.group.dragging": "While dragging (desktop)",
-  "shortcuts.next": "Next day / period (compact Board: next column)",
-  "shortcuts.prev": "Previous day / period (compact Board: previous column)",
+  "shortcuts.next": "Next day / period (Board: switch Kanban/Priority; compact Board: next column)",
+  "shortcuts.prev": "Previous day / period (Board: switch Kanban/Priority; compact Board: previous column)",
   "shortcuts.today": "Jump to today",
   "shortcuts.daily": "Daily timeline",
   "shortcuts.nDay": "N-day view",
@@ -7599,8 +7599,8 @@ var ko = {
   "shortcuts.group.panels": "\uD328\uB110",
   "shortcuts.group.drawerCard": "\uC0AC\uC774\uB4DC \uC11C\uB78D \uCE74\uB4DC (Tab\uC73C\uB85C \uD3EC\uCEE4\uC2A4)",
   "shortcuts.group.dragging": "\uB4DC\uB798\uADF8 \uC911 (\uB370\uC2A4\uD06C\uD1B1)",
-  "shortcuts.next": "\uB2E4\uC74C \uB0A0 / \uAE30\uAC04 (\uCEF4\uD329\uD2B8 \uBCF4\uB4DC: \uB2E4\uC74C \uC5F4)",
-  "shortcuts.prev": "\uC774\uC804 \uB0A0 / \uAE30\uAC04 (\uCEF4\uD329\uD2B8 \uBCF4\uB4DC: \uC774\uC804 \uC5F4)",
+  "shortcuts.next": "\uB2E4\uC74C \uB0A0 / \uAE30\uAC04 (\uBCF4\uB4DC: \uCE78\uBC18/\uC6B0\uC120\uC21C\uC704 \uC804\uD658; \uCEF4\uD329\uD2B8 \uBCF4\uB4DC: \uB2E4\uC74C \uC5F4)",
+  "shortcuts.prev": "\uC774\uC804 \uB0A0 / \uAE30\uAC04 (\uBCF4\uB4DC: \uCE78\uBC18/\uC6B0\uC120\uC21C\uC704 \uC804\uD658; \uCEF4\uD329\uD2B8 \uBCF4\uB4DC: \uC774\uC804 \uC5F4)",
   "shortcuts.today": "\uC624\uB298\uB85C \uC774\uB3D9",
   "shortcuts.daily": "\uC77C\uAC04 \uD0C0\uC784\uB77C\uC778",
   "shortcuts.nDay": "N\uC77C \uBCF4\uAE30",
@@ -7913,8 +7913,8 @@ var ja = {
   "shortcuts.group.panels": "\u30D1\u30CD\u30EB",
   "shortcuts.group.drawerCard": "\u30B5\u30A4\u30C9\u30C9\u30ED\u30EF\u30FC\u306E\u30AB\u30FC\u30C9\uFF08Tab \u3067\u30D5\u30A9\u30FC\u30AB\u30B9\uFF09",
   "shortcuts.group.dragging": "\u30C9\u30E9\u30C3\u30B0\u4E2D\uFF08\u30C7\u30B9\u30AF\u30C8\u30C3\u30D7\uFF09",
-  "shortcuts.next": "\u6B21\u306E\u65E5 / \u671F\u9593\uFF08\u30B3\u30F3\u30D1\u30AF\u30C8\u30DC\u30FC\u30C9\uFF1A\u6B21\u306E\u5217\uFF09",
-  "shortcuts.prev": "\u524D\u306E\u65E5 / \u671F\u9593\uFF08\u30B3\u30F3\u30D1\u30AF\u30C8\u30DC\u30FC\u30C9\uFF1A\u524D\u306E\u5217\uFF09",
+  "shortcuts.next": "\u6B21\u306E\u65E5 / \u671F\u9593\uFF08\u30DC\u30FC\u30C9\uFF1A\u30AB\u30F3\u30D0\u30F3/\u512A\u5148\u5EA6\u5207\u66FF\u3001\u30B3\u30F3\u30D1\u30AF\u30C8\u30DC\u30FC\u30C9\uFF1A\u6B21\u306E\u5217\uFF09",
+  "shortcuts.prev": "\u524D\u306E\u65E5 / \u671F\u9593\uFF08\u30DC\u30FC\u30C9\uFF1A\u30AB\u30F3\u30D0\u30F3/\u512A\u5148\u5EA6\u5207\u66FF\u3001\u30B3\u30F3\u30D1\u30AF\u30C8\u30DC\u30FC\u30C9\uFF1A\u524D\u306E\u5217\uFF09",
   "shortcuts.today": "\u4ECA\u65E5\u3078\u79FB\u52D5",
   "shortcuts.daily": "\u65E5\u30BF\u30A4\u30E0\u30E9\u30A4\u30F3",
   "shortcuts.nDay": "N\u65E5\u30D3\u30E5\u30FC",
@@ -8227,8 +8227,8 @@ var zh = {
   "shortcuts.group.panels": "\u9762\u677F",
   "shortcuts.group.drawerCard": "\u4FA7\u8FB9\u62BD\u5C49\u5361\u7247\uFF08\u6309 Tab \u805A\u7126\uFF09",
   "shortcuts.group.dragging": "\u62D6\u52A8\u65F6\uFF08\u684C\u9762\u7AEF\uFF09",
-  "shortcuts.next": "\u4E0B\u4E00\u5929 / \u65F6\u6BB5\uFF08\u7D27\u51D1\u770B\u677F\uFF1A\u4E0B\u4E00\u5217\uFF09",
-  "shortcuts.prev": "\u4E0A\u4E00\u5929 / \u65F6\u6BB5\uFF08\u7D27\u51D1\u770B\u677F\uFF1A\u4E0A\u4E00\u5217\uFF09",
+  "shortcuts.next": "\u4E0B\u4E00\u5929 / \u65F6\u6BB5\uFF08\u770B\u677F\uFF1A\u5207\u6362\u770B\u677F/\u4F18\u5148\u7EA7\uFF1B\u7D27\u51D1\u770B\u677F\uFF1A\u4E0B\u4E00\u5217\uFF09",
+  "shortcuts.prev": "\u4E0A\u4E00\u5929 / \u65F6\u6BB5\uFF08\u770B\u677F\uFF1A\u5207\u6362\u770B\u677F/\u4F18\u5148\u7EA7\uFF1B\u7D27\u51D1\u770B\u677F\uFF1A\u4E0A\u4E00\u5217\uFF09",
   "shortcuts.today": "\u8DF3\u5230\u4ECA\u5929",
   "shortcuts.daily": "\u65E5\u65F6\u95F4\u7EBF",
   "shortcuts.nDay": "N \u5929\u89C6\u56FE",
@@ -12291,6 +12291,9 @@ ${e.calendarName ?? ""}`.toLowerCase();
       } else if ((key === "j" || key === "k") && this.useCompactLayout() && this.getViewTabType() === "board") {
         e.preventDefault();
         this.navigateBoardTab(key === "j" ? 1 : -1);
+      } else if ((key === "j" || key === "k") && this.getViewTabType() === "board") {
+        e.preventDefault();
+        this.switchBoardMode(this.kanbanViewMode === "kanban" ? "priority" : "kanban");
       } else if (key === "j" || key === "k") {
         e.preventDefault();
         await this.navigateWithSlide(key === "j" ? 1 : -1);
@@ -14448,20 +14451,20 @@ ${e.calendarName ?? ""}`.toLowerCase();
     });
     priorityToggle.createSpan({ cls: "dp-btn-icon", text: "\u{1F3AF}" });
     priorityToggle.createSpan({ cls: "dp-btn-label", text: ` ${t("common.priority")}` });
-    const switchMode = (mode) => {
-      if (this.kanbanViewMode === mode)
-        return;
-      triggerHaptic("selection");
-      this.kanbanViewMode = mode;
-      this.navDirection = mode === "priority" ? "next" : "prev";
-      try {
-        this.render();
-      } finally {
-        this.navDirection = null;
-      }
-    };
-    kanbanToggle.addEventListener("click", () => switchMode("kanban"));
-    priorityToggle.addEventListener("click", () => switchMode("priority"));
+    kanbanToggle.addEventListener("click", () => this.switchBoardMode("kanban"));
+    priorityToggle.addEventListener("click", () => this.switchBoardMode("priority"));
+  }
+  switchBoardMode(mode) {
+    if (this.kanbanViewMode === mode)
+      return;
+    triggerHaptic("selection");
+    this.kanbanViewMode = mode;
+    this.navDirection = mode === "priority" ? "next" : "prev";
+    try {
+      this.render();
+    } finally {
+      this.navDirection = null;
+    }
   }
   pickPhoneBoardColumns(board, columns, countOf) {
     if (!this.useCompactLayout())
