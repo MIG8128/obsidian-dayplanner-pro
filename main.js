@@ -11621,10 +11621,9 @@ ${e.calendarName ?? ""}`.toLowerCase();
     const placeGhost = () => {
       const drawerRect = this.containerEl.querySelector(".dp-side-drawer.is-open")?.getBoundingClientRect();
       const overDrawer = !!drawerRect && x >= drawerRect.left && x <= drawerRect.right && y >= drawerRect.top && y <= drawerRect.bottom;
-      const box = target?.kind === "drawer" ? target.el.getBoundingClientRect() : overDrawer ? drawerRect : this.containerEl.getBoundingClientRect();
-      ghost.style.maxWidth = `${Math.max(48, Math.min(220, box.width - 8))}px`;
-      const gx = Math.max(box.left + 4, Math.min(x + 14, box.right - ghost.offsetWidth - 4));
-      const gy = Math.max(box.top + 4, Math.min(y + 14, box.bottom - ghost.offsetHeight - 4));
+      ghost.style.maxWidth = `${overDrawer ? Math.max(48, Math.min(220, drawerRect.width - 8)) : 220}px`;
+      const gx = Math.max(4, Math.min(x - ghost.offsetWidth / 2, win.innerWidth - ghost.offsetWidth - 4));
+      const gy = Math.max(4, Math.min(y - ghost.offsetHeight / 2, win.innerHeight - ghost.offsetHeight - 4));
       ghost.style.transform = `translate(${gx}px, ${gy}px)`;
     };
     const schedule = () => {
