@@ -1193,6 +1193,11 @@ var STYLES = `
     color: var(--text-normal);
     border-left: 4px solid #4285f4;
 }
+/* Event location and description (Daily / N-day / Weekly): secondary lines, greyed and a touch smaller than the title */
+.dp-gcal-event .dp-event-meta {
+    color: var(--text-muted);
+    font-size: 0.92em;
+}
 .dp-sync-indicator {
     font-size: 0.8em;
     color: var(--text-muted);
