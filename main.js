@@ -83,12 +83,13 @@ var GCAL_MAX_CACHED_RANGES = 24;
 // styles.ts
 var STYLES = `
 /* Glass design tokens (declared on theme roots so modals/menus outside .dp-container inherit them) */
-/* Glass material (Apple "regular material"): neutral translucent fill + blur(16px) saturate(180%) + hairline border
+/* Glass material (Apple "regular material"): translucent fill + blur(16px) saturate(180%) + hairline border
    + a 1px top highlight + two-layer shadow (contact + ambient). Blur only goes on chrome that content actually passes
-   behind (modals, menus, suggestions, the sticky all-day row); never on repeated cards or grid cells. Dark uses a
-   graphite fill rather than a white tint: a white wash over a dark, dimmed workspace loses text contrast. */
+   behind (modals, menus, suggestions, the sticky all-day row); never on repeated cards or grid cells. The fill is the
+   theme's own background (--background-primary) made translucent, so the glass takes on any community theme
+   (Catppuccin Mocha, Nord, ...) instead of a fixed white / graphite; dark keeps it dark rather than a white wash. */
 .theme-dark {
-    --dp-glass-bg: rgba(30, 30, 34, 0.62);
+    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 62%, transparent);
     --dp-glass-border: rgba(255, 255, 255, 0.10);
     --dp-glass-highlight: rgba(255, 255, 255, 0.07);
     --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 6px 20px rgba(0, 0, 0, 0.22);
@@ -100,25 +101,25 @@ var STYLES = `
     --dp-card-border: rgba(255, 255, 255, 0.16);
 }
 .theme-light {
-    --dp-glass-bg: rgba(255, 255, 255, 0.68);
+    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 68%, transparent);
     --dp-glass-border: rgba(0, 0, 0, 0.08);
     --dp-glass-highlight: rgba(255, 255, 255, 0.7);
     --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.08);
     --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.08), 0 24px 60px rgba(0, 0, 0, 0.18);
     --dp-glass-blur: blur(16px) saturate(180%);
     --dp-segment-track: rgba(0, 0, 0, 0.05);
-    --dp-segment-active: rgba(255, 255, 255, 0.95);
+    --dp-segment-active: color-mix(in srgb, var(--background-primary) 95%, transparent);
     --dp-card-bg: rgba(0, 0, 0, 0.03);
     --dp-card-border: rgba(0, 0, 0, 0.14);
 }
 /* No blur support, or the OS asks for less transparency: same surfaces, near-opaque fills, no blur */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .theme-dark { --dp-glass-bg: rgba(30, 30, 34, 0.94); }
-    .theme-light { --dp-glass-bg: rgba(255, 255, 255, 0.95); }
+    .theme-dark { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 94%, transparent); }
+    .theme-light { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 95%, transparent); }
 }
 @media (prefers-reduced-transparency: reduce) {
-    .theme-dark { --dp-glass-bg: rgba(30, 30, 34, 0.97); --dp-glass-blur: none; }
-    .theme-light { --dp-glass-bg: rgba(255, 255, 255, 0.97); --dp-glass-blur: none; }
+    .theme-dark { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
+    .theme-light { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
 }
 
 .dp-container {
