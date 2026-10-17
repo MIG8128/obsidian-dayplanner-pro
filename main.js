@@ -3790,7 +3790,8 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 .dp-drawer-card.is-dragging,
-.dp-grid-task-item.is-dragging {
+.dp-grid-task-item.is-dragging,
+.dp-kanban-card.is-dragging {
     opacity: 0.4 !important; /* monthly items carry an inline opacity for done / cancelled */
 }
 /* Unschedule drop zone: the Undated section (the whole drawer only if that section is missing) */
@@ -11445,8 +11446,6 @@ ${e.calendarName ?? ""}`.toLowerCase();
     if (import_obsidian6.Platform.isMobile) {
       card.setAttribute("draggable", "false");
       this.attachMousePenDrag(card, source);
-    } else if (card.getAttribute("draggable") === "true") {
-      card.addEventListener("pointerdown", (e) => card.setAttribute("draggable", String(e.pointerType !== "touch")), true);
     }
     const refId = source.kind === "timeline" ? source.refId : null;
     let holdTimer = 0, pointerId = -1, lifted = false, armed = false;
@@ -11558,7 +11557,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         this.stackDragPreview(group);
       card.addClass("is-dragging");
     }
-    const ghostText = this.selectedTaskIds.size > 1 ? `${this.selectedTaskIds.size} items` : this.activeDragItems[0]?.title ?? "";
+    const ghostText = this.selectedTaskIds.size > 1 ? `${this.selectedTaskIds.size} items` : this.activeDragItems[0]?.title ?? (source.kind === "task" ? cleanTaskTextForDisplay(source.task.text) : "");
     const ghost = doc.body.createDiv({ cls: "dp-drag-ghost", text: ghostText });
     this.activeDragClickOffsetMin = grabOffset;
     const dragHost = this.containerEl;
@@ -11573,7 +11572,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       const hit = doc.elementFromPoint(x, y);
       if (!hit || !this.containerEl.contains(hit))
         return null;
-      const miniDay = source.kind === "task" ? hit.closest(".dp-side-drawer.is-open .dp-mc-day[data-date]") : null;
+      const miniDay = hit.closest(".dp-side-drawer.is-open .dp-mc-day[data-date]");
       if (miniDay)
         return { kind: "day", el: miniDay, dateStr: miniDay.dataset.date };
       const drawer = hit.closest(".dp-side-drawer.is-open");
@@ -11581,7 +11580,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
         const focusSection = hit.closest('.dp-drawer-focus-slot[data-section="focus"]');
         if (focusSection)
           return { kind: "focus", el: focusSection, dateStr: "" };
-        const todaySection = source.kind === "task" && source.origin !== "today" ? hit.closest('.dp-drawer-section[data-section="today"]') : null;
+        const todaySection = source.kind === "timeline" || source.origin !== "today" ? hit.closest('.dp-drawer-section[data-section="today"]') : null;
         if (todaySection)
           return { kind: "day", el: todaySection, dateStr: window.moment().format("YYYY-MM-DD") };
         if (!canUnschedule)
@@ -11591,7 +11590,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
           return null;
         return { kind: "drawer", el: undatedSection ?? drawer, dateStr: "" };
       }
-      const boardCol = source.kind === "task" ? hit.closest(".dp-kanban-column[data-col-id]") : null;
+      const boardCol = source.kind === "task" || !source.isGCal ? hit.closest(".dp-kanban-column[data-col-id]") : null;
       if (boardCol)
         return { kind: "board", el: boardCol, dateStr: boardCol.dataset.colId };
       const dayHeader = source.kind === "task" ? hit.closest(".dp-grid-header[data-date]") : null;
@@ -11600,7 +11599,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
       const col = hit.closest(".dp-weekly-day-col, .dp-timeline-events");
       if (col)
         return { kind: "timeline", el: col, dateStr: col.dataset.date || this.currentDate.format("YYYY-MM-DD") };
-      const cell = source.kind === "task" ? hit.closest(".dp-grid-cell[data-date]") : null;
+      const cell = hit.closest(".dp-grid-cell[data-date]");
       return cell ? { kind: "day", el: cell, dateStr: cell.dataset.date } : null;
     };
     const update = () => {
@@ -11735,8 +11734,19 @@ ${e.calendarName ?? ""}`.toLowerCase();
         return;
       }
       if (landing.kind === "board") {
-        if (group.length > 0)
-          await this.dropTasksOnBoardColumn(group, landing.dateStr, landing.el.dataset.colTitle);
+        const boardTasks = source.kind === "task" ? group : draggedTasks;
+        if (source.kind === "timeline") {
+          if (this.selectedTaskIds.size > draggedTasks.length) {
+            new import_obsidian6.Notice("Google Calendar events stay on the calendar; only tasks move to the Board column.");
+          }
+          this.selectedTaskIds.clear();
+        }
+        if (boardTasks.length > 0)
+          await this.dropTasksOnBoardColumn(boardTasks, landing.dateStr, landing.el.dataset.colTitle);
+        return;
+      }
+      if (source.kind === "timeline" && landing.kind === "day") {
+        await this.moveSelectedTimelineItems(source.refId, source.isGCal, null, landing.dateStr);
         return;
       }
       const minutes = landing.kind === "timeline" ? this.snapTimelineMinutes(y - landing.el.getBoundingClientRect().top - grabOffset, source.kind === "timeline") : null;
@@ -13173,7 +13183,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
           primaryDateStr = primaryItem.date;
       }
     }
-    const deltaMin = snappedMinutes - primaryItemStartMin;
+    const deltaMin = snappedMinutes === null ? 0 : snappedMinutes - primaryItemStartMin;
     const moment = window.moment;
     const primaryMom = moment(primaryDateStr, "YYYY-MM-DD");
     const targetMom = moment(targetDateStr, "YYYY-MM-DD");
@@ -14675,7 +14685,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
             modal.open();
           });
           card.addEventListener("dragstart", (e) => this.startBoardCardDrag(e, task, card));
-          this.registerTouchHoldDrag(card, { kind: "task", task, origin: "board" });
+          this.registerMouseDrag(card, { kind: "task", task, origin: "board" });
           card.addEventListener("dragend", () => this.endBoardCardDrag(card));
         });
       }
@@ -14876,7 +14886,7 @@ ${e.calendarName ?? ""}`.toLowerCase();
             modal.open();
           });
           card.addEventListener("dragstart", (e) => this.startBoardCardDrag(e, task, card));
-          this.registerTouchHoldDrag(card, { kind: "task", task, origin: "board" });
+          this.registerMouseDrag(card, { kind: "task", task, origin: "board" });
           card.addEventListener("dragend", () => this.endBoardCardDrag(card));
         });
       }
