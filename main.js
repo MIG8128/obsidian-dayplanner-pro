@@ -3417,6 +3417,33 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     visibility: visible;
     transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), visibility 0s;
 }
+/* Narrow planner (\u2264 900px, e.g. a 10:9 screen, a split pane, a portrait tablet): docking would squeeze the views, so
+   the drawer floats over the planner as a popover card instead and the panes keep their full width. A click outside
+   it closes it (views.ts onOpen); drags still drop into it. Keep 900 in sync with DRAWER_OVERLAY_MAX_W in views.ts. */
+@container dp-planner (max-width: 900px) {
+    .dp-container.dp-drawer-open > .day-planner-view-pane {
+        margin-right: 0;
+    }
+    .dp-container.dp-drawer-open > .dp-current-task-bar {
+        margin-right: 12px;
+    }
+    .dp-container.dp-drawer-open > .dp-selection-bar {
+        left: 50%;
+    }
+    .dp-side-drawer {
+        top: calc(var(--dp-header-h, 0px) + 8px);
+        right: 8px;
+        bottom: 8px;
+        width: min(var(--dp-drawer-w), calc(100% - 16px));
+        border: 1px solid var(--background-modifier-border);
+        border-radius: var(--radius-l, 12px);
+        box-shadow: var(--dp-glass-shadow-lg);
+        transform: translateX(calc(100% + 16px));
+    }
+    .dp-side-drawer.is-open {
+        transform: none;
+    }
+}
 /* Drawer tier 1: mini calendar. Its month bar is the drawer header (label folds the grid, \u2039 Today \u203A, close) */
 .dp-drawer-header {
     display: flex;
@@ -10292,6 +10319,7 @@ async function deletePlannerItems(plugin, tasks, events = []) {
   });
 }
 var isTimedTask = (task) => !!(task.date && task.startTime && task.endTime);
+var DRAWER_OVERLAY_MAX_W = 900;
 var hasTouchScreen = () => import_obsidian6.Platform.isMobile || navigator.maxTouchPoints > 0;
 function showTaskUndoNotice(app, task, previous) {
   const notice = new import_obsidian6.Notice("", 8e3);
@@ -12273,6 +12301,15 @@ ${e.calendarName ?? ""}`.toLowerCase();
       emptyTap = null;
       if (start && start.id === e.pointerId && Math.hypot(e.clientX - start.x, e.clientY - start.y) <= 10)
         this.dismissSelection();
+    });
+    rootEl.addEventListener("click", (e) => {
+      if (!(this instanceof DayPlannerCombinedView) || !this.isSideDrawerOpen())
+        return;
+      if (rootEl.getBoundingClientRect().width > DRAWER_OVERLAY_MAX_W)
+        return;
+      if (e.target.closest(".dp-side-drawer, .dp-drawer-toggle, .dp-resize-handle, .modal-container"))
+        return;
+      void this.toggleSideDrawer(false);
     });
     rootEl.addEventListener("click", (e) => {
       if (!(e.ctrlKey || e.metaKey) || e.button !== 0)
