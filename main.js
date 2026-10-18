@@ -5059,6 +5059,10 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     width: 26px;
     padding: 0;
 }
+/* Phones: wider < Today > capsules for an easier thumb tap */
+.dp-phone-shell .dp-header-tools > button {
+    width: 40px;
+}
 .dp-compact-shell .dp-header-actions > button.dp-add-btn {
     width: 30px;
     min-width: 30px;
