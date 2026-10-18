@@ -1,6 +1,6 @@
 # Dayloom User Guide
 
-> The user guide for **Dayloom** (version 4.4.3), a time-blocking planner for Obsidian.
+> The user guide for **Dayloom** (version 4.4.7), a time-blocking planner for Obsidian.
 > It walks through everything step by step, so you can follow along even if you are new to Obsidian.
 > Available languages: [English](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [简体中文](README.zh.md)
 
@@ -13,8 +13,9 @@
 3. [Settings, tab by tab](#3-settings-tab-by-tab)
 4. [The side drawer & timeboxing workflow](#4-the-side-drawer--timeboxing-workflow)
 5. [Views, search, selection & shortcuts](#5-views-search-selection--shortcuts)
-6. [Task syntax & inline code blocks](#6-task-syntax--inline-code-blocks)
-7. [FAQ & troubleshooting](#7-faq--troubleshooting)
+6. [Touch: phones, tablets & touchscreen laptops](#6-touch-phones-tablets--touchscreen-laptops)
+7. [Task syntax & inline code blocks](#7-task-syntax--inline-code-blocks)
+8. [FAQ & troubleshooting](#8-faq--troubleshooting)
 
 ---
 
@@ -30,25 +31,28 @@ There is no separate database: everything lives in your own Markdown files.
 
 | Feature | Description |
 | --- | --- |
-| 6 views | Daily timeline, N-day (2–14 days), Weekly, Monthly, Board (Kanban / Priority), List |
-| Timeboxing | Drag tasks onto time slots; resize blocks with their top / bottom handles |
-| Side drawer | Mini calendar, 🎯 Today's Focus, Overdue and Undated tasks, daily Stats; drag tasks straight onto the planner (desktop, every view) |
-| Search | `/` turns the header into a search bar; Enter lists every match |
-| Multi-select & delete | Ctrl/Cmd+click or box selection in every view; Delete removes tasks and events (with Undo for tasks) |
-| Google Calendar | Read, edit and create events; sync timed tasks to a calendar |
+| 6 views | Day timeline, N-day (2–14 days), Week, Month, Board (Kanban / Priority), List |
+| Timeboxing | Drag tasks onto time slots; resize blocks with their top / bottom bars |
+| Drag anywhere | Carry a task across days, weeks and even views (Day → Month or Board) without letting go |
+| Side drawer | Mini calendar, Today's Tasks with 🎯 Focus, Overdue and Undated tasks, daily Stats (desktop and tablets) |
+| Search | `/` or `Ctrl/Cmd+F` turns the header into a search bar; `Enter` lists every match |
+| Multi-select & delete | Ctrl/Cmd+click or box selection; `Delete` removes tasks and events, with one Undo |
+| Google Calendar | Read, edit, create and delete events; sync timed tasks to a calendar |
 | Reminders | In-app or system notifications at the start time (or 5–30 min before), with a chime |
+| Touch | Long-press drag on phones, tablets and touchscreen laptops; swipes to change dates on phones |
 | Inline views | Embed the planner in any note with a ```` ```dayloom ```` code block, with filters |
 | Tasks compatible | Uses the Obsidian Tasks emoji syntax (📅 ⏳ 🛫 ✅ ❌ 🔁 🔺⏫🔼🔽⏬) |
-| Languages | English, 한국어, 日本語, 简体中文 (follows Obsidian, or pick one in Settings) |
+| Themes & languages | Follows your Obsidian theme; English, 한국어, 日本語, 简体中文 |
 
 ### Two windows: Dayloom and Dayloom Compact
 
 | Name | How to open | What it is |
 | --- | --- | --- |
-| **Dayloom** | Ribbon calendar icon *Open Dayloom*, or the command `Open Dayloom` | The main tab. On desktop it has the side drawer |
-| **Dayloom Compact** | Ribbon clock-calendar icon *Open Dayloom Compact*, or the command `Open Dayloom Compact` | A small view docked in the right sidebar, with 5 bottom tabs (Daily · 2-Day · Monthly · Board · List) |
+| **Dayloom** | Ribbon calendar icon *Open Dayloom*, or the command `Open Dayloom` | The main tab, with every view and (on desktop and tablets) the side drawer |
+| **Dayloom Compact** | Ribbon clock-calendar icon *Open Dayloom Compact*, or the command `Open Dayloom Compact` | A small planner docked in the right sidebar. It uses the phone layout: a bottom bar with **Daily · List · Monthly · Board** and **More** |
 
-> 💡 Open the **command palette** with `Ctrl+P` (`Cmd+P` on Mac) and type "Dayloom" to see every Dayloom command.
+> 💡 Open the **command palette** with `Ctrl+P` (`Cmd+P` on Mac) and type "Dayloom" to see every command:
+> `Open Dayloom`, `Open Dayloom Compact`, `Go to Today`, `Toggle Side Drawer`, `Insert Inline View (dayloom block)`, `Show Keyboard Shortcuts` and `What's New (Release Notes)`.
 
 ### Basic concepts
 
@@ -57,6 +61,10 @@ There is no separate database: everything lives in your own Markdown files.
   A task written in a daily note such as `2026-10-07.md` belongs to that day without any date of its own.
 - **The time** is written as `⏰09:00-10:30`. Timed tasks become blocks on the timeline; untimed ones sit in the "All Day" row.
 - **The status** is the character in the checkbox: `[ ]` to do, `[/]` in progress, `[x]` done, `[-]` cancelled.
+
+### What's New
+
+After an update, a **What's New** window lists the changes once. Open it again any time with the command `What's New (Release Notes)` or with **View Release Notes** in Settings → General.
 
 ---
 
@@ -74,7 +82,7 @@ Dayloom has **no "Sign in with Google" button.** Instead, you enter three values
 | `Google Client Secret` | That app's secret key | `GOCSPX-xxxx` |
 | `Google Refresh Token` | A long-lived token used to get new access tokens | `1//0xxxx` |
 
-With these, Dayloom fetches short-lived access tokens from Google (`https://oauth2.googleapis.com/token`) by itself.
+With these, Dayloom fetches short-lived access tokens from Google (`https://oauth2.googleapis.com/token`) by itself and keeps them in memory only.
 So your job is to **① create an OAuth app in Google Cloud and ② obtain a refresh token once.**
 Taken slowly, it takes 20–30 minutes.
 
@@ -153,6 +161,8 @@ Dayloom's settings describe these as an *OAuth Web Client*, so create a **Web ap
    - `Google Client Secret`
    - `Google Refresh Token`
 
+   Stray spaces or line breaks from copying are removed automatically.
+
 ### Step 7: Add the calendars you want to see
 
 1. On the same tab, click **+ Add Calendar** next to **Google Calendars 📅**.
@@ -177,16 +187,16 @@ Pick a calendar under **Task Sync Google Calendar** and every task with a date a
 ### Step 9: Test the connection
 
 1. Open Dayloom.
-2. Click the **sync** button (↻) in the header toolbar, or press `F5`.
+2. Click the **sync** button (↻) in the header, or press `F5`. (On phones: **More → Sync**.)
 3. A "✅ …" notice and your events on the timeline mean it works.
-4. If it fails, an OAuth error notice appears → see the [FAQ](#7-faq--troubleshooting).
+4. If it fails, an OAuth error notice appears → see the [FAQ](#8-faq--troubleshooting).
 
 ### How sync works
 
 | Action | Result |
 | --- | --- |
 | **Sync button / `F5` / `Ctrl+R` (`Cmd+R`)** | Re-reads your vault's tasks, refetches the events in view, and pushes timed tasks to the sync calendar (from 60 days ago to 365 days ahead) |
-| **Right-click the sync button** | Opens *Synchronize Tasks with Google Calendar 📤*: pick a target calendar and click **Sync Tasks Now** |
+| **Right-click (or long-press) the sync button** | Opens *Synchronize Tasks with Google Calendar 📤*: pick a target calendar and click **Sync Tasks Now** |
 | **Editing a task inside Dayloom** (drag, edit dialog, checkbox…) | That one task is updated in Google Calendar right away |
 | **Editing the text in a note** | **Not** sent automatically; the next Sync sends it |
 | Removing a task's date / time | If Dayloom created its event, the event is deleted from the calendar |
@@ -194,7 +204,8 @@ Pick a calendar under **Task Sync Google Calendar** and every task with a date a
 
 - Synced task lines end with `[gcalId:: …]`. That links the task to its event, so don't delete it.
 - Sync only deletes **events Dayloom created.** Your meetings, invitations and other events are never removed by sync.
-- Dragging or editing a Google event block on the timeline saves the change to Google Calendar immediately.
+- Dragging, resizing or editing a Google event on the timeline saves the change to Google Calendar immediately, with an **Undo** button.
+- Events you have seen are cached, so the planner shows them instantly on the next start and refreshes them in the background.
 
 ---
 
@@ -211,7 +222,8 @@ Settings are split into five tabs:
 | Setting | What it does | Suggested value |
 | --- | --- | --- |
 | **Language / 언어** | Dayloom's display language: `Auto (Obsidian Default)`, `English`, `한국어`, `日本語`, `简体中文`. Applies immediately | `Auto` |
-| **Default Task File Path** | The note new tasks are saved to (quick capture, double-click on the timeline, the `+` button). Created if missing | `Day Planner.md` (default) or `Inbox/Tasks.md` |
+| **Release notes** | **View Release Notes** opens What's New for the installed version | — |
+| **Default Task File Path** | The note new tasks are saved to (quick capture, double-click on the timeline). Created if missing | `Day Planner.md` (default) or `Inbox/Tasks.md` |
 | **Excluded Files & Folders** | Folders / notes not scanned for tasks (see below) | Templates, Archive |
 | **Daily Notes Folder Path** | Where your daily notes live | e.g. `Daily` |
 | **Daily Notes File Format** | Daily note file-name format | `YYYY-MM-DD` |
@@ -219,6 +231,8 @@ Settings are split into five tabs:
 | **Weekly Notes Folder Path** | Where your weekly notes live | e.g. `Weekly` |
 | **Weekly Notes File Format** | Weekly note file-name format | `gggg-[W]ww` (e.g. `2026-W41`) |
 | **Weekly Note Template** | Template for new weekly notes | e.g. `Templates/Weekly.md` |
+
+Templates can use `{{date}}`, `{{title}}` and `{{time}}`.
 
 #### 🔎 Path suggestions
 
@@ -251,13 +265,13 @@ Rules are managed as **chips**, like Obsidian's search filters.
 
 | Setting | What it does | Suggested value |
 | --- | --- | --- |
-| **N-day view length** | Days shown in the N-day view (2–14) | `4` |
+| **N-day view length** | Days shown in the N-day view (2–14). You can also change it right in the view's tab | `4` |
 | **Separate Dayloom and Dayloom Compact Heights** | Zoom the main and Compact views independently | Off |
 | **Timeline Hour Height (…)** | Height of one hour in pixels (30–180) | `60` (default); `90`+ for busy days |
 | **Timeline Start Hour / End Hour** | The hours shown on the timeline. Also the **working hours used by Fit It In** | e.g. `7` – `23` |
 | **Default Task Duration (minutes)** | Length an untimed task gets when dropped on the timeline (1–1440). Also used when several tasks are dropped back to back | `60` (default); `25` for Pomodoro |
 
-> 💡 You can also change the hour height with the **zoom** control (🔍+) in the header toolbar.
+> 💡 You can also change the hour height with the **zoom** control (🔍) in the header (on phones: **More → Timeline zoom**).
 
 ### ☁️ Google Calendar
 
@@ -287,7 +301,8 @@ Rules are managed as **chips**, like Obsidian's search filters.
 | Setting | What it does | Suggested value |
 | --- | --- | --- |
 | **Hide Inline Metadata Fields** | Hides bracketed fields such as `[gcalId:: …]` in the planner, Reading view and Live Preview (your files keep them) | On |
-| **Show shortcut button in header** | Shows the shortcuts (?) button in the header toolbar. `?` and `h` work either way | Your choice |
+| **Show shortcut button in header** | Shows the shortcuts (?) button in the header. `?` and `h` work either way | Your choice |
+| **Swipe to change dates** | Phones: swipe left / right inside the planner to change the date (or Board column). Off leaves every swipe to Obsidian and shows ‹ › buttons in the header | On |
 | **Haptic Feedback** | Short vibrations on mobile when completing, switching tabs or dragging | On |
 
 ---
@@ -299,21 +314,21 @@ Dayloom's side drawer collects the tasks you haven't scheduled yet, shows today'
 
 ### Opening and closing the drawer
 
-- Available in the **Dayloom** view on **desktop**, in every tab (Daily, N-day, Weekly, Monthly, Board, List).
-  It is not shown in Dayloom Compact or on phones and tablets.
-- Open / close: press `s`, click the **panel icon** at the end of the header toolbar, or run `Toggle Side Drawer`.
-- The drawer's own close button sits at the top right.
+- Available in the **Dayloom** view on **desktop and tablets**, in every tab (Day, N-day, Week, Month, Board, List).
+- Open / close: press `s`, click the **panel icon** at the end of the header, or run `Toggle Side Drawer`. The drawer's own close button sits at its top right.
+- **Narrow panes** (900px or less, e.g. a split screen or a portrait tablet): the drawer floats over the planner as a card instead of squeezing the views. A click outside closes it; you can still drop tasks into it.
+- **Phones and Dayloom Compact** have no side drawer: the same Tasks and Stats panels are in the bottom bar's **More** sheet (see [section 6](#6-touch-phones-tablets--touchscreen-laptops)).
 
 ### Layout
 
 ```
-┌ October 2026 ▾        ‹ Today ›    ⨯ ┐  ← mini calendar (hidden in Board view)
+┌ October 2026 ▾        ‹ Today ›    ⨯ ┐  ← mini calendar (on the Board: today's date)
 │ Su  Mo  Tu  We  Th  Fr  Sa            │
 │ ...  6 weeks, dots under busy days ...│
 │ [ ☑ Tasks 8 │ ◔ Stats 62% ]           │  ← mode switcher
 ├───────────────────────────────────────┤
 │ [+ Add an undated task (🔺 ⏫ …)]      │  ← quick capture
-│ ▾ 🎯 Today's Focus      (1)            │
+│ ▾ 📅 Today's Tasks      (4)            │  ← 🎯 Focus cards on top
 │ ▾ 🚨 Overdue Tasks      (3) [Roll to today] │
 │ ▾ 📂 Undated Tasks      (5)            │
 └───────────────────────────────────────┘
@@ -327,15 +342,16 @@ Dayloom's side drawer collects the tasks you haven't scheduled yet, shows today'
 - **‹ ›** or the **mouse wheel** page through months; **Today** jumps back.
 - **Click the month name** to fold the calendar to a single week (‹ › then step by week). Dayloom remembers this.
 - **Drop a task on a day** to move it to that date (its time is kept).
-- In **Board** view the mini calendar is hidden, so the task lists get the full height.
+- In **Board** view the mini calendar is replaced by today's date, so the task lists get the full height.
 
 ### Tasks mode
 
-- **🎯 Today's Focus**: today's open **🔺 Highest** tasks, in the order of the day. **Drop any task here** to make it a focus task: it moves to today and becomes 🔺 Highest (an undated task gets `📅` today as its due date).
+- **📅 Today's Tasks**: everything dated today, timed or not, open tasks first, then by time. Done tasks stay (greyed) so a checkbox can be undone in place; ↗ opens a task in its note. **Drop a task here** to move it to today.
+- **🎯 Focus** (at the top of Today's Tasks): today's open **🔺 Highest** tasks as highlighted cards with a FOCUS pill. **Drop any task on the Focus slot** to make it a focus task: it moves to today and becomes 🔺 Highest (an undated task gets `📅` today as its due date). With no focus task, the slot appears while you drag.
 - **🚨 Overdue Tasks**: unfinished tasks dated before today, sorted by priority → oldest date → title, with the missed date in red.
 - **📂 Undated Tasks**: tasks without a date (the same list as the Board's *Undated* column), sorted by priority → title.
 - Empty sections **fold automatically** and unfold when tasks arrive; click a header to fold it yourself.
-- **🔺 Highest** cards have a red edge and glow; **⏫ High** cards an amber one.
+- **🔺 Highest** cards have a red edge and glow, **⏫ High** cards an amber one; done cards turn grey.
 
 ### Stats mode
 
@@ -364,15 +380,17 @@ Pick from 🔺 Highest, ⏫ High, 🔼 Medium, ○ Normal, 🔽 Low and ⏬ Lowe
 
 | Drop on | Result |
 | --- | --- |
-| **A time slot** (Daily / N-day / Weekly) | That date and time (15-minute steps). Length: **Default Task Duration** |
-| **A day in the Monthly view or the mini calendar** | Date only (time kept; untimed tasks stay all-day) |
-| **A day header in Weekly / N-day** | **Fit It In**: the first free slot of that day |
+| **A time slot** (Day / N-day / Week) | That date and time (15-minute steps). Length: **Default Task Duration** |
+| **A day in Month or the mini calendar** | Date only (time kept; untimed tasks stay all-day) |
+| **A day header in Week / N-day** | **Fit It In**: the first free slot of that day |
 | **A Board column** | Kanban: that column's date (or done); Priority: that priority |
-| **🎯 Today's Focus** | Today + 🔺 Highest |
+| **📅 Today's Tasks** | Today (time kept) |
+| **🎯 Focus** | Today + 🔺 Highest |
 | **The rest of the drawer** | Unscheduled (see ⑤) |
 
-- While dragging, a dashed preview with the time (e.g. `14:30`) shows where it will land.
+- While dragging, a dashed preview with the time (e.g. `14:30`) shows where a timed drop will land; anywhere else a small chip with the task's title follows your pointer, and the day, column or drawer section under it lights up.
 - Press `j` / `k` while dragging to move to the next / previous day (or week) without dropping.
+- Press a view key (`d`, `x`, `w`, `m`, `b`, `l`) while dragging to carry the task into another view: for example, pick a block up in Day, press `m`, and drop it on a day in Month.
 - Press `Esc` while dragging to cancel.
 - Every change shows a notice with an **Undo** button.
 
@@ -387,7 +405,7 @@ Pick from 🔺 Highest, ⏫ High, 🔼 Medium, ○ Normal, 🔽 Low and ⏬ Lowe
 
 ### ⑤ Unschedule
 
-Drag a timeline block, an all-day task, a Monthly task or a Board card **into the drawer** and its date and time are removed: it goes back to Undated.
+Drag a timeline block, an all-day task, a Month task or a Board card **into the drawer** and its date and time are removed: it goes back to Undated.
 
 - The time, `⏳` scheduled date and `📅` due date are all removed.
 - **Tasks inside a daily note** keep their date, because it comes from the file name (a notice explains this).
@@ -396,7 +414,7 @@ Drag a timeline block, an all-day task, a Monthly task or a Board card **into th
 
 ### ⑥ Triage overdue tasks
 
-- Hover an Overdue card for its buttons:
+- Hover an Overdue card for its buttons (on touch screens they are always shown):
   `Today` · `Tmrw` (tomorrow) · `+1 wk` · `Undate` (remove the date). Only the date changes; the time is kept.
 - **Roll to today** in the section header moves every overdue task to today, with a single Undo.
 
@@ -416,10 +434,10 @@ Fit It In treats **Timeline Start / End Hour** as working hours, only looks afte
 
 1. Open Dayloom in the morning and press `s` for the drawer.
 2. Clear **Overdue** with `Roll to today`, `Tmrw` or `Undate`.
-3. Pick today's most important task or two and drop them on **🎯 Today's Focus**.
+3. Pick today's most important task or two and drop them on **🎯 Focus**.
 4. Throw anything that comes to mind into **quick capture**.
 5. Select today's tasks in **Undated** and drop them on the timeline: they line up back to back.
-6. Drag a block's bottom handle to fit the time you expect it to take, and check **Stats** at the end of the day.
+6. Drag a block's bottom bar to fit the time you expect it to take, and check **Stats** at the end of the day.
 
 ---
 
@@ -429,43 +447,45 @@ Fit It In treats **Timeline Start / End Hour** as working hours, only looks afte
 
 | View (tab) | Key | Highlights |
 | --- | --- | --- |
-| **Daily Timeline** | `d` | One day. Current-time line, progress bar for the task in progress, pinned "All Day" row |
-| **N-day View** | `x` | Several days side by side (2–14, change it right in the tab). 2 days on phones |
-| **Weekly View** | `w` | One week. **Click a day header** to open that day in Daily |
-| **Monthly Calendar** | `m` | A month grid. **Click a date** (or a cell's empty space) to open that day in Daily; **click a week number** to open that week in Weekly |
-| **Board** | `b` | Kanban. *Kanban* mode (Undated · Overdue · Today · Tomorrow · Future · Completed) and *Priority* mode (Highest 🔺 … Lowest ⏬) |
-| **List View** | `l` | The month as an agenda. While searching, every match from every date |
+| **Day** | `d` | One day. Current-time line, a live "in progress" bar for the running task, pinned "All Day" row |
+| **N-day** | `x` | Several days side by side (2–14; pick the number right in the tab) |
+| **Week** | `w` | One week. **Click a day header** to open that day in Day view |
+| **Month** | `m` | A month grid. **Click a date** (or a cell's empty space) to open that day in Day view; **click a week number** to open that week in Week view |
+| **Board** | `b` | *Kanban* mode (Undated · Overdue · Today · Tomorrow · Future · Completed) and *Priority* mode (Highest 🔺 … Lowest ⏬, open tasks). `j` / `k` switch between the two |
+| **List** | `l` | The month as an agenda. While searching, every match from every date |
 
-- The **date pill** at the left of the header (📅 2026-10-07 (Wk 41)) opens the matching daily or weekly note.
-- On the **Board**, dragging cards to another column changes their date (Today → today, Tomorrow → tomorrow, Future → 3 days ahead, Overdue → yesterday, Undated → no date, Completed → done). In *Priority* mode it changes their priority. Select several cards to move them together.
+- On the **Board**, dragging cards to another column changes their date (Today → today, Tomorrow → tomorrow, Future → 3 days ahead, Overdue → yesterday, Undated → no date, Completed → done; out of Completed reopens them). In *Priority* mode it changes their priority. Select several cards to move them together. Fold a column with the chevron at its left.
+- Switching views is instant: each view is kept in memory and only redrawn when its data changes.
 
-### Header (desktop)
+### Header (desktop and tablets)
 
 ```
-[📅 date]                [‹ Today ›]  [🔍 ↻ 🔍+ ? ▣]  [+]
+[📅 date]     [ Day | 4-day | Week | Month | Board | List ]     [‹ Today ›] [🔍 🔎 ↻ ? ▣] [+]
 ```
 
 | Control | What it does |
 | --- | --- |
-| 📅 Date pill | Open the daily / weekly note |
-| ‹ Today › | Previous / today / next |
-| 🔍 Search | Search tasks and events (`/`) |
+| 📅 Date pill | Open the daily / weekly note (in Day view, the week number opens the weekly note) |
+| View tabs | Switch views. They keep their place as you switch, and move to their own row in narrow panes |
+| ‹ Today › | Previous / today / next (not on the Board, which always shows today) |
+| 🔍 Zoom | Timeline zoom (hour height), in Day / N-day / Week: hover or click to show the slider |
+| 🔎 Search | Search tasks and events (`/`) |
 | ↻ Sync | Sync with Google Calendar (right-click: task sync dialog). Shown when Google Calendar is enabled |
-| 🔍+ Zoom | Timeline zoom (hour height). Daily / N-day / Weekly |
 | ? | Keyboard shortcuts (can be hidden in Settings) |
 | ▣ Panel | Open / close the side drawer |
 | **+** | New task, or a new Google event (*Add Local Task* / *Add Appointment*) |
 
-In Board view, a **Kanban / Priority** switch joins the header.
+On the Board, a **Kanban / Priority** switch joins the header.
+The header, menus and dialogs take their colours from your Obsidian theme.
 
 ### 🔍 Search
 
-1. Press `/` or click the search icon. The header row steps aside and a search field spans its full width.
-2. Type: the current view filters as you type. Search looks at task text (including `#tags`), note paths, and event titles, locations and calendar names. Every word must match. A counter shows the matches.
-3. Press **Enter** to switch to **List View**, which then shows **every match on every date.**
+1. Press `/` or `Ctrl/Cmd+F`, or click the search icon. The header row steps aside and a search field spans its full width.
+2. Type: the current view filters as you type. Search looks at task text (including `#tags`), note paths, and event titles, locations, descriptions and calendar names. Every word must match. A counter shows the matches.
+3. Press **Enter** to switch to **List**, which then shows **every match on every date.**
 4. Press **Esc** or click **×** to close search and show everything again.
 
-Undated tasks have no place in List View; while searching, matching undated tasks appear in the drawer's Undated section.
+Undated tasks have no place in List; while searching, matching undated tasks appear in the drawer's Undated section.
 
 ### ✅ Selection and deleting
 
@@ -478,54 +498,44 @@ Undated tasks have no place in List View; while searching, matching undated task
 | Move several together | Drag any selected item: the others follow (timeline blocks keep their spacing; drawer cards line up back to back) |
 | Delete | Press `Delete` or `Backspace`, or click **Delete** on the "N selected" bar |
 
-- A selection belongs to **one area**: the timeline / Board / Monthly grid, the all-day row, or the drawer. Selecting in another area starts a new selection.
-- **Deleting** asks for confirmation first (`Enter` deletes, `Esc` cancels). Task lines are removed from their notes, with **one Undo** for the whole batch. Selected Google Calendar events are deleted from the calendar, as are the calendar copies of deleted synced tasks.
-- ⚠️ **Deleted Google Calendar events cannot be restored** with Undo.
-- The task edit dialog also has a **Delete** button.
+- A selection belongs to **one area**: the timeline / Board / Month grid, the all-day row, or the drawer. Selecting in another area starts a new selection.
+- **Deleting** asks for confirmation first (`Enter` deletes, `Esc` cancels). Task lines are removed from their notes and selected Google events from their calendars, as are the calendar copies of deleted synced tasks. **One Undo** brings back the whole batch, events included.
+- The task and event edit dialogs also have a **Delete** button (`Delete` / `Backspace` there asks too, never while you type).
 
 ### ⌨️ Keyboard shortcuts
 
-> Shortcuts work once the Dayloom view is active (click it once). They never fire while you type in a text field, quick capture, search or the editor. `Ctrl`/`Cmd`/`Alt` combinations are left to Obsidian, except `Ctrl/Cmd+R`.
+> Shortcuts work once the Dayloom view is active (click it once). They never fire while you type in a text field, quick capture, search or the editor. `Ctrl`/`Cmd`/`Alt` combinations are left to Obsidian, except `Ctrl/Cmd+R` and `Ctrl/Cmd+F`.
 
 | Key | Action |
 | --- | --- |
-| `j` | Next day / period (phones and compact Board: next column) |
-| `k` | Previous day / period (phones and compact Board: previous column) |
+| `j` / `k` | Next / previous day or period (desktop Board: switch Kanban / Priority; compact Board: next / previous column) |
 | `t` | Go to today |
-| `d` / `x` / `w` / `m` / `b` / `l` | Daily / N-day / Weekly / Monthly / Board / List |
-| `s` | Open / close the side drawer (desktop) |
-| `/` | Search tasks and events |
+| `d` / `x` / `w` / `m` / `b` / `l` | Day / N-day / Week / Month / Board / List |
+| `s` | Open / close the side drawer |
+| `/` or `Ctrl/Cmd+F` | Search tasks and events |
 | `?` or `h` | Show / hide the shortcut list |
-| `F5` or `Ctrl+R` (`Cmd+R`) | Sync (re-read tasks + refresh Google Calendar) |
+| `F5` or `Ctrl/Cmd+R` | Sync (re-read tasks + refresh Google Calendar) |
 | `Delete` / `Backspace` | Delete the selected items |
-| `Esc` | Cancel a drag or box selection → clear the selection → close the search |
+| `Esc` | Cancel a drag, resize or box selection → clear the selection → close the search |
 | `Ctrl/Cmd + Click` | Add / remove an item from the selection |
 | `Ctrl/Cmd + Drag` | Box-select, adding to the selection |
 | `Enter` / `f` / `p` (drawer card focused) | Edit / Fit It In / set priority |
-| `j` / `k` (while dragging) | Page dates without dropping |
+| `j` / `k` / view keys (while dragging) | Page dates or switch views without dropping |
 
 ### 🖱️ Mouse
 
 | To | Do this |
 | --- | --- |
 | Edit a task | Click its block → edit dialog |
-| Change its status | Click the checkbox (`[ ]` → `[/]` → `[x]` → `[-]`) |
+| Complete it | Click the checkbox (done ↔ to do; any other status becomes done). Other statuses are set in the edit dialog |
 | See it in its note | Click the block's `↗` |
 | Move it | Drag the block to another time or day (15-minute steps) |
-| Resize it | Drag the **top / bottom edge handle** |
-| Create a task | **Double-click** an empty time slot → type a title → `Enter` (`Esc` cancels). Saved to the Default Task File |
+| Resize it | Drag the **top / bottom bar** of the block |
+| Create a task | **Double-click** an empty time slot → type a title (priority emojis work) → `Enter` (`Esc` cancels). Saved to the Default Task File |
 | Create from a menu | **Right-click** an empty slot → `Add Task at HH:MM` / `Add Appointment at HH:MM` (Google) |
 
 > 🔒 **Done (`[x]`) and cancelled (`[-]`) tasks are locked**: they can't be dragged or resized (you can still click to edit them).
-> When a block is narrow, location and description are hidden and the title gets up to 3 lines.
-
-### 📱 On phones
-
-- Bottom tabs: **Daily · 2-Day View · Monthly · Board · List**
-- A week strip of date pills under the header in Daily and 2-Day View: tap a day to show it.
-- **Swipe** left / right to change the date (on the Board, the column).
-- **Long-press** a block (about 0.35 s) to pick it up and move it.
-- The calendar icon in the header jumps to today.
+> Google event blocks show their location and description in grey below the title.
 
 ### Status bar
 
@@ -533,7 +543,46 @@ Obsidian's status bar shows the task in progress (`📅 [Progress: …] … rema
 
 ---
 
-## 6. Task syntax & inline code blocks
+## 6. Touch: phones, tablets & touchscreen laptops
+
+### Long-press to drag (every touch screen)
+
+On a touch screen a quick swipe always scrolls, so picking a task up takes a **long-press** (about 0.3 s):
+
+1. **Hold** a block or card until it lifts (with a short vibration where supported).
+2. **Drag** it with the same finger: everything a mouse drag can do works, including the drawer, Month days and Board columns.
+3. Lift your finger to drop it. Lifting without moving puts it back.
+
+On timeline blocks, the long-press also shows the block's **resize bars**: drag the top or bottom bar to change its times. While the bars show, a finger on the block's body drags it straight away. Tap elsewhere to end this mode.
+
+While one finger holds a task, you can **tap a view tab, a date arrow or a day pill with another finger** to carry the task to another view or date.
+
+### Touchscreen laptops
+
+Dayloom tells your finger from your mouse or touchpad:
+
+- **Finger**: long-press to drag, as above; swipes scroll.
+- **Mouse / touchpad / pen**: instant drag, as on any desktop. The resize bars show when the mouse hovers over a block.
+
+### Phones (and Dayloom Compact)
+
+- **Bottom bar**: **Daily · List · Monthly · Board**, plus **More**. (Week and N-day open in the main Dayloom view.)
+- **Header**: the date, **‹ Today ›** and **+**.
+- **Date strip**: in Daily and List, the week's days as pills under the header: tap one to show that day.
+- **Swipe** left / right to change the date (on the Board, the column). Swipes starting at the very edge of the screen still open Obsidian's sidebars. Turn swipes off in Settings → View/Display.
+- **List** shows one day as an agenda: times on the left, colour rails, each item's length and note, and a summary of tasks done.
+- **Monthly** cells show as many items as fit, then `+N`. Tap a day to open it in Daily.
+- **Board** shows one column at a time; pick it in the strip above the board, or swipe.
+- **More** opens a sheet with **Search**, **Sync** (long-press for the task sync options), the **timeline zoom** slider, and the drawer's **Tasks** and **Stats** panels (Today's Tasks, Focus, Overdue, Undated). Tap outside, drag it down or press `Esc` to close it.
+- **Double-tap** an empty time slot to create a task.
+
+### Tablets
+
+Tablets get the full desktop layout, side drawer included, with long-press dragging. A trackpad, mouse or Apple Pencil drags instantly, as on desktop.
+
+---
+
+## 7. Task syntax & inline code blocks
 
 ### Basic format
 
@@ -549,8 +598,8 @@ Obsidian's status bar shows the task in progress (`📅 [Progress: …] … rema
 | Scheduled | `⏳ YYYY-MM-DD` | The date Dayloom writes when it schedules a task |
 | Due | `📅 YYYY-MM-DD` | Used when there is no scheduled date |
 | Start | `🛫 YYYY-MM-DD` | Obsidian Tasks compatibility |
-| Done / cancelled | `✅ YYYY-MM-DD` / `❌ YYYY-MM-DD` | Added automatically when you check a task |
-| Recurrence | `🔁 every day`, … | Checking it off creates the next occurrence on a new line |
+| Done / cancelled | `✅ YYYY-MM-DD` / `❌ YYYY-MM-DD` | Added automatically when you complete or cancel a task |
+| Recurrence | `🔁 every day`, … | Completing it creates the next occurrence on a new line |
 | Google link | `[gcalId:: …]` | Added by sync (don't write it yourself) |
 
 #### Other ways to write a time
@@ -595,9 +644,9 @@ height: 500px
 | `collapsedColumns` | `[undated, completed]` | Board columns to keep folded |
 | `filters` | (written by the filter panel) | See filters below |
 
-- Inside a **daily note**, a block with no `type` / `date` shows that day.
-- Inside a **weekly note**, it shows that week.
-- In a block, day headers, dates and week numbers open the daily / weekly **notes** (a block has no tabs to switch to), and List View keeps its own agenda search box.
+- Inside a **daily note**, a block with no `type` / `date` shows that day; inside a **weekly note**, that week. The block then also only lists that day's / week's items.
+- In a block, day headers, dates and week numbers open the daily / weekly **notes** (a block has no tabs to switch to), and List keeps its own agenda search box.
+- Blocks drag with the mouse like the main view; they redraw only when they are on screen.
 
 ### 🔍 Inline block filters
 
@@ -624,7 +673,7 @@ Click **🔍 Filter** in the block's header to open a one-line filter bar. The b
 | Text | `contains` / `starts with` … + text |
 | Item type | Task / Google Calendar appointment |
 
-When the panel closes, the filters are saved in the code block as YAML (you can edit it by hand):
+Filters apply live as you edit them. When the panel closes, they are saved in the code block as YAML (you can edit it by hand):
 
 ```yaml
 filters:
@@ -645,7 +694,7 @@ filters:
 
 ---
 
-## 7. FAQ & troubleshooting
+## 8. FAQ & troubleshooting
 
 ### Q1. My tasks don't show up in the planner.
 
@@ -656,74 +705,86 @@ filters:
 - Is a search active? Press `Esc` to clear it.
 - Press `F5` to re-read the vault.
 
-### Q2. I get "invalid_grant" when Dayloom refreshes the Google token.
+### Q2. The planner doesn't update while I type in a note.
+
+That's intentional: to keep typing smooth, Dayloom re-reads a note and redraws the planner about **2 seconds after you stop typing**.
+
+### Q3. I get "invalid_grant" when Dayloom refreshes the Google token.
 
 The refresh token has expired or been revoked.
 
 - While the consent screen is in **Testing**, tokens **expire after 7 days.** Publish the app **to production**, then get a new token as in [Step 5](#step-5-get-a-refresh-token-oauth-20-playground).
 - Changing your Google password, or removing the app's access in your Google account's security settings, also revokes it.
 
-### Q3. I get "unauthorized_client" or "invalid_client".
+### Q4. I get "unauthorized_client" or "invalid_client".
 
-- Make sure the client ID and secret have no spaces or line breaks around them.
+- Make sure the client ID and secret were copied completely.
 - The refresh token must come from **the same client ID and secret.** A token issued in the Playground without *Use your own OAuth credentials* won't work.
 
-### Q4. Google events are missing, or only some appear.
+### Q5. Google events are missing, or only some appear.
 
 - Check that the calendar is listed and **ticked** under Settings → ☁️ Google Calendar → **Google Calendars 📅**.
 - Events in the **Task Sync Google Calendar** are not shown as events (to avoid duplicates). Don't pick a calendar with meetings as the sync calendar.
 - Click the sync button or press `F5` to refresh.
 
-### Q5. I changed a time in my note, but Google Calendar didn't update.
+### Q6. I changed a time in my note, but Google Calendar didn't update.
 
 Edits typed directly into notes aren't sent automatically. Press **sync** (or `F5`) once.
 Tasks dragged or edited inside Dayloom are sent right away.
 
-### Q6. `[gcalId:: …]` at the end of my tasks looks messy.
+### Q7. `[gcalId:: …]` at the end of my tasks looks messy.
 
 It links the task to its event, so don't delete it. Turn on Settings → 📱 View/Display → **Hide Inline Metadata Fields** to hide it on screen only.
 
-### Q7. I don't get reminders.
+### Q8. I don't get reminders.
 
 - Check that Settings → 🔔 Notifications → **Reminder Type** isn't `Off`.
 - The task needs **today's date** and a **start time (`⏰HH:mm`)**.
 - System notifications need your OS's permission. If you denied it, allow Obsidian's notifications in your OS settings (without permission, Dayloom shows in-app notices instead).
 - If you hear no chime, try the 🔊 test button. On phones, you may need to tap the screen once before sound is allowed.
 
-### Q8. Shortcuts don't work.
+### Q9. Shortcuts don't work.
 
 - Click the Dayloom view once to make it the **active view.**
 - While the cursor is in a text field (quick capture, search, the editor…), keys type text instead. That's intentional.
 - Pressing `?` again closes the open shortcut list.
 
-### Q9. A block won't move.
+### Q10. A block won't move.
 
 - Done and cancelled tasks are locked. Uncheck one to move it again.
-- On phones, **long-press** a block to pick it up.
+- On touch screens, **long-press** a block to pick it up (a quick swipe scrolls instead).
 
-### Q10. I can't see the side drawer.
+### Q11. I can't see the side drawer.
 
-The drawer is available in the **Dayloom view on desktop**, in every tab. Press `s`, or click the panel icon in the header toolbar.
-It is not shown in Dayloom Compact or on phones and tablets.
+The drawer is part of the **Dayloom view on desktop and tablets**. Press `s`, or click the panel icon in the header.
+On phones and in Dayloom Compact, its panels are under **More** in the bottom bar.
 
-### Q11. A task from quick capture doesn't appear under Undated.
+### Q12. The drawer covers part of my timeline.
+
+On a planner 900px wide or less, the drawer floats over the views instead of squeezing them. Click outside it (or press `s`) to close it, or widen the window to dock it beside the views.
+
+### Q13. A task from quick capture doesn't appear under Undated.
 
 If the **Default Task File Path** note has a date in its name (e.g. `2026-10-07.md`), its tasks get that date. Use a name without a date (e.g. `Inbox.md`).
 
-### Q12. I moved or deleted something by mistake. Can I undo it?
+### Q14. I moved or deleted something by mistake. Can I undo it?
 
-Yes. Every change shows an **Undo** button in a notice at the top right for a few seconds. Moving or deleting several tasks at once is undone in one step.
-The exception: **deleted Google Calendar events** can't be restored from Dayloom.
+Yes. Every change shows an **Undo** button in a notice for a few seconds. Moving or deleting several items at once is undone in one step, and deleted Google Calendar events come back as the same event.
 
-### Q13. Where are my Google credentials stored? Is it safe?
+### Q15. Where are my Google credentials stored? Is it safe?
 
-The client secret and refresh token are stored in your vault at `.obsidian/plugins/obsidian-day-planner-pro/data.json`.
-If you publish your vault (e.g. a public GitHub repository), make sure to exclude that file.
+The client secret and refresh token are stored in your vault at `.obsidian/plugins/obsidian-day-planner-pro/data.json`. Short-lived access tokens are never written to disk. A cache of fetched events is kept next to it in `gcal-cache.json`.
+If you publish your vault (e.g. a public GitHub repository), make sure to exclude those files.
 To cut off access, remove the app under your Google account → Security → **Third-party apps & services**.
 
-### Q14. Dayloom shows the wrong language.
+### Q16. I sync my vault with Syncthing (or similar). Anything to know?
 
-Settings → General → **Language / 언어**. `Auto` follows Obsidian's own language setting; pick a language to override it.
+Dayloom only rewrites `data.json` when a setting actually changes, adopts a `data.json` that arrived from another device, and ignores `.sync-conflict-` copies of notes. If `data.json` is unreadable (caught mid-sync), Dayloom runs on defaults without overwriting it.
+
+### Q17. Dayloom shows the wrong language, or the wrong colours.
+
+- Language: Settings → General → **Language / 언어**. `Auto` follows Obsidian's own language setting; pick a language to override it.
+- Colours follow your Obsidian theme. Task blocks use **Local Task Color**, and each Google calendar its own colour (Settings → ☁️ Google Calendar).
 
 ---
 
