@@ -4151,14 +4151,14 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     border-color: transparent;
 }
 /* Deadlines on the Daily / N-day / Weekly views: a dashed line at the due time (flag at its right end) or an all-day
-   chip. Purple, apart from the orange task cards and the red now-line; orange once missed. */
+   chip. The task colour filled solid (task cards are a tint of it); red once missed. */
 .dp-deadline-marker,
 .dp-deadline-chip {
-    --dp-deadline-color: var(--color-purple, #a882ff);
+    --dp-deadline-color: var(--dp-task-color, #ff9f1c);
 }
 .dp-deadline-marker.is-missed,
 .dp-deadline-chip.is-missed {
-    --dp-deadline-color: var(--color-orange, #e0864a);
+    --dp-deadline-color: var(--color-red, #e93147);
 }
 .dp-deadline-marker {
     position: absolute;
@@ -4182,7 +4182,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     border-radius: var(--radius-s, 4px);
     background-color: var(--dp-deadline-color);
     color: var(--text-on-accent, #fff);
-    font-size: 0.7em;
+    font-size: 0.82em;
     line-height: 1.4;
     white-space: nowrap;
     overflow: hidden;
@@ -4197,10 +4197,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     min-width: 0;
     margin: 1px 0;
     padding: 2px 6px;
-    border-left: 3px solid var(--dp-deadline-color);
     border-radius: var(--radius-s, 4px);
-    background-color: color-mix(in srgb, var(--dp-deadline-color) 14%, transparent);
-    color: var(--text-normal);
+    background-color: var(--dp-deadline-color);
+    color: var(--text-on-accent, #fff);
     font-size: 0.75em;
     white-space: nowrap;
     overflow: hidden;
@@ -4216,7 +4215,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     opacity: 0.4;
 }
 .dp-deadline-marker.is-preview {
-    --dp-deadline-color: var(--color-purple, #a882ff);
+    --dp-deadline-color: var(--dp-task-color, #ff9f1c);
     opacity: 0.85;
 }
 .dp-deadline-ghost {
@@ -4224,7 +4223,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     z-index: var(--layer-tooltip, 1000);
     padding: 2px 8px;
     border-radius: var(--radius-s, 4px);
-    background-color: var(--color-purple, #a882ff);
+    background-color: var(--dp-task-color, #ff9f1c);
     color: var(--text-on-accent, #fff);
     font-size: var(--font-ui-smaller, 0.8em);
     font-variant-numeric: tabular-nums;
