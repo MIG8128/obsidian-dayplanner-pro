@@ -4180,7 +4180,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
     overflow-wrap: anywhere;
-    max-width: calc(100% - 4px);
+    max-width: calc(100% - 20px); /* the dashed line always shows to the flag's left */
     box-sizing: border-box;
     padding: 2px 6px;
     border-radius: var(--radius-s, 4px);
