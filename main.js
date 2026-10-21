@@ -4397,7 +4397,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     line-height: 1;
     cursor: help;
 }
-/* Deadlines at the same or nearby times: one stack hung on the first line (its first row centred on it), a row each */
+/* Deadlines at the same or nearby times: one stack hung on the first line (the whole stack centred on it), a row each */
 .dp-deadline-marker.has-stack {
     z-index: 10;
 }
@@ -4405,7 +4405,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     position: absolute;
     top: 0;
     right: 2px;
-    transform: translateY(-10px);
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
     align-items: flex-end;
