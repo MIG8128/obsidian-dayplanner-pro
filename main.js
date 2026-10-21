@@ -261,11 +261,22 @@ var ia=Object.defineProperty;var Xn=Object.getOwnPropertyDescriptor;var Qn=Objec
     transform-origin: left center;
 }
 .dp-tabs > .dp-tab.dp-tab-pill-slide::before {
-    animation: dp-pill-slide 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: dp-pill-slide 0.42s linear;
 }
+/* Glides like the glass segmented thumb: swells a little mid-way, then springs into place */
 @keyframes dp-pill-slide {
-    from { transform: translateX(var(--dp-pill-dx, 0px)) scaleX(var(--dp-pill-sx, 1)); }
+    from {
+        transform: translateX(var(--dp-pill-dx, 0px)) scaleX(var(--dp-pill-sx, 1));
+        animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    45% {
+        transform: translateX(calc(var(--dp-pill-dx, 0px) * 0.3)) scale(calc(var(--dp-pill-sx, 1) * 0.3 + 0.76), 1.12);
+        animation-timing-function: cubic-bezier(0.3, 1.3, 0.4, 1);
+    }
     to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .dp-tabs > .dp-tab.dp-tab-pill-slide::before { animation: none; }
 }
 
 /* \uBDF0 \uC601\uC5ED \uACF5\uD1B5 */
@@ -6569,6 +6580,48 @@ body.dp-touch-ui .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
     background: var(--dp-glass-thumb);
     border: none;
     box-shadow: var(--dp-glass-thumb-shadow);
+}
+
+
+/* Standalone buttons in the same glass: neutral ones take the glossy thumb, the accent ones (primary, Add) a gloss
+   over the accent, Delete a red-tinted glass */
+.modal button.dp-modal-btn.is-secondary,
+.dp-side-drawer button.dp-drawer-card-action,
+.dp-sheet-drawer button.dp-drawer-card-action,
+.dp-sheet-actions > button.dp-sheet-action {
+    background: var(--dp-glass-thumb);
+    border: none;
+    box-shadow: var(--dp-glass-thumb-shadow);
+}
+.modal button.dp-modal-btn.is-secondary:hover:not(:disabled),
+.dp-sheet-actions > button.dp-sheet-action:hover {
+    background: var(--dp-glass-thumb);
+    border: none;
+    box-shadow: var(--dp-glass-thumb-shadow);
+    filter: brightness(1.1);
+}
+.modal button.dp-modal-btn.is-primary,
+.modal button.dp-modal-btn.is-primary:hover:not(:disabled),
+.dp-header-actions > button.dp-add-btn,
+.dp-side-drawer button.dp-drawer-card-action:hover {
+    color: var(--text-on-accent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 55%, rgba(255, 255, 255, 0) 100%),
+        var(--interactive-accent);
+    border: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 4px 12px color-mix(in srgb, var(--interactive-accent) 32%, transparent),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.40), inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+.modal button.dp-modal-btn.is-danger {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%),
+        color-mix(in srgb, var(--color-red) 14%, transparent);
+    border: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px color-mix(in srgb, var(--color-red) 38%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.modal button.dp-modal-btn.is-danger:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 100%), var(--color-red);
+    border: none;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--color-red) 32%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 
 `;var X=require("obsidian"),Ua=!0;function sa(s){Ua=s}function U(s="light",o=Ua){if(!o||!X.Platform.isMobile||typeof navigator.vibrate!="function")return;let e={selection:6,light:10,lift:25,success:[10,35,15],warning:[20,50,20]};try{navigator.vibrate(e[s])}catch{}}var ke=s=>s.pointerType==="touch"||s.pointerType==="pen"&&X.Platform.isMobile,fe={highest:"\u{1F53A}",high:"\u23EB",medium:"\u{1F53C}",low:"\u{1F53D}",lowest:"\u23EC"};function G(s){let[o,e]=s.split(":").map(Number);return o*60+e}function re(s){return`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`}function Ae(s,o){let[e,t]=s.split(":").map(Number),i=new Date;return i.setHours(e),i.setMinutes(t+o),`${String(i.getHours()).padStart(2,"0")}:${String(i.getMinutes()).padStart(2,"0")}`}function ra(s){let[o,e]=s.split(":");return`${o.padStart(2,"0")}:${e.padStart(2,"0")}`}function Te(s){if(s<60)return`${s}m`;let o=Math.floor(s/60),e=s%60;return e===0?`${o}hr`:`${o}hr ${e}m`}function ai(s,o){let e=window.moment,t=e(s,"YYYY-MM-DD"),i=o.toLowerCase().trim();if(i==="every day"||i==="daily")return t.add(1,"days").format("YYYY-MM-DD");if(i==="every week"||i==="weekly")return t.add(1,"weeks").format("YYYY-MM-DD");if(i==="every month"||i==="monthly")return t.add(1,"months").format("YYYY-MM-DD");if(i==="every year"||i==="yearly")return t.add(1,"years").format("YYYY-MM-DD");if(i==="every weekday"){let n=t.add(1,"days");for(;n.day()===0||n.day()===6;)n=n.add(1,"days");return n.format("YYYY-MM-DD")}let a=i.match(/every\s+(\d+)\s+(day|week|month|year)s?/);if(a){let n=parseInt(a[1]),r=a[2]+"s";return t.add(n,r).format("YYYY-MM-DD")}return t.add(1,"days").format("YYYY-MM-DD")}var Ka="(\\d+(?:\\.\\d+)?\\s*h(?:\\s*\\d+\\s*m(?:in)?)?|\\d+\\s*m(?:in)?|\\d+)(?![\\w:.])",ni=new RegExp(`\u23F1\\uFE0F?\\s*${Ka}`,"i"),ii=new RegExp(`\u23F1\\uFE0F?\\s*${Ka}`,"gi"),ri=/\[\s*estimate::\s*([^\]]+)\]/i;function si(s){let o=s.trim().toLowerCase().match(/^(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+)\s*(?:m|min)?)?$/);if(!o||!o[1]&&!o[2])return null;let e=Math.round(parseFloat(o[1]??"0")*60+parseInt(o[2]??"0",10));return e>0&&e<=24*60?e:null}function oi(s){let o=s.match(ni)?.[1]??s.match(ri)?.[1];return o?si(o):null}var Tt=new Map,di=5e3;function j(s){let o=$e?.hideBracketMetadata!==!1,e=(o?"1":"0")+s,t=Tt.get(e);if(t!==void 0)return t;let i=li(s,o);return Tt.size>=di&&Tt.clear(),Tt.set(e,i),i}function li(s,o){let e=s;return e=e.replace(/\[\s*startTime::\s*[^\]]+\]/ig,""),e=e.replace(/startTime::\s*\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?/ig,""),e=e.replace(/[⏳📅🛫✅❌]\s*\d{4}-\d{2}-\d{2}/g,""),e=e.replace(/\b\d{4}-\d{2}-\d{2}\b/g,""),e=e.replace(/⏰\s*\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?/g,""),e=e.replace(/\[\s*\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?\s*\]/g,""),e=e.replace(/^\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?\s+/,""),e=e.replace(/🔁\s*[^⏳📅🛫⏰⏱✅❌🔺⏫🔼🔽⏬🟢\n]+/g,""),e=e.replace(/[🔺⏫🔼🟢🔽⏬]/g,""),e=e.replace(ii,""),o&&(e=e.replace(/\[[^\[\]]*?::[^\[\]]*\]/g,"")),e.replace(/\s+/g," ").trim()}var oa=/ ?\[\s*gcalId::[^\]\n]*\]/gi;function St(s,o){let e=s.date||"9999-12-31",t=o.date||"9999-12-31";if(e!==t)return e.localeCompare(t);let i=s.startTime||"23:59",a=o.startTime||"23:59";return i.localeCompare(a)}function _a(s){let o="";for(let e of s)o+=`${e.id}\0${e.date}\0${e.originalLine}
