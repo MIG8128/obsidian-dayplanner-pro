@@ -18,12 +18,12 @@ var ia=Object.defineProperty;var Xn=Object.getOwnPropertyDescriptor;var Qn=Objec
     --dp-glass-blur: blur(16px) saturate(180%);
     --dp-segment-track: rgba(255, 255, 255, 0.05);
     --dp-segment-active: rgba(255, 255, 255, 0.12);
-    /* Glass segmented controls: a recessed track and a raised, glossy thumb (light from above: bright rim on top,
+    /* Glass segmented controls: a frosted track and a raised, glossy thumb (light from above: bright rim on top,
        darker lip below) */
-    --dp-glass-track: rgba(0, 0, 0, 0.22);
-    --dp-glass-track-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.07),
-        0 1px 0 rgba(255, 255, 255, 0.04);
-    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.10) 50%,
+    --dp-glass-track: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
+    --dp-glass-track-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 1px 3px rgba(0, 0, 0, 0.18);
+    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.10) 50%,
         rgba(255, 255, 255, 0.06) 100%), color-mix(in srgb, var(--background-primary) 70%, transparent);
     --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.35),
         inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.34),
@@ -43,9 +43,9 @@ var ia=Object.defineProperty;var Xn=Object.getOwnPropertyDescriptor;var Qn=Objec
     --dp-glass-blur: blur(16px) saturate(180%);
     --dp-segment-track: rgba(0, 0, 0, 0.05);
     --dp-segment-active: color-mix(in srgb, var(--background-primary) 95%, transparent);
-    --dp-glass-track: rgba(0, 0, 0, 0.06);
-    --dp-glass-track-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px rgba(0, 0, 0, 0.05),
-        0 1px 0 rgba(255, 255, 255, 0.8);
+    --dp-glass-track: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.45)), rgba(0, 0, 0, 0.03);
+    --dp-glass-track-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        0 1px 3px rgba(0, 0, 0, 0.06);
     --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.55) 100%),
         var(--background-primary);
     --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 4px 10px rgba(0, 0, 0, 0.08),
@@ -6543,14 +6543,17 @@ body.dp-touch-ui .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
 
 
 /* Glass segmented controls, one material for all: view tabs, glass segmented controls (settings, drawer), Board
-   layout toggle, drawer modes, header tool groups and the mini calendar's nav. Recessed track, glossy thumb. */
+   layout toggle, drawer modes, header tool groups, zoom pills and the mini calendar's nav. Frosted track (every
+   rounded wrapper of buttons / icons), glossy thumb. */
 .dp-tabs:not(.dp-bottom-nav),
 .dp-glass-seg,
 .dp-board-toggle,
 .dp-drawer-modes,
 .dp-nav-buttons-group,
 .dp-header-tools,
-.dp-mc-nav {
+.dp-mc-nav,
+.dp-zoom-slider-floating,
+.dp-sheet-zoom {
     background: var(--dp-glass-track);
     border-color: transparent;
     box-shadow: var(--dp-glass-track-shadow);
