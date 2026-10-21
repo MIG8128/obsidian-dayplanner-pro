@@ -18,6 +18,16 @@ var ia=Object.defineProperty;var Xn=Object.getOwnPropertyDescriptor;var Qn=Objec
     --dp-glass-blur: blur(16px) saturate(180%);
     --dp-segment-track: rgba(255, 255, 255, 0.05);
     --dp-segment-active: rgba(255, 255, 255, 0.12);
+    /* Glass segmented controls: a recessed track and a raised, glossy thumb (light from above: bright rim on top,
+       darker lip below) */
+    --dp-glass-track: rgba(0, 0, 0, 0.22);
+    --dp-glass-track-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+        0 1px 0 rgba(255, 255, 255, 0.04);
+    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0.10) 50%,
+        rgba(255, 255, 255, 0.06) 100%), color-mix(in srgb, var(--background-primary) 70%, transparent);
+    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.35),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.34),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.30);
     --dp-card-bg: rgba(255, 255, 255, 0.06);
     --dp-card-border: rgba(255, 255, 255, 0.16);
     /* Share of an item's colour (task colour / calendar colour) in its card fill; dark needs more to show */
@@ -33,6 +43,14 @@ var ia=Object.defineProperty;var Xn=Object.getOwnPropertyDescriptor;var Qn=Objec
     --dp-glass-blur: blur(16px) saturate(180%);
     --dp-segment-track: rgba(0, 0, 0, 0.05);
     --dp-segment-active: color-mix(in srgb, var(--background-primary) 95%, transparent);
+    --dp-glass-track: rgba(0, 0, 0, 0.06);
+    --dp-glass-track-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px rgba(0, 0, 0, 0.05),
+        0 1px 0 rgba(255, 255, 255, 0.8);
+    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.55) 100%),
+        var(--background-primary);
+    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 4px 10px rgba(0, 0, 0, 0.08),
+        inset 0 0 0 1px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.05);
     --dp-card-bg: rgba(0, 0, 0, 0.03);
     --dp-card-border: rgba(0, 0, 0, 0.14);
     /* Light: a paler fill keeps dark text readable on any colour, with a stronger edge to hold the card's shape */
@@ -6521,6 +6539,33 @@ body.dp-touch-ui .dp-compact-shell .dp-date-strip > .dp-date-pill {
 body.dp-touch-ui .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
     width: 36px;
     height: 30px;
+}
+
+
+/* Glass segmented controls, one material for all: view tabs, glass segmented controls (settings, drawer), Board
+   layout toggle, drawer modes, header tool groups and the mini calendar's nav. Recessed track, glossy thumb. */
+.dp-tabs:not(.dp-bottom-nav),
+.dp-glass-seg,
+.dp-board-toggle,
+.dp-drawer-modes,
+.dp-nav-buttons-group,
+.dp-header-tools,
+.dp-mc-nav {
+    background: var(--dp-glass-track);
+    border-color: transparent;
+    box-shadow: var(--dp-glass-track-shadow);
+}
+.dp-tabs > .dp-tab.active::before,
+.dp-glass-seg-thumb,
+.dp-board-toggle > .dp-board-toggle-btn.active,
+.dp-drawer-modes-thumb,
+.dp-nav-buttons-group > button:hover,
+.dp-header-tools > button:hover,
+.dp-side-drawer button.dp-mc-nav-btn:hover,
+.dp-side-drawer button.dp-mc-today:hover {
+    background: var(--dp-glass-thumb);
+    border: none;
+    box-shadow: var(--dp-glass-thumb-shadow);
 }
 
 `;var X=require("obsidian"),Ua=!0;function sa(s){Ua=s}function U(s="light",o=Ua){if(!o||!X.Platform.isMobile||typeof navigator.vibrate!="function")return;let e={selection:6,light:10,lift:25,success:[10,35,15],warning:[20,50,20]};try{navigator.vibrate(e[s])}catch{}}var ke=s=>s.pointerType==="touch"||s.pointerType==="pen"&&X.Platform.isMobile,fe={highest:"\u{1F53A}",high:"\u23EB",medium:"\u{1F53C}",low:"\u{1F53D}",lowest:"\u23EC"};function G(s){let[o,e]=s.split(":").map(Number);return o*60+e}function re(s){return`${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`}function Ae(s,o){let[e,t]=s.split(":").map(Number),i=new Date;return i.setHours(e),i.setMinutes(t+o),`${String(i.getHours()).padStart(2,"0")}:${String(i.getMinutes()).padStart(2,"0")}`}function ra(s){let[o,e]=s.split(":");return`${o.padStart(2,"0")}:${e.padStart(2,"0")}`}function Te(s){if(s<60)return`${s}m`;let o=Math.floor(s/60),e=s%60;return e===0?`${o}hr`:`${o}hr ${e}m`}function ai(s,o){let e=window.moment,t=e(s,"YYYY-MM-DD"),i=o.toLowerCase().trim();if(i==="every day"||i==="daily")return t.add(1,"days").format("YYYY-MM-DD");if(i==="every week"||i==="weekly")return t.add(1,"weeks").format("YYYY-MM-DD");if(i==="every month"||i==="monthly")return t.add(1,"months").format("YYYY-MM-DD");if(i==="every year"||i==="yearly")return t.add(1,"years").format("YYYY-MM-DD");if(i==="every weekday"){let n=t.add(1,"days");for(;n.day()===0||n.day()===6;)n=n.add(1,"days");return n.format("YYYY-MM-DD")}let a=i.match(/every\s+(\d+)\s+(day|week|month|year)s?/);if(a){let n=parseInt(a[1]),r=a[2]+"s";return t.add(n,r).format("YYYY-MM-DD")}return t.add(1,"days").format("YYYY-MM-DD")}var Ka="(\\d+(?:\\.\\d+)?\\s*h(?:\\s*\\d+\\s*m(?:in)?)?|\\d+\\s*m(?:in)?|\\d+)(?![\\w:.])",ni=new RegExp(`\u23F1\\uFE0F?\\s*${Ka}`,"i"),ii=new RegExp(`\u23F1\\uFE0F?\\s*${Ka}`,"gi"),ri=/\[\s*estimate::\s*([^\]]+)\]/i;function si(s){let o=s.trim().toLowerCase().match(/^(?:(\d+(?:\.\d+)?)\s*h)?\s*(?:(\d+)\s*(?:m|min)?)?$/);if(!o||!o[1]&&!o[2])return null;let e=Math.round(parseFloat(o[1]??"0")*60+parseInt(o[2]??"0",10));return e>0&&e<=24*60?e:null}function oi(s){let o=s.match(ni)?.[1]??s.match(ri)?.[1];return o?si(o):null}var Tt=new Map,di=5e3;function j(s){let o=$e?.hideBracketMetadata!==!1,e=(o?"1":"0")+s,t=Tt.get(e);if(t!==void 0)return t;let i=li(s,o);return Tt.size>=di&&Tt.clear(),Tt.set(e,i),i}function li(s,o){let e=s;return e=e.replace(/\[\s*startTime::\s*[^\]]+\]/ig,""),e=e.replace(/startTime::\s*\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?/ig,""),e=e.replace(/[⏳📅🛫✅❌]\s*\d{4}-\d{2}-\d{2}/g,""),e=e.replace(/\b\d{4}-\d{2}-\d{2}\b/g,""),e=e.replace(/⏰\s*\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?/g,""),e=e.replace(/\[\s*\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?\s*\]/g,""),e=e.replace(/^\d{1,2}:\d{2}(?:\s*-\s*\d{1,2}:\d{2})?\s+/,""),e=e.replace(/🔁\s*[^⏳📅🛫⏰⏱✅❌🔺⏫🔼🔽⏬🟢\n]+/g,""),e=e.replace(/[🔺⏫🔼🟢🔽⏬]/g,""),e=e.replace(ii,""),o&&(e=e.replace(/\[[^\[\]]*?::[^\[\]]*\]/g,"")),e.replace(/\s+/g," ").trim()}var oa=/ ?\[\s*gcalId::[^\]\n]*\]/gi;function St(s,o){let e=s.date||"9999-12-31",t=o.date||"9999-12-31";if(e!==t)return e.localeCompare(t);let i=s.startTime||"23:59",a=o.startTime||"23:59";return i.localeCompare(a)}function _a(s){let o="";for(let e of s)o+=`${e.id}\0${e.date}\0${e.originalLine}
