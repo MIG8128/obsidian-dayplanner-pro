@@ -21,14 +21,20 @@ var wa=Object.defineProperty;var Ri=Object.getOwnPropertyDescriptor;var zi=Objec
     --dp-segment-active: rgba(255, 255, 255, 0.12);
     /* Glass segmented controls: a frosted track and a raised, glossy thumb (light from above: bright rim on top,
        darker lip below) */
-    --dp-glass-track: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
-    --dp-glass-track-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.12),
-        0 1px 3px rgba(0, 0, 0, 0.18);
-    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.10) 50%,
-        rgba(255, 255, 255, 0.06) 100%), color-mix(in srgb, var(--background-primary) 70%, transparent);
-    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.35),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.34),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.30);
+    --dp-glass-track: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04) 60%,
+        rgba(255, 255, 255, 0.07));
+    --dp-glass-track-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.13), inset 0 1px 0 rgba(255, 255, 255, 0.18),
+        inset 0 1px 6px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.18);
+    /* Thumb: a bright sheen over the top half, a clear middle, and light caught again along the bottom rim */
+    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.40) 0%, rgba(255, 255, 255, 0.16) 45%,
+        rgba(255, 255, 255, 0.05) 55%, rgba(255, 255, 255, 0.12) 100%),
+        color-mix(in srgb, var(--background-primary) 62%, transparent);
+    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 6px 16px rgba(0, 0, 0, 0.35),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.50),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.10), inset 0 -8px 12px -8px rgba(255, 255, 255, 0.18);
+    /* The same gloss over a coloured fill (accent / red buttons) */
+    --dp-glass-gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.12) 45%,
+        rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.10) 100%);
     --dp-card-bg: rgba(255, 255, 255, 0.06);
     --dp-card-border: rgba(255, 255, 255, 0.16);
     /* Share of an item's colour (task colour / calendar colour) in its card fill; dark needs more to show */
@@ -44,14 +50,18 @@ var wa=Object.defineProperty;var Ri=Object.getOwnPropertyDescriptor;var zi=Objec
     --dp-glass-blur: blur(16px) saturate(180%);
     --dp-segment-track: rgba(0, 0, 0, 0.05);
     --dp-segment-active: color-mix(in srgb, var(--background-primary) 95%, transparent);
-    --dp-glass-track: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.45)), rgba(0, 0, 0, 0.03);
-    --dp-glass-track-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9),
-        0 1px 3px rgba(0, 0, 0, 0.06);
-    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.55) 100%),
-        var(--background-primary);
-    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 4px 10px rgba(0, 0, 0, 0.08),
+    --dp-glass-track: linear-gradient(180deg, rgba(255, 255, 255, 0.80), rgba(255, 255, 255, 0.40) 60%,
+        rgba(255, 255, 255, 0.60)), rgba(0, 0, 0, 0.04);
+    --dp-glass-track-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        inset 0 1px 5px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.06);
+    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.80) 45%,
+        rgba(255, 255, 255, 0.50) 55%, rgba(255, 255, 255, 0.75) 100%),
+        color-mix(in srgb, var(--background-primary) 85%, transparent);
+    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 6px 14px rgba(0, 0, 0, 0.10),
         inset 0 0 0 1px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 1),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+        inset 0 -1px 0 rgba(255, 255, 255, 0.9), inset 0 -8px 12px -8px rgba(0, 0, 0, 0.08);
+    --dp-glass-gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.14) 45%,
+        rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.12) 100%);
     --dp-card-bg: rgba(0, 0, 0, 0.03);
     --dp-card-border: rgba(0, 0, 0, 0.14);
     /* Light: a paler fill keeps dark text readable on any colour, with a stronger edge to hold the card's shape */
@@ -6954,23 +6964,23 @@ body.dp-touch-ui .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
 .dp-header-actions > button.dp-add-btn,
 .dp-side-drawer button.dp-drawer-card-action:hover {
     color: var(--text-on-accent);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 55%, rgba(255, 255, 255, 0) 100%),
-        var(--interactive-accent);
+    background: var(--dp-glass-gloss), var(--interactive-accent);
     border: none;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 4px 12px color-mix(in srgb, var(--interactive-accent) 32%, transparent),
-        inset 0 0 0 1px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.40), inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18), 0 6px 16px color-mix(in srgb, var(--interactive-accent) 36%, transparent),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        inset 0 -8px 12px -8px rgba(255, 255, 255, 0.25);
 }
 .modal button.dp-modal-btn.is-danger {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.04) 100%),
-        color-mix(in srgb, var(--color-red) 14%, transparent);
+    background: var(--dp-glass-gloss), color-mix(in srgb, var(--color-red) 14%, transparent);
     border: none;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 0 0 1px color-mix(in srgb, var(--color-red) 38%, transparent),
-        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .modal button.dp-modal-btn.is-danger:hover:not(:disabled) {
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 100%), var(--color-red);
+    background: var(--dp-glass-gloss), var(--color-red);
     border: none;
-    box-shadow: 0 6px 16px color-mix(in srgb, var(--color-red) 32%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--color-red) 32%, transparent), inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 /* Sheet zoom row: one glossy tile like Search / Sync; the slider inside sits flat on it (no nested track), and stays
