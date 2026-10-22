@@ -1,10 +1,10 @@
 {
   "id": "obsidian-day-planner-pro",
   "name": "Dayloom",
-  "version": "4.4.8.25",
+  "version": "4.4.8.26",
   "minAppVersion": "1.0.0",
   "description": "Dayloom: an advanced day planner with timelines, kanban boards, weekly/monthly calendar, and Google Calendar sync.",
-  "author": "Day Planner Team",
-  "authorUrl": "https://obsidian.md",
+  "author": "MIG8128 & Claude",
+  "authorUrl": "https://github.com/MIG8128",
   "isDesktopOnly": false
 }
