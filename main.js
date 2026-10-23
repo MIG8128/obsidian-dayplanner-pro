@@ -12,13 +12,14 @@ body {
     --dp-ease-exit: ${te.exit};
     --dp-ease-settle: ${te.settle};
 }
-/* Glass design tokens (declared on theme roots so modals/menus outside .dp-container inherit them) */
+/* Glass design tokens (declared on theme roots so modals/menus outside .dp-container inherit them, and again on the
+   planner so they follow its own --background-primary, which a sidebar leaf changes to the sidebar's colour) */
 /* Glass material (Apple "regular material"): translucent fill + blur(16px) saturate(180%) + hairline border
    + a 1px top highlight + two-layer shadow (contact + ambient). Blur only goes on chrome that content actually passes
    behind (modals, menus, suggestions, the sticky all-day row); never on repeated cards or grid cells. The fill is the
    theme's own background (--background-primary) made translucent, so the glass takes on any community theme
    (Catppuccin Mocha, Nord, ...) instead of a fixed white / graphite; dark keeps it dark rather than a white wash. */
-.theme-dark {
+.theme-dark, .theme-dark .dp-container {
     --dp-glass-bg: color-mix(in srgb, var(--background-primary) 62%, transparent);
     --dp-glass-border: rgba(255, 255, 255, 0.10);
     --dp-glass-highlight: rgba(255, 255, 255, 0.07);
@@ -54,7 +55,7 @@ body {
     --dp-item-tint: 26%;
     --dp-item-edge: 45%;
 }
-.theme-light {
+.theme-light, .theme-light .dp-container {
     --dp-glass-bg: color-mix(in srgb, var(--background-primary) 68%, transparent);
     --dp-glass-border: rgba(0, 0, 0, 0.08);
     --dp-glass-highlight: rgba(255, 255, 255, 0.7);
@@ -87,17 +88,17 @@ body {
 }
 /* No blur support, or the OS asks for less transparency: same surfaces, near-opaque fills, no blur */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .theme-dark { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 94%, transparent); }
-    .theme-light { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 95%, transparent); }
+    .theme-dark, .theme-dark .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 94%, transparent); }
+    .theme-light, .theme-light .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 95%, transparent); }
 }
 @media (prefers-reduced-transparency: reduce) {
     /* Glass buttons go solid */
-    .theme-dark, .theme-light {
+    .theme-dark, .theme-light, .dp-container {
         --dp-glass-thumb: var(--background-secondary);
         --dp-glass-thumb-hover: var(--background-modifier-border);
     }
-    .theme-dark { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
-    .theme-light { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
+    .theme-dark, .theme-dark .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
+    .theme-light, .theme-light .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
 }
 
 .dp-container {
@@ -113,6 +114,11 @@ body {
     user-select: none;
     --dp-hour-height: 60px; /* \uC138\uB85C 1\uC2DC\uAC04 \uAC04\uACA9 CSS \uBCC0\uC218 \uBC14\uC778\uB529 */
     container: dp-planner / inline-size; /* narrow layout keys off the pane width, not the device */
+}
+/* In a sidebar leaf (Dayloom Compact, or any planner tab docked there): the planner's page colour is the sidebar's
+   own (main.ts syncSidebarBackground), so it blends in like the sidebar's other views; glass and sticky rows follow */
+:is(.mod-sidedock, .workspace-drawer) .dp-container {
+    --background-primary: var(--dp-sidebar-bg, var(--background-secondary));
 }
 
 /* \uC0C1\uB2E8 \uCEE8\uD2B8\uB864 \uD5E4\uB354 */
@@ -3642,7 +3648,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Desktop side drawer (drawer.ts): hangs under the header on the right; the panes and the tracker bar make room
    with a right margin. Motion standard: the drawer springs in and pushes the panes aside (their margin animates with
    it), and on closing slides out while they widen back. No transition while the width grip is dragged.
-   No blur: nothing scrolls behind it, so it gets a solid secondary surface.
+   No blur: nothing scrolls behind it, so it gets the solid fill of the theme's own sidebars.
    ------------------------------------------------------------- */
 .dp-container:not(.dp-compact-shell) > :is(.day-planner-view-pane, .dp-current-task-bar) {
     transition: margin-right var(--dp-motion-out) var(--dp-ease-settle);
