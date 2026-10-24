@@ -126,7 +126,9 @@ body {
     flex-direction: column;
     height: 100%;
     color: var(--text-normal);
-    background-color: var(--background-primary);
+    /* No page colour of its own: the theme's own background (colour, gradient or image) of the tab, sidebar, phone
+       screen or note shows through. Only bars that content scrolls under are filled, as glass. */
+    background-color: transparent;
     font-family: var(--font-interface);
     position: relative;
     overflow: hidden;
@@ -535,7 +537,8 @@ body.dp-has-main-bg .mod-root .dp-container {
     position: sticky;
     left: 0;
     z-index: 20;
-    background-color: var(--background-primary);
+    /* Nothing slides under it (its scroller never scrolls sideways): the theme background shows through */
+    background-color: transparent;
 }
 .dp-timeline-hour-mark {
     height: var(--dp-hour-height); /* \uB3D9\uC801 \uB192\uC774 \uC801\uC6A9 */
@@ -830,7 +833,7 @@ body.dp-has-main-bg .mod-root .dp-container {
 }
 .dp-grid-cell {
     border: 1px solid var(--background-modifier-border);
-    background-color: var(--background-primary);
+    background-color: transparent; /* the theme's background, like the rest of the planner */
     border-radius: 6px;
     padding: 6px;
     display: flex;
@@ -1005,12 +1008,15 @@ body.dp-has-main-bg .mod-root .dp-container {
 }
 
 /* Weekly / N-day: the day headers and the all-day row stick to the top of the hourly scroller, so they share its width
-   (scrollbar included) with the day columns; opaque, above timeline cards (selected 99) and the sticky hour column (20) */
+   (scrollbar included) with the day columns; above timeline cards (selected 99) and the sticky hour column (20).
+   Glass like Daily's all-day bar: the grid scrolls under this one element, the theme background shows through it. */
 .dp-weekly-sticky-head {
     position: sticky;
     top: 0;
     z-index: 100;
-    background-color: var(--background-primary);
+    background-color: var(--dp-glass-bg);
+    backdrop-filter: var(--dp-glass-blur);
+    -webkit-backdrop-filter: var(--dp-glass-blur);
 }
 .dp-weekly-header-grid {
     display: grid;
