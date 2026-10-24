@@ -14,3 +14,10 @@ esbuild.config.mjs
 package.json
 package-lock.json
 tsconfig.json
+
+# Local tooling: personal Claude Code settings, the test-build script
+.claude/settings.local.json
+scripts/
+
+# Obsidian sandbox vault + profile for testing (never commit)
+sandbox/
