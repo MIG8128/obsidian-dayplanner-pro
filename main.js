@@ -3043,14 +3043,19 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Compact shell (.dp-compact-shell root): the combined view on phones and the Sidebar Day Planner Pro view.
    .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
-/* Bottom navigation: floating pill lifted above Obsidian's own mobile toolbar (which overlays the view's bottom edge) */
-/* Two islands side by side: [Daily | List | Monthly | Board] and [\u22EF More] */
+/* View navigation (.dp-bottom-bar, named for where it used to be): right under the header, so it never meets Obsidian's
+   own mobile toolbar at the bottom. Moved by flex order only: in the DOM it stays the last row, which the panes and the
+   current-task bar are inserted before (views.ts). Two islands side by side: [Daily | List | Monthly | Board] and [\u22EF More] */
+.dp-container.dp-compact-shell > .dp-header {
+    order: -2;
+}
 .dp-container.dp-compact-shell > .dp-bottom-bar {
+    order: -1;
     flex-shrink: 0;
     display: flex;
     align-items: stretch;
     gap: 8px;
-    margin: 0 12px 0;
+    margin: 8px 12px 4px;
     z-index: 30;
 }
 .dp-bottom-bar > .dp-bottom-nav {
@@ -3073,8 +3078,10 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 .dp-bottom-bar > .dp-bottom-nav.dp-bottom-more {
     flex: 1 1 0;
 }
-.is-phone .dp-phone-shell > .dp-bottom-bar {
-    margin-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
+/* Phones: the last row (timeline, current-task bar) clears Obsidian's toolbar, which overlays the view's bottom edge */
+.is-phone .dp-container.dp-phone-shell {
+    box-sizing: border-box; /* height: 100% includes the padding */
+    padding-bottom: calc(var(--mobile-navbar-height, 48px) + env(safe-area-inset-bottom, 6px));
 }
 .dp-compact-shell .dp-bottom-nav > .dp-tab {
     flex: 1 1 0;
