@@ -1087,7 +1087,8 @@ body.dp-has-main-bg .mod-root .dp-container {
     height: 100%;
     min-height: 0;
     box-sizing: border-box;
-    background-color: var(--background-secondary);
+    /* A faint tint, not a solid fill: the theme's background (image too) shows through the column */
+    background-color: color-mix(in srgb, var(--background-secondary) 45%, transparent);
     border-radius: 8px;
     border: 1px solid var(--background-modifier-border);
     display: flex;
@@ -2347,12 +2348,12 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     display: flex;
     flex-direction: column;
     height: 100%;
-    background-color: var(--background-primary);
+    background-color: transparent; /* the theme's background, like the rest of the planner */
 }
 .dp-gc-list-header {
     padding: 8px 12px;
     border-bottom: 1px solid var(--background-modifier-border);
-    background-color: var(--background-secondary-alt);
+    background-color: transparent; /* its own row above the scroller: nothing slides under it */
 }
 .dp-gc-search {
     width: 100%;
@@ -5502,7 +5503,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 }
 :is(.dp-grid-cell, .dp-kanban-column).dp-drop-target,
 .dp-kanban-column.drag-over {
-    background-color: color-mix(in srgb, var(--interactive-accent) 14%, var(--background-primary));
+    background-color: color-mix(in srgb, var(--interactive-accent) 14%, transparent); /* over the theme background */
 }
 :is(.dp-grid-cell, .dp-kanban-column).dp-drop-target::after,
 .dp-kanban-column.drag-over::after {
