@@ -3043,20 +3043,21 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Compact shell (.dp-compact-shell root): the combined view on phones and the Sidebar Day Planner Pro view.
    .dp-phone-shell is added on phones only; desktop/tablet tabs and code blocks never match these rules.
    ------------------------------------------------------------- */
-/* View navigation (.dp-bottom-bar, named for where it used to be): right under the header, so it never meets Obsidian's
-   own mobile toolbar at the bottom. Moved by flex order only: in the DOM it stays the last row, which the panes and the
-   current-task bar are inserted before (views.ts). Two islands side by side: [Daily | List | Monthly | Board] and [\u22EF More] */
-.dp-container.dp-compact-shell > .dp-header {
-    order: -2;
-}
+/* View navigation (.dp-bottom-bar, named for where it used to be): the top row, above the header's date and week
+   strip, so it never meets Obsidian's own mobile toolbar at the bottom. Moved by flex order only: in the DOM it stays the
+   last row, which the panes and the current-task bar are inserted before (views.ts).
+   Two islands side by side: [Daily | List | Monthly | Board] and [\u22EF More] */
 .dp-container.dp-compact-shell > .dp-bottom-bar {
-    order: -1;
+    order: -2;
     flex-shrink: 0;
     display: flex;
     align-items: stretch;
     gap: 8px;
-    margin: 8px 12px 4px;
+    margin: 8px 12px;
     z-index: 30;
+}
+.dp-container.dp-compact-shell > .dp-header {
+    order: -1;
 }
 .dp-bottom-bar > .dp-bottom-nav {
     flex: 1 1 auto;
