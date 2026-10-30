@@ -6819,7 +6819,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 /* -------------------------------------------------------------
    Touch layout (body.dp-touch-ui, main.ts applyTouchLayout): tablets, and a touchscreen computer while a finger is
    in use. The mouse layout, scaled for a fingertip as on iPad: ~38-46px tap targets, 18-22px icons, roomier cards,
-   and the controls a mouse finds by hovering stay on screen. Phones never get the class (their compact shell is
+   and the controls a mouse finds by hovering stay on screen. Same pill shapes as the mouse layout. Phones never get the class (their compact shell is
    sized for a thumb already); the compact sidebar view gets a smaller step so its one header row still fits.
    ------------------------------------------------------------- */
 /* Header: [date] \u2026 [\u2039 Today \u203A] [tools] [+] */
@@ -6882,26 +6882,10 @@ body.dp-touch-ui .dp-add-btn svg {
     width: 22px;
     height: 22px;
 }
-/* Rounded squares instead of pills: the header capsules match the view tabs' shape (12px outside, 9px for the
-   buttons inside, concentric with the 3px padding), so the bigger icons sit squarely in their buttons */
-body.dp-touch-ui .dp-nav-date,
-body.dp-touch-ui .dp-nav-buttons-group,
-body.dp-touch-ui .dp-header-tools,
-body.dp-touch-ui .dp-header-actions > button.dp-add-btn,
-body.dp-touch-ui .dp-search-float {
-    border-radius: 12px;
-}
-body.dp-touch-ui .dp-nav-buttons-group > button,
-body.dp-touch-ui .dp-header-tools > button,
-body.dp-touch-ui .dp-header-tools > .dp-zoom-slider-floating,
-body.dp-touch-ui .dp-search-float button.dp-search-clear {
-    border-radius: 9px;
-}
 /* Zoom: a 38px button that opens to the same slider, with a thumb-sized handle */
 body.dp-touch-ui .dp-zoom-slider-floating {
     width: 38px;
     height: 38px;
-    border-radius: 9px;
 }
 body.dp-touch-ui .dp-zoom-slider-floating span:first-child {
     width: 36px;
@@ -6936,11 +6920,9 @@ body.dp-touch-ui .dp-header-top.has-inline-tabs .dp-zoom-slider-floating:is(.is-
 body.dp-touch-ui .dp-tabs:not(.dp-bottom-nav) {
     padding: 4px;
     gap: 4px;
-    border-radius: 12px;
 }
 body.dp-touch-ui .dp-tabs:not(.dp-bottom-nav) > .dp-tab {
     height: 38px;
-    border-radius: 9px;
     font-size: 0.92em;
 }
 body.dp-touch-ui .dp-header-top.has-inline-tabs > .dp-tabs > .dp-tab {
@@ -6954,10 +6936,8 @@ body.dp-touch-ui .dp-tab .dp-tab-select {
 body.dp-touch-ui .dp-board-toggle {
     height: 38px;
     padding: 3px;
-    border-radius: 12px;
 }
 body.dp-touch-ui .dp-board-toggle > .dp-board-toggle-btn {
-    border-radius: 9px;
     height: 30px;
     padding: 0 12px;
     font-size: 0.85em;
