@@ -4120,6 +4120,19 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     font-weight: var(--font-semibold, 600);
     color: var(--text-muted);
 }
+/* A week with its weekly note: a short line under the number, level with the day dots */
+.dp-scal button.dp-scal-wk.has-note::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: 3px;
+    width: 10px;
+    height: 2px;
+    border-radius: 1px;
+    background-color: var(--text-muted);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
 .dp-scal button.dp-scal-day {
     padding-bottom: 5px; /* room for the dots under the number */
     font-size: var(--font-ui-smaller, 0.8em);
