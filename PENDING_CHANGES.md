@@ -1,2 +1,12 @@
 # Pending Changes
 
+- [4.4.9.1] Moving an overdue task from the side drawer (Move, Pick a date, Roll to today) now marks the old task cancelled (❌ today) and adds a new task with the new date right below it, instead of only changing its date; its Google Calendar event moves with the new task, and Undo puts the old line back
+- [4.4.9.2] Unschedule and Fit it in (also Fit all) on an overdue task in the side drawer now work like Move: the old task is marked cancelled and a new one (without a date, or in the free slot) is added right below it, with one Undo
+- [4.4.9.3] Fix: the Google Calendar event cache is now kept in each device's local storage instead of gcal-cache.json in the plugin folder, so sync tools (Self-hosted LiveSync, Syncthing...) no longer create conflicts; the old file is moved over once and deleted
+- [4.4.9.4] UI: the touch layout (iPad, touchscreen PCs) keeps the mouse layout's round pill shapes for the header, view tabs, Board switch and zoom, just bigger, instead of rounded squares
+- [4.4.9.5] UI: the mouse wheel and trackpad swipes (two fingers up/down or sideways) now page the sidebar month calendar and the side drawer's mini calendar, one month per gesture, so trackpad momentum no longer skips months
+- [4.4.9.6] UI: calendar wheel / trackpad paging is now vertical only: the month follows two fingers up or down, turns the page past a short distance (springing back if released earlier), and the new month slides in from below or above; the side drawer's mini calendar pages vertically with its ‹ › buttons too, and the sidebar calendar animates as well
+- [4.4.9.8] UI: Review today (evening review) now says when today's daily note isn't written yet, with a Write it button; the evening prompt also opens for that alone
+- [4.4.9.9] UI: the sidebar calendar's week-number column is split from the days by a thin vertical line
+- [4.4.9.10] Refactor: setup modular workflow
+- [4.4.9.11] UI: j/k, the nav arrows, Today and swipes now switch pages with a full-width push (the old page slides out as the new one slides in); on touch the page follows the finger and springs back if released early

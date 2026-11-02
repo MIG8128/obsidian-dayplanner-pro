@@ -640,12 +640,16 @@ height: 500px
 | `date` | `YYYY-MM-DD` or `today` | The date to show |
 | `height` | `500px`, `80vh`, … (a bare number means px) | Block height. Dragging the block's bottom edge saves the new height |
 | `hourHeight` | number | Hour height for this block only |
+| `hours` | `8-18`, `08:00-18:00`, … | Hours shown on this block's Daily, N-day and Weekly timeline (and used by Fit It In here). Overrides **Timeline Start Hour / End Hour**; a time like `17:30` rounds out to the full hour |
 | `showFilters` | `true` | Start with the filter panel open |
+| `days` | `2` – `14` | Days in this block's N-day view. Picking a number in the block's N-day tab saves it here; the planner view keeps its own |
+| `boardType` | `kanban` · `priority` | Which Board this block shows. The Kanban / Priority switch saves it for you |
 | `collapsedColumns` | `[undated, completed]` | Board columns to keep folded |
 | `filters` | (written by the filter panel) | See filters below |
 
+- For a working-day view, click **🕗 00–24** in the block's header (Daily, N-day and Weekly) and pick a range such as 08:00–18:00, or **Custom…** to choose the start and end hour. It is saved in the block as `hours: 08:00-18:00`; other blocks and the main view keep the hours from settings. **Settings hours** removes it again.
 - Inside a **daily note**, a block with no `type` / `date` shows that day; inside a **weekly note**, that week. The block then also only lists that day's / week's items.
-- In a block, day headers, dates and week numbers open the daily / weekly **notes** (a block has no tabs to switch to), and List keeps its own agenda search box.
+- In a block, day headers and dates open that day in the block's **Daily** view, and week numbers open that week in its **Weekly** view, just like the planner view. The header date still opens the daily / weekly note, and List keeps its own agenda search box.
 - Blocks drag with the mouse like the main view; they redraw only when they are on screen.
 
 ### 🔍 Inline block filters
@@ -773,7 +777,7 @@ Yes. Every change shows an **Undo** button in a notice for a few seconds. Moving
 
 ### Q15. Where are my Google credentials stored? Is it safe?
 
-The client secret and refresh token are stored in your vault at `.obsidian/plugins/obsidian-day-planner-pro/data.json`. Short-lived access tokens are never written to disk. A cache of fetched events is kept next to it in `gcal-cache.json`.
+The client secret and refresh token are stored in your vault at `.obsidian/plugins/obsidian-day-planner-pro/data.json`. Short-lived access tokens are never written to disk. A cache of fetched events is kept in each device's local storage (not in the vault, so sync tools never carry it).
 If you publish your vault (e.g. a public GitHub repository), make sure to exclude those files.
 To cut off access, remove the app under your Google account → Security → **Third-party apps & services**.
 
