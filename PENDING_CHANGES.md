@@ -10,3 +10,4 @@
 - [4.4.9.9] UI: the sidebar calendar's week-number column is split from the days by a thin vertical line
 - [4.4.9.10] Refactor: setup modular workflow
 - [4.4.9.11] UI: j/k, the nav arrows, Today and swipes now switch pages with a full-width push (the old page slides out as the new one slides in); on touch the page follows the finger and springs back if released early
+- [4.4.9.12] Fix: on phones and tablets, holding a task or event no longer opens the editor when you let go: a hold picks the card up (move it, or use its resize bars), a quick tap still opens the editor; on phones, Monthly items, all-day chips and Board cards can now be held and moved too, and dragging a card sideways no longer pages the view

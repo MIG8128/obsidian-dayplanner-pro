@@ -326,6 +326,30 @@ export abstract class PlannerViewCore extends ItemView {
     touchDragActive = false;
 
     /**
+     * A completed touch hold must never end in a click (a card would open its editor). Browsers click a long press
+     * after its release, at a moment that differs per device: after a zero-delay timer on Chromium, later still in
+     * the iOS / Android WebViews, sometimes on a card a re-render put under the finger. So the swallow is time- and
+     * target-independent: armed when a hold completes (Infinity while the finger stays down), it eats every click
+     * inside this view until HOLD_CLICK_GUARD_MS after the release; the next press (a new gesture) ends it earlier.
+     */
+    protected holdClickGuardUntil = 0;
+
+    guardClickAfterTouchHold(pointerId: number) {
+        const HOLD_CLICK_GUARD_MS = 700;
+        if (this.holdClickGuardUntil === Number.POSITIVE_INFINITY) return; // this touch is already guarded
+        this.holdClickGuardUntil = Number.POSITIVE_INFINITY;
+        const doc = this.containerEl.ownerDocument;
+        const released = (e: PointerEvent) => {
+            if (e.pointerId !== pointerId) return;
+            doc.removeEventListener('pointerup', released, true);
+            doc.removeEventListener('pointercancel', released, true);
+            this.holdClickGuardUntil = performance.now() + HOLD_CLICK_GUARD_MS;
+        };
+        doc.addEventListener('pointerup', released, true);
+        doc.addEventListener('pointercancel', released, true);
+    }
+
+    /**
      * Touch position & resize mode (phones and tablets): a long-press makes one timeline card active. Its resize bars
      * appear (.is-touch-active; hidden on idle cards) and a touch on its body drags at once. Kept by item id, tab and
      * date so a data re-render keeps it, while another tab or date drops it. Ended by a press outside the card or a
@@ -636,6 +660,17 @@ export abstract class PlannerViewCore extends ItemView {
         const isEmptySpace = (target: HTMLElement) => !target.closest('[data-task-id], [data-select-id], [data-drawer-task-id], '
             + '.dp-selection-bar, .dp-inline-create, button, input, textarea, select, a, [contenteditable], .dp-custom-cb, '
             + '.dp-task-link-btn, .dp-resize-handle, .dp-tab, .dp-day-pill, .dp-kanban-col-toggle, .dp-priority-trigger');
+        // The click a completed touch hold leaves behind (guardClickAfterTouchHold): dropped before any card sees it.
+        // A new first finger starts a new gesture, so its own tap clicks normally.
+        rootEl.addEventListener('pointerdown', (e: PointerEvent) => {
+            if (e.isPrimary) this.holdClickGuardUntil = 0;
+        }, true);
+        rootEl.addEventListener('click', (e: MouseEvent) => {
+            if (performance.now() >= this.holdClickGuardUntil) return;
+            e.stopPropagation();
+            e.preventDefault();
+        }, true);
+
         rootEl.addEventListener('pointerdown', (e: PointerEvent) => {
             emptyTap = null;
             if (!e.isPrimary || (this.selectedTaskIds.size === 0 && !this.touchActive)) return;

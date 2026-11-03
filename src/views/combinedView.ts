@@ -888,7 +888,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         this.registerDomEvent(rootEl, 'touchmove', (e: TouchEvent) => {
             if (!start) return;
             const pane = this.panes.get(this.activeTab)?.el;
-            if (this.touchDragActive) { start = null; springBackPage(pane); return; }
+            if (this.touchDragActive || this.activePointerDrag) { start = null; springBackPage(pane); return; } // a card drag owns the finger
             const touch = e.touches[0];
             dx = touch.clientX - start.x;
             const dy = touch.clientY - start.y;
@@ -903,7 +903,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
 
         // touchend / touchcancel always propagate: the end of a touch sequence must reach every listener
         this.registerDomEvent(rootEl, 'touchend', () => {
-            const page = !!start && axis === 'x' && Math.abs(dx) >= MIN_DIST && !this.touchDragActive;
+            const page = !!start && axis === 'x' && Math.abs(dx) >= MIN_DIST && !this.touchDragActive && !this.activePointerDrag;
             start = null;
             const pane = this.panes.get(this.activeTab)?.el;
             if (!page) { springBackPage(pane); return; }

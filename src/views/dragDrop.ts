@@ -271,7 +271,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
     registerMouseDrag(card: HTMLElement, source: PointerDragSource) {
         this.dragSources.set(card, source);
         if (Platform.isMobile) {
-            this.registerTouchHoldDrag(card, source); // tablets (the phone shell has its own long-press drag)
+            this.registerTouchHoldDrag(card, source); // tablets, and phone cards other than timeline cards
             return;
         }
         if (!this.usesPointerMouseDrag()) return;
@@ -330,7 +330,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
     }
 
     /**
-     * Tablet drag (leaf views, not the phone shell, which has its own long-press drag): holding a card still for 320ms
+     * Tablet drag (leaf views; on phones every card but timeline cards, which have their own long-press drag): holding a card still for 320ms
      * lifts it (haptic, slight scale-up), then the finger drives the desktop drag engine, so every desktop drop target
      * works: timelines, day cells and headers, Board columns, the side drawer. Moving before the hold completes leaves
      * the touch to scrolling; lifting the finger without moving puts the card back down without a drop. Box selection
@@ -338,7 +338,9 @@ export abstract class DragDropLayer extends PlannerViewCore {
      * An iPad Pencil gets both: it drags like a mouse, and a still hold opens position & resize mode like a finger.
      */
     registerTouchHoldDrag(card: HTMLElement, source: PointerDragSource) {
-        if (!hasTouchScreen() || !(this instanceof PlannerViewCore) || this.useCompactLayout()) return;
+        // Phone timeline cards have their own long-press drag (registerLongPressDrag); every other phone card (Monthly
+        // items, all-day chips, Board cards) holds to move here, so a hold never falls through to a click (the editor)
+        if (!hasTouchScreen() || !(this instanceof PlannerViewCore) || (this.useCompactLayout() && source.kind === 'timeline')) return;
         const HOLD_MS = 320;
         const SLOP = 8; // px of finger jitter tolerated during the hold
         if (Platform.isMobile) {
@@ -360,6 +362,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
         };
         const lift = (fromHold: boolean) => {
             detach();
+            this.guardClickAfterTouchHold(pointerId); // the release must not open the editor, even if no drag starts
             if (!card.isConnected || this.activePointerDrag) return;
             lifted = true;
             card.addClass('dp-touch-lifted');
@@ -1442,7 +1445,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
         const scroller = card.closest<HTMLElement>('.dp-content');
         let holdTimer = 0, frame = 0, pointerId = -1;
         let startX = 0, startY = 0, lastX = 0, lastY = 0, grabOffset = 0;
-        let dragging = false, moved = false, suppressClick = false;
+        let dragging = false, moved = false;
         let armed = false; // this touch began on the active card: movement drags at once
         let column: HTMLElement | null = null;
 
@@ -1500,10 +1503,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
         const onUp = async (e: PointerEvent) => {
             if (e.pointerId !== pointerId) return;
             detach();
-            if (!dragging) return;
-            // The lift may still produce a click on this card: swallow it instead of opening the edit modal
-            suppressClick = true;
-            window.setTimeout(() => { suppressClick = false; }, 400);
+            if (!dragging) return; // the click the lift leaves behind is dropped by guardClickAfterTouchHold
             const target = column;
             endDrag();
             if (!moved || !target) return; // released on the spot: the card stays active, its bars showing
@@ -1536,6 +1536,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
         const lift = (fromHold: boolean) => {
             dragging = true;
             this.touchDragActive = true;
+            this.guardClickAfterTouchHold(pointerId); // the release must not open the editor
             if (!this.selectedTaskIds.has(refId)) {
                 this.selectedTaskIds.clear();
                 this.selectedTaskIds.add(refId);
@@ -1555,11 +1556,6 @@ export abstract class DragDropLayer extends PlannerViewCore {
         // Once lifted (or on the active card, whose touch-action is none), finger moves drive the drag, not a scroll
         card.addEventListener('touchmove', (e) => { if ((dragging || armed) && e.cancelable) e.preventDefault(); }, { passive: false });
         card.addEventListener('contextmenu', (e) => { if (holdTimer || dragging) e.preventDefault(); });
-        card.addEventListener('click', (e) => {
-            if (!suppressClick) return;
-            suppressClick = false;
-            e.stopImmediatePropagation();
-        }, true);
     }
 
     // Implemented in a later layer (see src/views/baseView.ts)
