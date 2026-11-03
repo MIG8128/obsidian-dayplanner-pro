@@ -462,7 +462,9 @@ body.dp-has-main-bg .mod-root .dp-container {
 /* View-type switch (src/views/viewSwitch.ts): the old pane stays over its own box while the new one arrives.
    Time scales zoom through the date (wider view: the old one shrinks into that date's column / cell / week row;
    narrower view, Monthly cell \u2192 Daily included: the new one grows out of it; a plain centre zoom when that place is
-   not on screen); Board / List slide 24px in tab-bar order. Never scaled above 1, so nothing spills over the header.
+   not on screen); to / from Board and List the whole view is pushed vertically, in tab-bar order (a tab to the right
+   rises from below, one to the left comes down from above), both panes edge to edge and clipped to their own box so
+   neither passes over the header or the bottom bar (clip-path follows the translate). Never scaled above 1, so nothing spills over the header.
    The leaving pane fades out a little faster (200ms) than the new one settles (250ms, VIEW_SWITCH_MS). */
 .dp-view-switch-host {
     overflow-x: hidden;
@@ -484,12 +486,12 @@ body.dp-has-main-bg .mod-root .dp-container {
 }
 .dp-view-in-zoom-out { animation: dp-view-in-zoom-out 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .dp-view-in-zoom-in { animation: dp-view-in-zoom-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.dp-view-in-slide-next { animation: dp-view-in-slide-next 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.dp-view-in-slide-prev { animation: dp-view-in-slide-prev 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dp-view-in-slide-next { animation: dp-view-in-slide-next 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dp-view-in-slide-prev { animation: dp-view-in-slide-prev 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .dp-view-out-zoom-out { animation: dp-view-out-zoom-out 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
 .dp-view-out-zoom-in { animation: dp-view-out-fade 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
-.dp-view-out-slide-next { animation: dp-view-out-slide-next 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
-.dp-view-out-slide-prev { animation: dp-view-out-slide-prev 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
+.dp-view-out-slide-next { animation: dp-view-out-slide-next 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+.dp-view-out-slide-prev { animation: dp-view-out-slide-prev 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 /* Zoom through the date (zoomTarget): the narrower pane maps onto that date's place in the wider one via --dp-zoom-t,
    shrinking into it (zoom out) or growing out of it (zoom in) */
 .dp-view-out-zoom-to { transform-origin: 0 0; animation: dp-view-out-zoom-to 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
@@ -498,12 +500,12 @@ body.dp-has-main-bg .mod-root .dp-container {
 @keyframes dp-view-in-zoom-from { from { opacity: 0; transform: var(--dp-zoom-t, scale(0.94)); } 35% { opacity: 1; } to { transform: none; } }
 @keyframes dp-view-in-zoom-out { from { opacity: 0; } }
 @keyframes dp-view-in-zoom-in { from { opacity: 0; transform: scale(0.94); } }
-@keyframes dp-view-in-slide-next { from { opacity: 0; transform: translateX(24px); } }
-@keyframes dp-view-in-slide-prev { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes dp-view-in-slide-next { from { transform: translateY(100%); clip-path: inset(0 0 100% 0); } to { transform: none; clip-path: inset(0); } }
+@keyframes dp-view-in-slide-prev { from { transform: translateY(-100%); clip-path: inset(100% 0 0 0); } to { transform: none; clip-path: inset(0); } }
 @keyframes dp-view-out-zoom-out { to { opacity: 0; transform: scale(0.94); } }
 @keyframes dp-view-out-fade { to { opacity: 0; } }
-@keyframes dp-view-out-slide-next { to { opacity: 0; transform: translateX(-24px); } }
-@keyframes dp-view-out-slide-prev { to { opacity: 0; transform: translateX(24px); } }
+@keyframes dp-view-out-slide-next { from { transform: none; clip-path: inset(0); } to { transform: translateY(-100%); clip-path: inset(100% 0 0 0); } }
+@keyframes dp-view-out-slide-prev { from { transform: none; clip-path: inset(0); } to { transform: translateY(100%); clip-path: inset(0 0 100% 0); } }
 /* The helpers already skip animating under reduced motion; this is the CSS-side safety net */
 @media (prefers-reduced-motion: reduce) {
     .dp-page-in, .dp-page-out { animation: none; }

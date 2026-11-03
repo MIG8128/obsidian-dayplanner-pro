@@ -6,8 +6,10 @@ import { playOnce, prefersReducedMotion, REVEAL_CLASS } from './shared';
  *   - between time scales the calendar zooms through the date on screen: to a wider view the old one shrinks into
  *     that date's place in it (a day into its column or cell, a week into its row), to a narrower one the new one
  *     grows out of that place (zoomTarget); when the place is not on screen, a plain zoom about the centre;
- *   - to or from Board / List the panes slide a short way, in tab-bar order (a tab to the right comes from the right).
- * Nothing scales above 1, so no pane spills over the header. Reduced motion: an instant switch.
+ *   - to or from Board / List the whole view is pushed vertically, like the date push turned upright: a tab to the
+ *     right rises from below and pushes the old view up, a tab to the left comes down from above (clipped to the
+ *     view area, so neither passes over the header or the bottom bar).
+ * Nothing scales above 1 or leaves its box, so no pane spills over the header. Reduced motion: an instant switch.
  */
 export type ViewSwitchMotion = 'zoom-out' | 'zoom-in' | 'slide-next' | 'slide-prev';
 
