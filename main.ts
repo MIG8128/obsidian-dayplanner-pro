@@ -60,7 +60,7 @@ import {
 } from './views';
 import { ShortcutHelpModal, WhatsNewModal } from './modals';
 import { t, setLanguage } from './i18n';
-import { GlassSegmented } from './glassSegmented';
+import { PillTabs } from './src/settings/pillTabs';
 
 export class DayPlannerSettingTab extends PluginSettingTab {
     plugin: DayPlannerPlugin;
@@ -92,30 +92,14 @@ export class DayPlannerSettingTab extends PluginSettingTab {
             tabs.forEach(tab => panels[tab.value].toggleClass('is-active', tab.value === id));
         };
         const initial = tabs.find(tab => tab.value === this.activeSettingsTab)?.value ?? 'general';
-        this.tabBar?.destroy(); // display() re-renders the whole tab
-        this.tabBar = new GlassSegmented<TabId>(container, {
+        // Same tab bar and sliding pill as the planner's view tabs (PillTabs)
+        new PillTabs<TabId>(container, {
             options: tabs, value: initial, onChange: show, ariaLabel: t('settings.heading'), role: 'tablist',
             cls: 'dp-settings-tabs'
         });
         tabs.forEach(tab => { panels[tab.value] = container.createDiv({ cls: 'dp-settings-panel', attr: { role: 'tabpanel' } }); });
         show(initial);
         return panels;
-    }
-
-    /** Settings tab bar, kept to release its ResizeObserver on re-render and on hide() */
-    private tabBar: { destroy(): void } | null = null;
-    /** Glass switches inside settings (Sideways swipe): released like the tab bar */
-    private settingControls: Array<{ destroy(): void }> = [];
-
-    private releaseSettingControls() {
-        this.settingControls.forEach(control => control.destroy());
-        this.settingControls = [];
-    }
-
-    hide(): void {
-        this.tabBar?.destroy();
-        this.tabBar = null;
-        this.releaseSettingControls();
     }
 
     /** A text setting for a vault path with Obsidian's fuzzy file / folder suggestions (utils.attachPathSuggest) */
@@ -235,7 +219,6 @@ export class DayPlannerSettingTab extends PluginSettingTab {
 
     display(): void {
         const { containerEl } = this;
-        this.releaseSettingControls(); // display() re-renders the whole tab
         containerEl.empty();
         containerEl.addClass('dp-settings');
 
@@ -392,7 +375,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
             .setName(t('settings.swipeNavigation.name'))
             .setDesc(swipeDesc(swipeMode));
         swipeSetting.settingEl.addClass('dp-setting-stacked');
-        this.settingControls.push(new GlassSegmented<SwipeMode>(swipeSetting.controlEl, {
+        new PillTabs<SwipeMode>(swipeSetting.controlEl, {
             options: [
                 { value: 'dates', label: t('settings.swipeNavigation.dates') },
                 // Desktop touchscreens have no sidebar swipe to give back: the other side there is simply Off
@@ -400,13 +383,14 @@ export class DayPlannerSettingTab extends PluginSettingTab {
             ],
             value: swipeMode,
             ariaLabel: t('settings.swipeNavigation.name'),
+            role: 'radiogroup',
             cls: 'dp-setting-switch',
             onChange: async (mode) => {
                 swipeSetting.setDesc(swipeDesc(mode));
                 this.plugin.settings.desktopSwipeNavigation = mode === 'dates';
                 await this.plugin.saveSettings();
             }
-        }));
+        });
 
         if (!Platform.isPhone) {
             new Setting(mobileDisplay)

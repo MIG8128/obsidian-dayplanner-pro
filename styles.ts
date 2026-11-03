@@ -5886,14 +5886,23 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     .dp-glass-seg.is-moving .dp-glass-seg-thumb { scale: none; }
 }
 
-/* Settings tab: top tab bar (DayPlannerSettingTab.createSettingsTabs) as a glass segmented control, a step larger
-   for the settings page; only the active panel is shown */
-.dp-settings .dp-glass-seg.dp-settings-tabs {
+/* Settings page: top tab bar (DayPlannerSettingTab.createSettingsTabs) and two-way switches built with PillTabs, the
+   planner's view-tab bar (.dp-tabs, sliding ::before pill) a step larger; only the active panel is shown */
+.dp-settings .dp-tabs.dp-settings-tabs {
     margin-bottom: var(--size-4-4, 16px);
 }
-.dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-option {
+.dp-settings .dp-tabs > .dp-tab {
+    height: auto;
     min-height: 32px;
+    gap: 6px;
     font-size: var(--font-ui-small, 13px);
+}
+.dp-pill-tab-icon {
+    display: inline-flex;
+}
+.dp-pill-tab-icon svg {
+    width: 15px;
+    height: 15px;
 }
 /* A setting whose control is a two-way switch (Sideways swipe): name and description on top, the switch full width
    below with one choice at each end; the description changes with the side chosen */
@@ -5905,13 +5914,8 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     justify-content: stretch;
     padding-top: var(--size-4-2, 8px);
 }
-.dp-settings .dp-glass-seg.dp-setting-switch {
+.dp-settings .dp-tabs.dp-setting-switch {
     width: 100%;
-    box-sizing: border-box; /* the track's padding stays inside the row */
-}
-.dp-settings .dp-glass-seg.dp-setting-switch .dp-glass-seg-option {
-    min-height: 32px;
-    font-size: var(--font-ui-small, 13px);
 }
 .dp-settings .dp-settings-panel {
     display: none;
@@ -7294,7 +7298,7 @@ body.dp-touch-ui .dp-selector-modal-item {
     padding: 14px 16px;
     font-size: 1em;
 }
-body.dp-touch-ui .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-option {
+body.dp-touch-ui .dp-settings .dp-tabs > .dp-tab {
     min-height: 40px;
     padding: 0 16px;
 }
@@ -7302,28 +7306,20 @@ body.dp-touch-ui .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-optio
    each tab stacks its icon over a smaller label that may wrap at spaces; longer labels get more of the width (on the
    very narrowest screens the row scrolls sideways rather than split a word) */
 @media (max-width: 520px) {
-    .dp-settings .dp-glass-seg.dp-settings-tabs,
-    body.dp-touch-ui .dp-settings .dp-glass-seg.dp-settings-tabs {
-        border-radius: 18px;
-    }
-    .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-thumb {
-        border-radius: 15px;
-    }
-    .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-option,
-    body.dp-touch-ui .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-option {
+    .dp-settings .dp-tabs.dp-settings-tabs > .dp-tab,
+    body.dp-touch-ui .dp-settings .dp-tabs.dp-settings-tabs > .dp-tab {
         flex: 1 1 auto;
         min-width: min-content; /* never narrower than its longest word: words stay whole */
         flex-direction: column;
         gap: 3px;
         min-height: 48px;
         padding: 6px 3px;
-        border-radius: 15px;
         font-size: 11px;
         line-height: 1.15;
         white-space: normal;
         text-align: center;
     }
-    .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-label {
+    .dp-settings .dp-tabs.dp-settings-tabs .dp-pill-tab-label {
         word-break: keep-all; /* Korean / Japanese / Chinese wrap at spaces too, not inside a word */
     }
 }
