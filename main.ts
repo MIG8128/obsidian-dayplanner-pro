@@ -373,13 +373,18 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
+        // One-finger sideways swipe: page the planner's dates (Obsidian's sidebar swipe off on mobile) or leave the swipe
+        // to Obsidian. Stored as desktopSwipeNavigation (true = dates), read on each touch / swipe.
         new Setting(mobileDisplay)
             .setName(t('settings.swipeNavigation.name'))
             .setDesc(t('settings.swipeNavigation.desc'))
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.desktopSwipeNavigation ?? true)
+            .addDropdown(dropdown => dropdown
+                .addOption('dates', t('settings.swipeNavigation.dates'))
+                // Desktop touchscreens have no sidebar swipe to give back: the other choice there is simply Off
+                .addOption('other', t(Platform.isMobile ? 'settings.swipeNavigation.sidebars' : 'settings.swipeNavigation.off'))
+                .setValue(this.plugin.settings.desktopSwipeNavigation === false ? 'other' : 'dates')
                 .onChange(async (value) => {
-                    this.plugin.settings.desktopSwipeNavigation = value; // read on each touch
+                    this.plugin.settings.desktopSwipeNavigation = value === 'dates';
                     await this.plugin.saveSettings();
                 })
             );

@@ -7280,6 +7280,35 @@ body.dp-touch-ui .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-optio
     min-height: 40px;
     padding: 0 16px;
 }
+/* Narrow settings (phones, a narrow split-view window): five icon + label tabs in one row overlapped each other, so
+   each tab stacks its icon over a smaller label that may wrap at spaces; longer labels get more of the width (on the
+   very narrowest screens the row scrolls sideways rather than split a word) */
+@media (max-width: 520px) {
+    .dp-settings .dp-glass-seg.dp-settings-tabs,
+    body.dp-touch-ui .dp-settings .dp-glass-seg.dp-settings-tabs {
+        border-radius: 18px;
+    }
+    .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-thumb {
+        border-radius: 15px;
+    }
+    .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-option,
+    body.dp-touch-ui .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-option {
+        flex: 1 1 auto;
+        min-width: min-content; /* never narrower than its longest word: words stay whole */
+        flex-direction: column;
+        gap: 3px;
+        min-height: 48px;
+        padding: 6px 3px;
+        border-radius: 15px;
+        font-size: 11px;
+        line-height: 1.15;
+        white-space: normal;
+        text-align: center;
+    }
+    .dp-settings .dp-glass-seg.dp-settings-tabs .dp-glass-seg-label {
+        word-break: keep-all; /* Korean / Japanese / Chinese wrap at spaces too, not inside a word */
+    }
+}
 
 /* Compact sidebar view (Dayloom Compact on a tablet or touch laptop): one step up, its header row still fits */
 body.dp-touch-ui .dp-compact-shell .dp-header-tools {
