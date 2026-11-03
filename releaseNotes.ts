@@ -18,6 +18,92 @@ export interface ReleaseNotes {
 
 export const RELEASE_NOTES: ReleaseNotes[] = [
     {
+        version: '4.4.10',
+        date: '2026-11-03',
+        features: [
+            {
+                emoji: '✌️',
+                title: 'Two-finger moves while holding a card',
+                text: 'On phones, iPad and touchscreen PCs, hold a task or event with one finger and slide a second '
+                    + 'finger: sideways goes to the next or previous day, week or month (the card comes along and drops '
+                    + 'there), up and down scrolls the timeline under it.'
+            }
+        ],
+        improvements: [
+            {
+                emoji: '➡️',
+                title: 'Page transitions',
+                text: 'j/k, the arrows, Today and swipes switch dates with a full-width push: the old page slides out '
+                    + 'as the new one slides in. On touch the page follows your finger and springs back if you let go '
+                    + 'early.'
+            },
+            {
+                emoji: '🔍',
+                title: 'View switch animation',
+                text: 'Between Daily, N-day, Weekly and Monthly the calendar zooms through the date: a day shrinks into '
+                    + 'its column or cell, a week into its row, and back. Board and List push the whole view up or down.'
+            },
+            {
+                emoji: '🪟',
+                title: 'Popups open from the card',
+                text: 'The task and event editor grows out of the card you tapped and closes back into it (into its new '
+                    + 'place if you moved it). Dayloom\'s popups no longer dim the page behind them.'
+            },
+            {
+                emoji: '👆',
+                title: 'Sideways swipe setting',
+                text: 'Settings > View/Display has a switch: Change dates, or Obsidian default to get Obsidian\'s sidebar '
+                    + 'swipe back. The description follows the side you pick.'
+            },
+            {
+                emoji: '📅',
+                title: 'Calendar paging and notes',
+                text: 'The mouse wheel and two-finger trackpad scroll page the sidebar calendar and the drawer\'s mini '
+                    + 'calendar month by month, vertically, with the month following your fingers. Days and weeks that '
+                    + 'have a daily or weekly note are underlined, and the week numbers have their own column.'
+            },
+            {
+                emoji: '↪️',
+                title: 'Moving overdue tasks keeps their history',
+                text: 'Move, Pick a date, Roll to today, Unschedule and Fit it in on an overdue task mark the old line '
+                    + 'cancelled and add the new one right below it (its Google event moves along), with one Undo.'
+            },
+            {
+                emoji: '🌙',
+                title: 'Review today and today\'s note',
+                text: 'Review today says when today\'s daily note isn\'t written yet, with a Write it button.'
+            },
+            {
+                emoji: '📱',
+                title: 'Touch layout',
+                text: 'The touch layout keeps the round pill shapes, just bigger. On phones, Monthly items, all-day chips '
+                    + 'and Board cards can be held and moved too, and the settings tab bar shows each tab\'s icon over '
+                    + 'its label instead of overlapping.'
+            }
+        ],
+        fixes: [
+            {
+                emoji: '✋',
+                title: 'Holding a card no longer opens the editor',
+                text: 'On phones and tablets, a long press picks the card up (move it, or use its resize bars) and '
+                    + 'letting go never opens the editor; a quick tap still does. Dragging a card sideways no longer '
+                    + 'changes the page.'
+            },
+            {
+                emoji: '🔤',
+                title: 'No more vanishing labels on iPhone',
+                text: 'The selected settings tab, the Sideways swipe switch, the Stats Day / Week switch and the review '
+                    + 'choices keep their text: they now work like the view tabs.'
+            },
+            {
+                emoji: '🔄',
+                title: 'No sync conflicts from the Google Calendar cache',
+                text: 'The event cache lives in each device\'s local storage instead of gcal-cache.json in the plugin '
+                    + 'folder, so sync tools (Self-hosted LiveSync, Syncthing...) no longer create conflicts.'
+            }
+        ]
+    },
+    {
         version: '4.4.9',
         date: '2026-10-26',
         features: [
