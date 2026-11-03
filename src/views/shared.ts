@@ -232,23 +232,6 @@ export function greetNowLine(line: HTMLElement) {
     line.addClass('is-arriving');
 }
 
-/**
- * Top-level view switch: shows the target keep-alive pane, hides and deactivates every sibling pane,
- * and plays the 150ms reveal only when the target was not already the visible pane.
- */
-export function applyViewReveal(targetPaneEl: HTMLElement): void {
-    const parent = targetPaneEl.parentElement;
-    parent?.querySelectorAll<HTMLElement>(':scope > .day-planner-view-pane').forEach(p => {
-        if (p === targetPaneEl) return;
-        p.removeClass('is-active', REVEAL_CLASS);
-        p.addClass('is-hidden');
-    });
-    const wasVisible = targetPaneEl.hasClass('is-active') && !targetPaneEl.hasClass('is-hidden');
-    targetPaneEl.removeClass('is-hidden');
-    targetPaneEl.addClass('is-active');
-    if (!wasVisible && !prefersReducedMotion()) playOnce(targetPaneEl, REVEAL_CLASS);
-}
-
 /** The plugin instance, for the module-level write helpers that only receive `app` */
 export const getPlannerPlugin = (app: App): DayPlannerPlugin | undefined => (app as any).plugins?.getPlugin('obsidian-day-planner-pro');
 

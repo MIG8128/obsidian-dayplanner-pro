@@ -7,7 +7,8 @@ import { OVERDUE_MOVE_OPTIONS, TaskItem } from '../../types';
 import { cleanTaskTextForDisplay, createCustomCheckbox, fileNameTaskDate, getDefaultTaskFilePath, openTaskInEditor, triggerHaptic } from '../../utils';
 import { DayPlannerBaseView } from './baseView';
 import { capturePage, pullPage, PageDirection, playPageSwipe, springBackPage } from './pageSwipe';
-import { animateActiveTabPill, applyViewReveal, createNewTaskInFile, isStylusTouch, keepActiveTabInView, openDayReview, playOnce, prefersReducedMotion, renderLateBadge, REVEAL_CLASS, updateTaskInFile, weekendCls } from './shared';
+import { animateActiveTabPill, createNewTaskInFile, isStylusTouch, keepActiveTabInView, openDayReview, prefersReducedMotion, renderLateBadge, updateTaskInFile, weekendCls } from './shared';
+import { switchViewPane, viewSwitchMotion } from './viewSwitch';
 
 /**
  * 1. Day Planner 통합 뷰 (모든 주간, 월간, 보드 레이아웃을 탭 컨트롤러 형태로 포괄)
@@ -136,6 +137,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
                 else this.openMoreSheet();
             });
         }
+        this.tabOrder = tabs.map(tab => tab.key); // view switches slide in this order (viewSwitchMotion)
         animateActiveTabPill(tabsContainer, this as any, this.activeTab);
         keepActiveTabInView(tabsContainer, this as any);
 
@@ -825,16 +827,9 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         // Daily and the List agenda own the date strip: a tap moves the day, staying in that tab.
         // Only other tabs (Monthly cells) hand the day over to the Daily tab.
         if (this.activeTab !== 'daily' && this.activeTab !== 'list') {
-            const fromMonthly = this.activeTab === 'monthly';
             this.currentDate = target;
             this.dataVersion++; // new date: every cached pane is stale
-            await this.switchTab('daily');
-            // Monthly cell → Daily: the day "opens up" from the grid instead of the plain pane reveal
-            const pane = this.panes.get('daily')?.el;
-            if (fromMonthly && pane && !prefersReducedMotion()) {
-                pane.removeClass(REVEAL_CLASS);
-                playOnce(pane, 'dp-zoom-in');
-            }
+            await this.switchTab('daily'); // Monthly cell → Daily zooms in, like every narrower view (viewSwitch.ts)
             return;
         }
         if (target.isSame(this.currentDate, 'day')) return;
@@ -956,6 +951,11 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         await this.paneActivation; // callers (e.g. focusDay's zoom-in) act on the pane once it is actually shown
     }
 
+    /** Tab bar order of the last header render (phone and desktop differ) */
+    tabOrder: string[] = [];
+    /** The tab whose pane is on screen: the switch motion goes from it to the next one */
+    private shownTab: string | null = null;
+
     /** Settles when the pane of the latest tab switch is shown and rendered (see mountActivePane). */
     paneActivation: Promise<void> = Promise.resolve();
     private paneActivationToken = 0;
@@ -973,6 +973,7 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         if (this.paneRoot !== rootEl) {
             this.panes.clear();
             this.paneRoot = rootEl;
+            this.shownTab = null; // a fresh root: nothing to switch from
         }
         const token = ++this.paneActivationToken;
         if (!this.isTabSwitch) {
@@ -1000,8 +1001,12 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
             pane = { el, version: -1, scroll: [] };
             this.panes.set(this.activeTab, pane);
         }
-        // Strict mutual exclusion: exactly one pane is shown (with the reveal if it was hidden), every other one hidden
-        applyViewReveal(pane.el);
+        // Exactly one pane is shown, every other one hidden; coming from another tab, the old pane leaves with the
+        // view-switch motion (zoom between time scales, a short slide to / from Board and List)
+        const motion = this.shownTab && this.shownTab !== this.activeTab
+            ? viewSwitchMotion(this.shownTab, this.activeTab, this.tabOrder) : null;
+        this.shownTab = this.activeTab;
+        switchViewPane(pane.el, motion);
 
         if (pane.version !== this.dataVersion) {
             pane.version = this.dataVersion;

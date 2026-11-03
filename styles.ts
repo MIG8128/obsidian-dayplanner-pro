@@ -338,7 +338,8 @@ body.dp-has-main-bg .mod-root .dp-container {
 }
 
 /* Keep-alive view panes (combined view): cached panes are hidden, never destroyed.
-   The 150ms reveal is added by applyViewReveal() only when a pane becomes visible, and removed on animationend.
+   A view switch animates both panes (src/views/viewSwitch.ts, rules below); a pane shown with nothing to switch from
+   gets the 150ms reveal, removed on animationend.
    Only opacity/transform are animated (compositor-only). The resting state is transform: none
    (not translateY(0)) so an idle pane never becomes a containing block / stacking context for its contents. */
 .day-planner-view-pane.dp-view-reveal {
@@ -401,20 +402,51 @@ body.dp-has-main-bg .mod-root .dp-container {
 .dp-page-spring {
     transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease-out;
 }
-/* Monthly cell → Daily (phone focusDay): the day zooms in from the grid */
-@keyframes dayPlannerZoomIn {
-    from { transform: scale(0.92); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+/* View-type switch (src/views/viewSwitch.ts): the old pane stays over its own box while the new one arrives.
+   Time scales zoom (wider view: the old one shrinks away; narrower view, Monthly cell → Daily included: the new one
+   grows in); Board / List slide 24px in tab-bar order. Never scaled above 1, so nothing spills over the header.
+   The leaving pane fades out a little faster (200ms) than the new one settles (250ms, VIEW_SWITCH_MS). */
+.dp-view-switch-host {
+    overflow-x: hidden;
+    overflow-x: clip;
 }
-.dp-zoom-in {
-    animation: dayPlannerZoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.dp-view-switch-pos {
+    position: relative;
 }
+.day-planner-view-pane.dp-view-leaving {
+    position: absolute;
+    margin: 0;
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 0;
+}
+.day-planner-view-pane.dp-view-arriving {
+    position: relative;
+    z-index: 1;
+}
+.dp-view-in-zoom-out { animation: dp-view-in-zoom-out 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dp-view-in-zoom-in { animation: dp-view-in-zoom-in 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dp-view-in-slide-next { animation: dp-view-in-slide-next 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dp-view-in-slide-prev { animation: dp-view-in-slide-prev 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.dp-view-out-zoom-out { animation: dp-view-out-zoom-out 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
+.dp-view-out-zoom-in { animation: dp-view-out-fade 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
+.dp-view-out-slide-next { animation: dp-view-out-slide-next 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
+.dp-view-out-slide-prev { animation: dp-view-out-slide-prev 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
+@keyframes dp-view-in-zoom-out { from { opacity: 0; } }
+@keyframes dp-view-in-zoom-in { from { opacity: 0; transform: scale(0.94); } }
+@keyframes dp-view-in-slide-next { from { opacity: 0; transform: translateX(24px); } }
+@keyframes dp-view-in-slide-prev { from { opacity: 0; transform: translateX(-24px); } }
+@keyframes dp-view-out-zoom-out { to { opacity: 0; transform: scale(0.94); } }
+@keyframes dp-view-out-fade { to { opacity: 0; } }
+@keyframes dp-view-out-slide-next { to { opacity: 0; transform: translateX(-24px); } }
+@keyframes dp-view-out-slide-prev { to { opacity: 0; transform: translateX(24px); } }
 /* The helpers already skip animating under reduced motion; this is the CSS-side safety net */
 @media (prefers-reduced-motion: reduce) {
     .dp-page-in, .dp-page-out { animation: none; }
     .dp-page-spring { transition: none; }
     .day-planner-view-pane.dp-view-reveal,
-    .dp-zoom-in,
+    .dp-view-in-zoom-out, .dp-view-in-zoom-in, .dp-view-in-slide-next, .dp-view-in-slide-prev,
+    .dp-view-out-zoom-out, .dp-view-out-zoom-in, .dp-view-out-slide-next, .dp-view-out-slide-prev,
     .notice.dayloom-reminder-notice,
     .dp-search-float.is-open,
     .is-mobile .dp-search-float.is-open,
