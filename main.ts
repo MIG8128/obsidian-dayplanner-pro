@@ -104,10 +104,18 @@ export class DayPlannerSettingTab extends PluginSettingTab {
 
     /** Settings tab bar, kept to release its ResizeObserver on re-render and on hide() */
     private tabBar: { destroy(): void } | null = null;
+    /** Glass switches inside settings (Sideways swipe): released like the tab bar */
+    private settingControls: Array<{ destroy(): void }> = [];
+
+    private releaseSettingControls() {
+        this.settingControls.forEach(control => control.destroy());
+        this.settingControls = [];
+    }
 
     hide(): void {
         this.tabBar?.destroy();
         this.tabBar = null;
+        this.releaseSettingControls();
     }
 
     /** A text setting for a vault path with Obsidian's fuzzy file / folder suggestions (utils.attachPathSuggest) */
@@ -227,6 +235,7 @@ export class DayPlannerSettingTab extends PluginSettingTab {
 
     display(): void {
         const { containerEl } = this;
+        this.releaseSettingControls(); // display() re-renders the whole tab
         containerEl.empty();
         containerEl.addClass('dp-settings');
 
@@ -373,21 +382,31 @@ export class DayPlannerSettingTab extends PluginSettingTab {
                 })
             );
 
-        // One-finger sideways swipe: page the planner's dates (Obsidian's sidebar swipe off on mobile) or leave the swipe
-        // to Obsidian. Stored as desktopSwipeNavigation (true = dates), read on each touch / swipe.
-        new Setting(mobileDisplay)
+        // One-finger sideways swipe: a two-way switch, planner dates on one side, Obsidian's own swipe on the other; the
+        // description follows the side chosen. Stored as desktopSwipeNavigation (true = dates), read on each touch / swipe.
+        type SwipeMode = 'dates' | 'obsidian';
+        const swipeDesc = (mode: SwipeMode) => t(mode === 'dates' ? 'settings.swipeNavigation.descDates'
+            : Platform.isMobile ? 'settings.swipeNavigation.descObsidian' : 'settings.swipeNavigation.descOff');
+        const swipeMode: SwipeMode = this.plugin.settings.desktopSwipeNavigation === false ? 'obsidian' : 'dates';
+        const swipeSetting = new Setting(mobileDisplay)
             .setName(t('settings.swipeNavigation.name'))
-            .setDesc(t('settings.swipeNavigation.desc'))
-            .addDropdown(dropdown => dropdown
-                .addOption('dates', t('settings.swipeNavigation.dates'))
-                // Desktop touchscreens have no sidebar swipe to give back: the other choice there is simply Off
-                .addOption('other', t(Platform.isMobile ? 'settings.swipeNavigation.sidebars' : 'settings.swipeNavigation.off'))
-                .setValue(this.plugin.settings.desktopSwipeNavigation === false ? 'other' : 'dates')
-                .onChange(async (value) => {
-                    this.plugin.settings.desktopSwipeNavigation = value === 'dates';
-                    await this.plugin.saveSettings();
-                })
-            );
+            .setDesc(swipeDesc(swipeMode));
+        swipeSetting.settingEl.addClass('dp-setting-stacked');
+        this.settingControls.push(new GlassSegmented<SwipeMode>(swipeSetting.controlEl, {
+            options: [
+                { value: 'dates', label: t('settings.swipeNavigation.dates') },
+                // Desktop touchscreens have no sidebar swipe to give back: the other side there is simply Off
+                { value: 'obsidian', label: t(Platform.isMobile ? 'settings.swipeNavigation.obsidian' : 'settings.swipeNavigation.off') }
+            ],
+            value: swipeMode,
+            ariaLabel: t('settings.swipeNavigation.name'),
+            cls: 'dp-setting-switch',
+            onChange: async (mode) => {
+                swipeSetting.setDesc(swipeDesc(mode));
+                this.plugin.settings.desktopSwipeNavigation = mode === 'dates';
+                await this.plugin.saveSettings();
+            }
+        }));
 
         if (!Platform.isPhone) {
             new Setting(mobileDisplay)

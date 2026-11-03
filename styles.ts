@@ -5895,6 +5895,24 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     min-height: 32px;
     font-size: var(--font-ui-small, 13px);
 }
+/* A setting whose control is a two-way switch (Sideways swipe): name and description on top, the switch full width
+   below with one choice at each end; the description changes with the side chosen */
+.dp-settings .setting-item.dp-setting-stacked {
+    flex-wrap: wrap;
+}
+.dp-settings .setting-item.dp-setting-stacked > .setting-item-control {
+    flex: 1 0 100%;
+    justify-content: stretch;
+    padding-top: var(--size-4-2, 8px);
+}
+.dp-settings .dp-glass-seg.dp-setting-switch {
+    width: 100%;
+    box-sizing: border-box; /* the track's padding stays inside the row */
+}
+.dp-settings .dp-glass-seg.dp-setting-switch .dp-glass-seg-option {
+    min-height: 32px;
+    font-size: var(--font-ui-small, 13px);
+}
 .dp-settings .dp-settings-panel {
     display: none;
 }
