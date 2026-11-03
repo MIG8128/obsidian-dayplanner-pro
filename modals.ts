@@ -11,9 +11,10 @@ import { GlassSegmented } from './glassSegmented';
 import { renderSmartPreview } from './drawer';
 
 /**
- * Base of every planner modal (motion standard, types.ts MOTION): it grows out of the card / button pressed to open
- * it, and on closing (Esc, the backdrop, Save, Cancel) shrinks back into that card, wherever it was redrawn, while the
- * dimmed backdrop fades. Opened by a hotkey or command: from / to the centre. onClose runs once the shrink ends.
+ * Base of every planner modal (motion standard, types.ts MOTION): opened from a task / event card it morphs out of
+ * that card's own box, and on closing (Esc, the backdrop, Save, Cancel) morphs back into the card, wherever it was
+ * redrawn; opened from a button it grows out of the button; by a hotkey or command, from / to the centre. The dimmed
+ * backdrop fades along. onClose runs once the shrink ends.
  */
 export class PlannerModal extends Modal {
     private motionOrigin: MotionOrigin | null = null;

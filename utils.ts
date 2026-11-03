@@ -505,10 +505,38 @@ function transformOnto(origin: DOMRect, box: DOMRect): string {
     return `translate(${dx}px, ${dy}px) scale(${scale})`;
 }
 
-/** Grows a pop-up out of its origin (no origin: from the centre), a little past its size, then settles */
+/** The transform that lays `box` exactly over `card`: its size and place, so the pop-up is the card's own shape */
+function morphOnto(card: DOMRect, box: DOMRect): string {
+    const sx = Math.max(0.02, card.width / box.width);
+    const sy = Math.max(0.02, card.height / box.height);
+    const dx = card.left + card.width / 2 - (box.left + box.width / 2);
+    const dy = card.top + card.height / 2 - (box.top + box.height / 2);
+    return `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+}
+
+/** Card → pop-up and back (a task or event editor opened from its card): the surface morphs between the card's box
+ *  and its own, like the view zoom through the date; its contents only show once it has grown (no squashed text) */
+const MORPH_OUT_MS = 250;
+function fadeContents(el: HTMLElement, show: boolean, duration: number) {
+    Array.from(el.children).forEach(child => (child as HTMLElement).animate(show
+        ? [{ opacity: 0 }, { opacity: 0, offset: 0.35 }, { opacity: 1 }]
+        : [{ opacity: 1 }, { opacity: 0, offset: 0.4 }, { opacity: 0 }], { duration, fill: show ? 'none' : 'forwards' }));
+}
+
+/** Grows a pop-up out of its origin: out of a card it morphs from the card's own box; out of a button (or with no
+ *  origin: from the centre) it grows a little past its size, then settles */
 export function popIn(el: HTMLElement, origin: MotionOrigin | null) {
     const box = el.getBoundingClientRect();
     if (prefersReducedMotionIn(el) || !box.width || !box.height) return;
+    if (origin?.id) {
+        el.animate([
+            { transform: morphOnto(originRectNow(origin, el.ownerDocument), box), opacity: 0.6 },
+            { opacity: 1, offset: 0.2 },
+            { transform: 'none', opacity: 1 },
+        ], { duration: MOTION.inMs, easing: MOTION.settle });
+        fadeContents(el, true, MOTION.inMs);
+        return;
+    }
     el.animate([
         { transform: origin ? transformOnto(originRectNow(origin, el.ownerDocument), box) : 'scale(0.92)', opacity: 0 },
         { opacity: 1, offset: 0.35 },
@@ -516,7 +544,8 @@ export function popIn(el: HTMLElement, origin: MotionOrigin | null) {
     ], { duration: MOTION.inMs, easing: MOTION.spring });
 }
 
-/** Shrinks a pop-up back into its origin (no origin: down in place) and fades it, then calls `done` once */
+/** Shrinks a pop-up back into its origin (a card: into its box, wherever it was redrawn; no origin: down in place) and
+ *  fades it, then calls `done` once */
 export function popOut(el: HTMLElement, origin: MotionOrigin | null, done: () => void) {
     const box = el.getBoundingClientRect();
     if (prefersReducedMotionIn(el) || !box.width || !box.height) return done();
@@ -526,6 +555,16 @@ export function popOut(el: HTMLElement, origin: MotionOrigin | null, done: () =>
         finished = true;
         done();
     };
+    if (origin?.id) {
+        fadeContents(el, false, MORPH_OUT_MS);
+        el.animate([
+            { transform: 'none', opacity: 1 },
+            { opacity: 1, offset: 0.7 },
+            { transform: morphOnto(originRectNow(origin, el.ownerDocument), box), opacity: 0 },
+        ], { duration: MORPH_OUT_MS, easing: MOTION.settle, fill: 'forwards' }).onfinish = finish;
+        window.setTimeout(finish, MORPH_OUT_MS + 150);
+        return;
+    }
     el.animate([
         { transform: 'none', opacity: 1 },
         { transform: origin ? transformOnto(originRectNow(origin, el.ownerDocument), box) : 'scale(0.92)', opacity: 0 },
