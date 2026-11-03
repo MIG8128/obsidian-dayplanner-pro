@@ -1,20 +1,21 @@
 import { Modal, App, Notice, Setting, setIcon } from 'obsidian';
 import { TaskItem, GCalEvent } from './types';
-import { openTaskInEditor, cleanTaskTextForDisplay, MotionOrigin, takePressOrigin, popIn, popOut, fadeAlong } from './utils';
+import { openTaskInEditor, cleanTaskTextForDisplay, MotionOrigin, takePressOrigin, popIn, popOut } from './utils';
 import { createGoogleCalendarEvent, updateGoogleCalendarEvent, syncAllTasksToGCal } from './gcalApi';
 import DayPlannerPlugin from './main';
 import { showGCalEventUndoNotice, deletePlannerItems, getPlannerPlugin, isTypingContext } from './views';
 import { t } from './i18n';
 import { getReleaseNotes, ReleaseNoteItem } from './releaseNotes';
 import { parseSmartEntry } from './smartEntry';
-import { GlassSegmented } from './glassSegmented';
+import { PillTabs } from './src/settings/pillTabs';
 import { renderSmartPreview } from './drawer';
 
 /**
  * Base of every planner modal (motion standard, types.ts MOTION): opened from a task / event card it morphs out of
  * that card's own box, and on closing (Esc, the backdrop, Save, Cancel) morphs back into the card, wherever it was
- * redrawn; opened from a button it grows out of the button; by a hotkey or command, from / to the centre. The dimmed
- * backdrop fades along. onClose runs once the shrink ends.
+ * redrawn; opened from a button it grows out of the button; by a hotkey or command, from / to the centre. The page
+ * behind is never dimmed (the backdrop stays, invisible, so a tap outside still closes). onClose runs once the shrink
+ * ends.
  */
 export class PlannerModal extends Modal {
     private motionOrigin: MotionOrigin | null = null;
@@ -24,16 +25,13 @@ export class PlannerModal extends Modal {
         this.closing = false;
         this.motionOrigin = takePressOrigin();
         super.open();
+        this.containerEl.addClass('dp-modal-no-dim'); // the planner stays visible behind its pop-ups (styles.ts)
         popIn(this.modalEl, this.motionOrigin);
-        const backdrop = this.containerEl.querySelector<HTMLElement>(':scope > .modal-bg');
-        if (backdrop) fadeAlong(backdrop, true);
     }
 
     close() {
         if (this.closing) return;
         this.closing = true;
-        const backdrop = this.containerEl.querySelector<HTMLElement>(':scope > .modal-bg');
-        if (backdrop) fadeAlong(backdrop, false);
         popOut(this.modalEl, this.motionOrigin, () => super.close());
     }
 }
@@ -948,7 +946,7 @@ export class DayReviewModal extends PlannerModal {
         const bulk = contentEl.createDiv({ cls: 'dp-review-bulk' });
         bulk.createSpan({ cls: 'dp-review-bulk-label', text: t('review.setAll') });
         const list = contentEl.createDiv({ cls: 'dp-review-list' });
-        const controls: Array<GlassSegmented<ReviewChoice>> = [];
+        const controls: Array<PillTabs<ReviewChoice>> = [];
 
         const footer = createModalFooter(contentEl);
         createModalButton(footer.end, t('common.cancel'), 'secondary').addEventListener('click', () => this.close());
@@ -981,10 +979,11 @@ export class DayReviewModal extends PlannerModal {
             const head = row.createDiv({ cls: 'dp-review-row-head' });
             if (task.startTime && task.endTime) head.createSpan({ cls: 'dp-review-time', text: `${task.startTime}–${task.endTime}` });
             head.createSpan({ cls: 'dp-review-title', text: cleanTaskTextForDisplay(task.text) });
-            controls.push(new GlassSegmented<ReviewChoice>(row, {
+            controls.push(new PillTabs<ReviewChoice>(row, {
                 options,
                 value: 'keep',
                 ariaLabel: cleanTaskTextForDisplay(task.text),
+                role: 'radiogroup',
                 cls: 'dp-review-choice',
                 onChange: (choice) => {
                     this.choices.set(task, choice);

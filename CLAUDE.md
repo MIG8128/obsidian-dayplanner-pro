@@ -16,7 +16,7 @@ Keep this map in sync: whenever a file is created, split, renamed or removed, up
 - `src/views/pageSwipe.ts`: page push/pull transition for date and board paging (ghost clone of the old page, touch pull, spring back).
 - `src/views/secondFinger.ts`: second-finger gestures while a card is held by touch (slide sideways pages like j/k with the card, up/down scrolls the timeline).
 - `src/views/viewSwitch.ts`: view-type switch animation between keep-alive panes (zoom between time scales, short slide to / from Board and List).
-- `src/settings/pillTabs.ts`: `PillTabs`, the planner's view-tab bar (.dp-tabs, sliding pill) as a reusable control for the settings page (tab bar, two-way switches).
+- `src/settings/pillTabs.ts`: `PillTabs`, the planner's view-tab bar (.dp-tabs, sliding pill) as a reusable switch: settings tab bar and two-way switches, the drawer's Stats Day / Week, the review popup's choices.
 - `src/views/viewCore.ts`: `PlannerViewCore`, the bottom view layer: all view state/fields, data loading, render loop, nav header, selection, shortcuts, sync.
 - `src/views/dragDrop.ts`: `DragDropLayer`: native/pointer/touch drag, drag previews, resize, marquee selection, scheduling on drop.
 - `src/views/timelineView.ts`: `TimelineLayer`: Daily / N-day / Weekly timelines, deadlines, all-day chips, inline create.

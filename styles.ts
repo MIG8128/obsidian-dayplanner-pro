@@ -402,6 +402,11 @@ body.dp-has-main-bg .mod-root .dp-container {
 .dp-page-spring {
     transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease-out;
 }
+/* Planner pop-ups (modals.ts PlannerModal): the page behind is never dimmed. The backdrop stays, invisible, so a tap
+   outside still closes the pop-up */
+.modal-container.dp-modal-no-dim > .modal-bg {
+    opacity: 0 !important;
+}
 /* View-type switch (src/views/viewSwitch.ts): the old pane stays over its own box while the new one arrives.
    Time scales zoom through the date (wider view: the old one shrinks into that date's column / cell / week row;
    narrower view, Monthly cell → Daily included: the new one grows out of it; a plain centre zoom when that place is
@@ -5591,14 +5596,14 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     text-overflow: ellipsis;
     font-weight: var(--font-medium, 500);
 }
-.dp-glass-seg.dp-review-choice .dp-glass-seg-option {
-    min-height: 26px;
-    padding: 3px 8px;
+.dp-tabs.dp-review-choice > .dp-tab {
+    padding: 0 8px;
     font-size: 11.5px;
 }
 /* Day / Week switch at the top of the Stats panel */
-.dp-glass-seg.dp-stats-range {
+.dp-tabs.dp-stats-range {
     margin: 2px 2px 10px;
+    width: auto;
 }
 /* Week: a bar per day, stacked from the bottom (done, still planned, events), against the working hours (dashed) */
 .dp-stats-week-bars {
@@ -5832,98 +5837,6 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
         --dp-gseg-highlight: transparent;
         --dp-gseg-blur: none;
     }
-}
-
-/* Glass segmented control (glassSegmented.ts): pill track with a translucent thumb that slides between options
-   and stretches briefly while moving. Position and width come from the selected button (--thumb-x / --thumb-w) */
-.dp-glass-seg {
-    position: relative;
-    display: flex;
-    padding: 3px;
-    gap: 0;
-    border-radius: 999px;
-    background: var(--background-modifier-hover);
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
-    isolation: isolate;
-    overflow-x: auto;
-    scrollbar-width: none;
-    flex-shrink: 0;
-}
-.dp-glass-seg::-webkit-scrollbar { display: none; }
-.dp-glass-seg-thumb {
-    position: absolute;
-    top: 3px;
-    bottom: 3px;
-    left: 0;
-    width: var(--thumb-w, 0px);
-    transform: translateX(var(--thumb-x, 0px));
-    border-radius: 999px;
-    background-color: color-mix(in srgb, var(--background-primary) 80%, transparent);
-    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
-    -webkit-backdrop-filter: blur(10px) saturate(1.8);
-    backdrop-filter: blur(10px) saturate(1.8);
-    border: 0.5px solid rgba(255, 255, 255, 0.14);
-    box-shadow:
-        0 2px 8px rgba(0, 0, 0, 0.18),
-        0 0 0 0.5px rgba(0, 0, 0, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.35),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.06);
-    box-sizing: border-box;
-    z-index: 0;
-    pointer-events: none;
-}
-.dp-glass-seg.is-ready .dp-glass-seg-thumb {
-    transition:
-        transform 0.42s cubic-bezier(0.3, 1.3, 0.4, 1),
-        width 0.42s cubic-bezier(0.3, 1.3, 0.4, 1),
-        scale 0.2s ease;
-}
-/* While gliding the glass swells a little, then settles */
-.dp-glass-seg.is-moving .dp-glass-seg-thumb {
-    scale: 1.06 1.12;
-}
-.dp-glass-seg .dp-glass-seg-option {
-    position: relative;
-    z-index: 1;
-    flex: 1 1 0;
-    min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    height: auto;
-    min-height: 28px;
-    padding: 5px 10px;
-    border: none;
-    border-radius: 999px;
-    background: transparent;
-    box-shadow: none;
-    color: var(--text-muted);
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.2;
-    white-space: nowrap;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    transition: color 0.25s;
-}
-.dp-glass-seg .dp-glass-seg-option:hover {
-    background: transparent;
-    color: var(--text-normal);
-}
-.dp-glass-seg .dp-glass-seg-option.is-active {
-    color: var(--text-normal);
-}
-.dp-glass-seg .dp-glass-seg-option:focus-visible {
-    outline: 2px solid var(--interactive-accent);
-    outline-offset: -2px;
-    box-shadow: none;
-}
-.dp-glass-seg-icon { display: flex; }
-.dp-glass-seg-icon svg { width: 15px; height: 15px; }
-@media (prefers-reduced-motion: reduce) {
-    .dp-glass-seg.is-ready .dp-glass-seg-thumb { transition: none; }
-    .dp-glass-seg.is-moving .dp-glass-seg-thumb { scale: none; }
 }
 
 /* Settings page: top tab bar (DayPlannerSettingTab.createSettingsTabs) and two-way switches built with PillTabs, the
@@ -7419,11 +7332,10 @@ body.dp-touch-ui .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
 }
 
 
-/* Glass segmented controls, one material for all: view tabs, glass segmented controls (settings, drawer), Board
+/* Glass segmented controls, one material for all: view tabs (and PillTabs: settings, drawer stats, review), Board
    layout toggle, drawer modes, header tool groups, zoom pills and the mini calendar's nav. Frosted track (every
    rounded wrapper of buttons / icons), glossy thumb. */
 .dp-tabs:not(.dp-bottom-nav),
-.dp-glass-seg,
 .dp-board-toggle,
 .dp-drawer-modes,
 .dp-nav-buttons-group,
@@ -7436,7 +7348,6 @@ body.dp-touch-ui .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
     box-shadow: var(--dp-glass-track-shadow);
 }
 .dp-tabs > .dp-tab.active::before,
-.dp-glass-seg-thumb,
 .dp-board-toggle > .dp-board-toggle-btn.active,
 .dp-drawer-modes-thumb,
 .dp-nav-buttons-group > button:hover,

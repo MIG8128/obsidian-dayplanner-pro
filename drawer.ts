@@ -4,7 +4,7 @@ import type DayPlannerPlugin from './main';
 import type { DayPlannerCombinedView } from './views';
 import { cleanTaskTextForDisplay, onEnterSubmit, readDraggedTaskIds, triggerHaptic, timeToMinutes, pageOnWheel } from './utils';
 import { t, getLocale, TranslationKey } from './i18n';
-import { GlassSegmented } from './glassSegmented';
+import { PillTabs } from './src/settings/pillTabs';
 import { parseSmartEntry, describeSmartEntry, SmartEntry } from './smartEntry';
 
 /**
@@ -962,13 +962,14 @@ function statsBadge(view: DayPlannerCombinedView): string {
 /** Day / Week switch above the stats; a switch swaps only the stats under it and the mode switcher's badge */
 function renderStatsPanel(body: HTMLElement, view: DayPlannerCombinedView) {
     const renderRange = (range: StatsRange) => (range === 'week' ? renderWeeklyStats : renderDailyStats)(body, view);
-    new GlassSegmented<StatsRange>(body, {
+    new PillTabs<StatsRange>(body, {
         options: [
             { value: 'day', label: t('stats.range.day') },
             { value: 'week', label: t('stats.range.week') }
         ],
         value: statsRange(view),
         ariaLabel: t('stats.range'),
+        role: 'radiogroup',
         cls: 'dp-stats-range',
         onChange: (range) => {
             view.drawerStatsRange = range;

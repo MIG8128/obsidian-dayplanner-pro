@@ -572,14 +572,6 @@ export function popOut(el: HTMLElement, origin: MotionOrigin | null, done: () =>
     window.setTimeout(finish, MOTION.outMs + 150); // never left open if the animation is dropped
 }
 
-/** Fades an element (a modal's dimmed backdrop) in from 0 or out to 0 alongside popIn / popOut */
-export function fadeAlong(el: HTMLElement, show: boolean) {
-    if (prefersReducedMotionIn(el)) return;
-    const opacity = getComputedStyle(el).opacity;
-    el.animate(show ? [{ opacity: 0 }, { opacity }] : [{ opacity }, { opacity: 0 }],
-        { duration: show ? MOTION.inMs : MOTION.outMs, easing: 'ease-out', fill: show ? 'none' : 'forwards' });
-}
-
 // Daily-note date fallback, memoised per note: strict moment parsing tries up to 6 formats and ran for every dateless
 // task line of the same note during a full scan
 const fileNameDateCache = new Map<string, string | null>();
