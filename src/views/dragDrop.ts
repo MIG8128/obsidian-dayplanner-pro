@@ -4,6 +4,7 @@ import { patchGoogleCalendarEvent, syncEditedTaskToGCal } from '../../gcalApi';
 import { t } from '../../i18n';
 import { GCalEvent, TaskItem } from '../../types';
 import { cleanTaskTextForDisplay, fileNameTaskDate, isTouchLike, minutesToTime, PRIORITY_EMOJI, RescheduledTaskLine, RescheduleTarget, rescheduleTaskLines, timeToMinutes, triggerHaptic, undoRescheduleTaskLines } from '../../utils';
+import { attachSecondFingerGestures } from './secondFinger';
 import { grabOffsetIn, hasTouchScreen, isLockedTask, isStylusTouch, isTimedTask, PointerDragSource, PointerDropTarget, reparseAndRefresh, showGCalEventUndoNotice, snapshotTask, TaskUpdates, updateTaskInFile, updateTasksInFile } from './shared';
 import { PlannerViewCore } from './viewCore';
 
@@ -597,6 +598,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
         };
         // No scroll or pinch-zoom while a finger drags: a second finger starting one would cancel the dragging finger
         const holdStill = (e: TouchEvent) => { if (e.cancelable) e.preventDefault(); };
+        let releaseSecondFinger: (() => void) | null = null; // a second finger pages / scrolls under the held card
         const teardown = () => {
             this.activePointerDrag = null;
             doc.removeEventListener('pointermove', onMove);
@@ -607,6 +609,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
             doc.removeEventListener('pointerdown', onOtherDown, true);
             doc.removeEventListener('pointerup', onOtherUp, true);
             doc.removeEventListener('touchmove', holdStill, true);
+            releaseSecondFinger?.();
             if (frame) win.cancelAnimationFrame(frame);
             win.cancelAnimationFrame(scrollFrame);
             dragHost.removeClass('dp-pointer-dragging');
@@ -707,6 +710,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
             doc.addEventListener('pointerdown', onOtherDown, true);
             doc.addEventListener('pointerup', onOtherUp, true);
             doc.addEventListener('touchmove', holdStill, { capture: true, passive: false });
+            releaseSecondFinger = attachSecondFingerGestures(this, () => { movedSinceStart = true; schedule(); });
         }
         this.activePointerDrag = {
             refresh: () => { scroller = null; schedule(); },
@@ -1443,6 +1447,9 @@ export abstract class DragDropLayer extends PlannerViewCore {
         // Native touch drag-and-drop would compete with the long-press; desktop (sidebar) keeps mouse dragging
         if (Platform.isMobile) card.setAttribute('draggable', 'false');
         const scroller = card.closest<HTMLElement>('.dp-content');
+        // The finger is followed on the document: a second-finger page re-renders this card away mid-drag
+        const doc = card.ownerDocument;
+        let releaseSecondFinger: (() => void) | null = null;
         let holdTimer = 0, frame = 0, pointerId = -1;
         let startX = 0, startY = 0, lastX = 0, lastY = 0, grabOffset = 0;
         let dragging = false, moved = false;
@@ -1469,13 +1476,15 @@ export abstract class DragDropLayer extends PlannerViewCore {
         const detach = () => {
             window.clearTimeout(holdTimer);
             holdTimer = 0;
-            card.removeEventListener('pointermove', onMove);
-            card.removeEventListener('pointerup', onUp);
-            card.removeEventListener('pointercancel', onCancel);
+            doc.removeEventListener('pointermove', onMove);
+            doc.removeEventListener('pointerup', onUp);
+            doc.removeEventListener('pointercancel', onCancel);
         };
         const endDrag = () => {
             dragging = false;
             this.touchDragActive = false;
+            releaseSecondFinger?.();
+            releaseSecondFinger = null;
             card.removeClass('dp-touch-lifted');
             cancelAnimationFrame(frame);
             this.clearDragPreview(previewRoot);
@@ -1523,9 +1532,9 @@ export abstract class DragDropLayer extends PlannerViewCore {
             moved = false;
             column = null;
             armed = this.isTouchActive(refId);
-            card.addEventListener('pointermove', onMove);
-            card.addEventListener('pointerup', onUp);
-            card.addEventListener('pointercancel', onCancel);
+            doc.addEventListener('pointermove', onMove);
+            doc.addEventListener('pointerup', onUp);
+            doc.addEventListener('pointercancel', onCancel);
             if (!armed) {
                 holdTimer = window.setTimeout(() => {
                     holdTimer = 0;
@@ -1552,6 +1561,7 @@ export abstract class DragDropLayer extends PlannerViewCore {
             }
             updatePreview();
             frame = requestAnimationFrame(autoScroll);
+            releaseSecondFinger = attachSecondFingerGestures(this, () => { moved = true; updatePreview(); }); // a second finger pages / scrolls
         };
         // Once lifted (or on the active card, whose touch-action is none), finger moves drive the drag, not a scroll
         card.addEventListener('touchmove', (e) => { if ((dragging || armed) && e.cancelable) e.preventDefault(); }, { passive: false });

@@ -11,3 +11,4 @@
 - [4.4.9.10] Refactor: setup modular workflow
 - [4.4.9.11] UI: j/k, the nav arrows, Today and swipes now switch pages with a full-width push (the old page slides out as the new one slides in); on touch the page follows the finger and springs back if released early
 - [4.4.9.12] Fix: on phones and tablets, holding a task or event no longer opens the editor when you let go: a hold picks the card up (move it, or use its resize bars), a quick tap still opens the editor; on phones, Monthly items, all-day chips and Board cards can now be held and moved too, and dragging a card sideways no longer pages the view
+- [4.4.9.13] UI: while one finger holds a task or event (phones, iPad, touchscreen PCs), a second finger can now slide sideways to go to the next or previous day, week or month (the card comes along and drops there), or slide up and down to scroll the timeline under the card; before, a second finger did nothing or dropped the card

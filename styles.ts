@@ -3008,6 +3008,12 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     position: relative;
     z-index: 13;
 }
+/* A card held by one finger (secondFinger.ts): a second finger landing anywhere on the view pages / scrolls it in
+   code, never by the browser, whose pan or pinch would cancel the finger holding the card */
+.dp-touch-holding,
+.dp-touch-holding * {
+    touch-action: none !important;
+}
 /* Hold-to-drag: no iOS callout or text selection on a long-pressed card */
 :is(.is-mobile .dp-container, .dp-container.dp-touch-screen) :is(.dp-timeline-event, .dp-kanban-card, .dp-drawer-card, .dp-grid-task-item, .dp-allday-item) {
     -webkit-touch-callout: none;
