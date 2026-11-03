@@ -403,8 +403,9 @@ body.dp-has-main-bg .mod-root .dp-container {
     transition: transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease-out;
 }
 /* View-type switch (src/views/viewSwitch.ts): the old pane stays over its own box while the new one arrives.
-   Time scales zoom (wider view: the old one shrinks away; narrower view, Monthly cell → Daily included: the new one
-   grows in); Board / List slide 24px in tab-bar order. Never scaled above 1, so nothing spills over the header.
+   Time scales zoom through the date (wider view: the old one shrinks into that date's column / cell / week row;
+   narrower view, Monthly cell → Daily included: the new one grows out of it; a plain centre zoom when that place is
+   not on screen); Board / List slide 24px in tab-bar order. Never scaled above 1, so nothing spills over the header.
    The leaving pane fades out a little faster (200ms) than the new one settles (250ms, VIEW_SWITCH_MS). */
 .dp-view-switch-host {
     overflow-x: hidden;
@@ -432,6 +433,12 @@ body.dp-has-main-bg .mod-root .dp-container {
 .dp-view-out-zoom-in { animation: dp-view-out-fade 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
 .dp-view-out-slide-next { animation: dp-view-out-slide-next 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
 .dp-view-out-slide-prev { animation: dp-view-out-slide-prev 0.2s cubic-bezier(0.4, 0, 1, 1) forwards; }
+/* Zoom through the date (zoomTarget): the narrower pane maps onto that date's place in the wider one via --dp-zoom-t,
+   shrinking into it (zoom out) or growing out of it (zoom in) */
+.dp-view-out-zoom-to { transform-origin: 0 0; animation: dp-view-out-zoom-to 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.dp-view-in-zoom-from { transform-origin: 0 0; animation: dp-view-in-zoom-from 0.25s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes dp-view-out-zoom-to { 60% { opacity: 1; } to { opacity: 0; transform: var(--dp-zoom-t, scale(0.94)); } }
+@keyframes dp-view-in-zoom-from { from { opacity: 0; transform: var(--dp-zoom-t, scale(0.94)); } 35% { opacity: 1; } to { transform: none; } }
 @keyframes dp-view-in-zoom-out { from { opacity: 0; } }
 @keyframes dp-view-in-zoom-in { from { opacity: 0; transform: scale(0.94); } }
 @keyframes dp-view-in-slide-next { from { opacity: 0; transform: translateX(24px); } }
@@ -447,6 +454,7 @@ body.dp-has-main-bg .mod-root .dp-container {
     .day-planner-view-pane.dp-view-reveal,
     .dp-view-in-zoom-out, .dp-view-in-zoom-in, .dp-view-in-slide-next, .dp-view-in-slide-prev,
     .dp-view-out-zoom-out, .dp-view-out-zoom-in, .dp-view-out-slide-next, .dp-view-out-slide-prev,
+    .dp-view-out-zoom-to, .dp-view-in-zoom-from,
     .notice.dayloom-reminder-notice,
     .dp-search-float.is-open,
     .is-mobile .dp-search-float.is-open,

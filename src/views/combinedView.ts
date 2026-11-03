@@ -1003,22 +1003,42 @@ export class DayPlannerCombinedView extends DayPlannerBaseView {
         }
         // Exactly one pane is shown, every other one hidden; coming from another tab, the old pane leaves with the
         // view-switch motion (zoom between time scales, a short slide to / from Board and List)
-        const motion = this.shownTab && this.shownTab !== this.activeTab
-            ? viewSwitchMotion(this.shownTab, this.activeTab, this.tabOrder) : null;
+        const from = this.shownTab;
+        const motion = from && from !== this.activeTab ? viewSwitchMotion(from, this.activeTab, this.tabOrder) : null;
         this.shownTab = this.activeTab;
-        switchViewPane(pane.el, motion);
+        // A zoom goes through the dates the narrower view shows (Daily's day, N-day's days, Weekly's week)
+        const narrowTab = motion === 'zoom-out' ? from : motion === 'zoom-in' ? this.activeTab : null;
+        const shown = pane;
+        switchViewPane(shown.el, motion, {
+            zoomDates: narrowTab ? this.datesShownBy(narrowTab) : undefined,
+            // Rendered (or its scroll restored) once shown and before the switch measures anything
+            prepare: () => {
+                if (shown.version !== this.dataVersion) {
+                    shown.version = this.dataVersion;
+                    shown.scroll = [];
+                    this.renderPaneContent(shown.el);
+                } else {
+                    shown.scroll.forEach(([el, top, left]) => {
+                        el.scrollTop = top;
+                        el.scrollLeft = left;
+                    });
+                    if (this.activeTab === 'board') this.mountBoardModeToggle(rootEl);
+                }
+            }
+        });
+    }
 
-        if (pane.version !== this.dataVersion) {
-            pane.version = this.dataVersion;
-            pane.scroll = [];
-            this.renderPaneContent(pane.el);
-        } else {
-            pane.scroll.forEach(([el, top, left]) => {
-                el.scrollTop = top;
-                el.scrollLeft = left;
-            });
-            if (this.activeTab === 'board') this.mountBoardModeToggle(rootEl);
+    /** The dates a time-scale tab shows for the current date ('' tabs: none) */
+    private datesShownBy(tab: string): string[] {
+        const moment = (window as any).moment;
+        const day = (offset: number, from: any) => from.clone().add(offset, 'days').format('YYYY-MM-DD');
+        if (tab === 'daily') return [this.currentDate.format('YYYY-MM-DD')];
+        if (tab === 'multiDay') return Array.from({ length: this.getNDayCount() }, (_, i) => day(i, this.currentDate));
+        if (tab === 'weekly') {
+            const start = moment(this.currentDate).startOf('week');
+            return Array.from({ length: 7 }, (_, i) => day(i, start));
         }
+        return [];
     }
 
     renderPaneContent(content: HTMLDivElement) {

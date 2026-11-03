@@ -3,8 +3,9 @@ import { playOnce, prefersReducedMotion, REVEAL_CLASS } from './shared';
 /**
  * View-type switch (Daily / N-day / Weekly / Monthly / Board / List tabs). The old pane stays on screen over its own
  * box while the new one arrives, then is hidden (panes are kept alive, so nothing is rebuilt for the animation):
- *   - between time scales the calendar zooms: to a wider view the old one shrinks away (zoom out), to a narrower one
- *     the new one grows in from the grid (zoom in);
+ *   - between time scales the calendar zooms through the date on screen: to a wider view the old one shrinks into
+ *     that date's place in it (a day into its column or cell, a week into its row), to a narrower one the new one
+ *     grows out of that place (zoomTarget); when the place is not on screen, a plain zoom about the centre;
  *   - to or from Board / List the panes slide a short way, in tab-bar order (a tab to the right comes from the right).
  * Nothing scales above 1, so no pane spills over the header. Reduced motion: an instant switch.
  */
@@ -24,6 +25,38 @@ export function viewSwitchMotion(from: string, to: string, tabOrder: string[]): 
 
 const running = new WeakMap<HTMLElement, () => void>();
 
+export interface ViewSwitchOptions {
+    /** Fills or refreshes the incoming pane once it is shown, before anything is measured */
+    prepare?: () => void;
+    /** The dates the narrower of the two views shows: the zoom shrinks into / grows out of them in the wider view */
+    zoomDates?: string[];
+}
+
+type Box = { left: number; top: number; width: number; height: number };
+
+/** Where `dates` sit in the wider view (Weekly / N-day columns with their headers, Monthly cells), as one box
+ *  clipped to the pane's visible area; null when none is on screen */
+function zoomTarget(wide: HTMLElement, dates: string[]): Box | null {
+    const wanted = new Set(dates);
+    const els = Array.from(wide.querySelectorAll<HTMLElement>('.dp-weekly-day-col[data-date], .dp-grid-header[data-date], .dp-grid-cell[data-date]'))
+        .filter(el => wanted.has(el.dataset.date ?? ''));
+    if (els.length === 0) return null;
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    els.forEach(el => {
+        const r = el.getBoundingClientRect();
+        left = Math.min(left, r.left); top = Math.min(top, r.top);
+        right = Math.max(right, r.right); bottom = Math.max(bottom, r.bottom);
+    });
+    const pane = wide.getBoundingClientRect();
+    left = Math.max(left, pane.left); top = Math.max(top, pane.top);
+    right = Math.min(right, pane.right); bottom = Math.min(bottom, pane.bottom);
+    return right - left >= 8 && bottom - top >= 8 ? { left, top, width: right - left, height: bottom - top } : null;
+}
+
+/** The transform that lays a pane occupying `from` exactly over `to` (transform-origin: top left) */
+const boxTransform = (from: Box, to: Box) =>
+    `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width}, ${to.height / from.height})`;
+
 /** Ends a running switch inside `host` at once: the old pane hidden, the new one at rest. */
 export function finishViewSwitch(host: HTMLElement | null | undefined): void {
     if (host) running.get(host)?.();
@@ -33,9 +66,9 @@ export function finishViewSwitch(host: HTMLElement | null | undefined): void {
  * Shows `incoming` and hides every other pane beside it. When another pane was showing and `motion` is given, that
  * pane leaves with it while `incoming` arrives; otherwise a newly shown pane gets the plain reveal.
  */
-export function switchViewPane(incoming: HTMLElement, motion: ViewSwitchMotion | null): void {
+export function switchViewPane(incoming: HTMLElement, motion: ViewSwitchMotion | null, opts: ViewSwitchOptions = {}): void {
     const host = incoming.parentElement;
-    if (!host) return;
+    if (!host) { opts.prepare?.(); return; }
     finishViewSwitch(host); // fast d / w / m presses: the previous switch ends now, never stacked
     const panes = Array.from(host.querySelectorAll<HTMLElement>(':scope > .day-planner-view-pane'));
     const wasVisible = incoming.hasClass('is-active') && !incoming.hasClass('is-hidden');
@@ -53,9 +86,9 @@ export function switchViewPane(incoming: HTMLElement, motion: ViewSwitchMotion |
     });
     incoming.removeClass('is-hidden');
     incoming.addClass('is-active');
-    if (wasVisible) return;
-    if (!animate || !outgoing || !rect || !motion) {
-        if (!prefersReducedMotion()) playOnce(incoming, REVEAL_CLASS);
+    if (wasVisible || !animate || !outgoing || !rect || !motion) {
+        opts.prepare?.();
+        if (!wasVisible && !prefersReducedMotion()) playOnce(incoming, REVEAL_CLASS);
         return;
     }
 
@@ -68,8 +101,28 @@ export function switchViewPane(incoming: HTMLElement, motion: ViewSwitchMotion |
     outgoing.style.width = `${rect.width}px`;
     outgoing.style.height = `${rect.height}px`;
     outgoing.setAttribute('inert', '');
-    outgoing.addClass('dp-view-leaving', `dp-view-out-${motion}`);
-    incoming.addClass('dp-view-arriving', `dp-view-in-${motion}`);
+    outgoing.addClass('dp-view-leaving'); // out of the flow now, so the incoming pane is measured at its full size
+    opts.prepare?.(); // the incoming pane has the full space: render / restore it before measuring
+
+    // Zoom through the date: the narrower pane shrinks into (or grows out of) that date's place in the wider one
+    let outCls = `dp-view-out-${motion}`;
+    let inCls = `dp-view-in-${motion}`;
+    let shaped: HTMLElement | null = null;
+    if ((motion === 'zoom-out' || motion === 'zoom-in') && opts.zoomDates?.length) {
+        const zoomOut = motion === 'zoom-out';
+        const target = zoomTarget(zoomOut ? incoming : outgoing, opts.zoomDates);
+        const narrow = zoomOut ? outgoing : incoming;
+        const narrowBox = zoomOut ? rect : incoming.getBoundingClientRect();
+        if (target && narrowBox.width > 0 && narrowBox.height > 0) {
+            narrow.style.setProperty('--dp-zoom-t', boxTransform(narrowBox, target));
+            shaped = narrow;
+            if (zoomOut) outCls = 'dp-view-out-zoom-to';
+            else inCls = 'dp-view-in-zoom-from';
+        }
+    }
+    outgoing.addClass(outCls);
+    incoming.addClass('dp-view-arriving', inCls);
+    const inAnimation = inCls; // each class plays keyframes of the same name (styles.ts)
 
     let done = false;
     const finish = (): void => {
@@ -78,8 +131,9 @@ export function switchViewPane(incoming: HTMLElement, motion: ViewSwitchMotion |
         if (running.get(host) === finish) running.delete(host);
         window.clearTimeout(timer);
         incoming.removeEventListener('animationend', onEnd);
-        incoming.removeClass('dp-view-arriving', `dp-view-in-${motion}`);
-        outgoing.removeClass('dp-view-leaving', `dp-view-out-${motion}`);
+        incoming.removeClass('dp-view-arriving', inCls);
+        outgoing.removeClass('dp-view-leaving', outCls);
+        shaped?.style.removeProperty('--dp-zoom-t');
         outgoing.removeAttribute('inert'); // a cached pane: it must be usable when shown again
         ['top', 'left', 'width', 'height'].forEach(prop => outgoing.style.removeProperty(prop));
         // Hidden unless a newer switch (or render) already made it the shown pane again
@@ -88,7 +142,7 @@ export function switchViewPane(incoming: HTMLElement, motion: ViewSwitchMotion |
         if (addedPos) host.removeClass('dp-view-switch-pos');
     };
     const onEnd = (e: AnimationEvent): void => {
-        if (e.target === incoming && e.animationName.startsWith('dp-view-in-')) finish();
+        if (e.target === incoming && e.animationName === inAnimation) finish();
     };
     incoming.addEventListener('animationend', onEnd);
     const timer = window.setTimeout(finish, VIEW_SWITCH_MS + 150);

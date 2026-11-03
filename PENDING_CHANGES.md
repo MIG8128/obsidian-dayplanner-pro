@@ -16,3 +16,4 @@
 - [4.4.9.15] UI: Sideways swipe is now a two-way switch, Change dates ↔ Obsidian default, under the setting name; the description changes to explain the side you pick
 - [4.4.9.16] Fix: on iPhone, the selected settings tab (and the Sideways swipe switch) no longer loses its text: the settings tab bar and switches now work like the planner’s view tabs, with the same sliding highlight
 - [4.4.9.17] UI: switching the view type now animates: between Daily, N-day, Weekly and Monthly the calendar zooms (out to a wider view, in to a narrower one, Monthly day → Daily included), and Board / List slide in from the side of their tab
+- [4.4.9.18] UI: the view zoom now goes through the date: Daily shrinks into its day’s column (Weekly, N-day) or cell (Monthly), Weekly into its week’s row, and zooming in grows the narrower view out of that same place
