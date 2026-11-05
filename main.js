@@ -6648,6 +6648,29 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     border-color: var(--dp-glass-border);
 }
 
+/* Calmer glass in the side drawer and the phone More sheet: a nearly solid sheet with a light blur and no colour
+   boost, no glossy top rims, a flat switch thumb and a quieter focus-card glow (pop-ups and modals keep theirs) */
+.dp-more-sheet {
+    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
+    --dp-glass-blur: blur(8px);
+    --dp-glass-shadow-lg: 0 -2px 12px rgba(0, 0, 0, 0.12);
+}
+.dp-side-drawer,
+.dp-more-sheet {
+    --dp-glass-highlight: transparent;
+    --dp-glass-track: var(--dp-segment-track);
+    --dp-glass-track-shadow: inset 0 0 0 1px var(--dp-glass-border);
+    --dp-glass-thumb: var(--dp-segment-active);
+    --dp-glass-thumb-hover: var(--background-modifier-hover);
+    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--dp-glass-border);
+}
+.dp-side-drawer .dp-drawer-card.is-focus-hero {
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--color-red) 8%, transparent);
+}
+.dp-side-drawer .dp-drawer-card.is-focus-hero:hover {
+    box-shadow: 0 2px 6px color-mix(in srgb, var(--color-red) 12%, transparent);
+}
+
 /* Rounder controls everywhere, as on phones: view tabs and the Board mode toggle are pills */
 .dp-container:not(.dp-compact-shell) .dp-tabs,
 .dp-container:not(.dp-compact-shell) .dp-tabs > .dp-tab,
