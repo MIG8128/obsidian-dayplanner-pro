@@ -20,3 +20,10 @@ scripts/
 
 # Obsidian sandbox vault + profile for testing (never commit)
 sandbox/
+
+# Source and local notes stay local: only main.js + manifest.json (+ READMEs, workflow) are pushed
+*.ts
+CLAUDE.md
+.claude/
+PENDING_CHANGES.md
+deploy.ps1
