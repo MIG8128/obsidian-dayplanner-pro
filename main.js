@@ -62,41 +62,31 @@ body {
 }
 /* Glass design tokens (declared on theme roots so modals/menus outside .dp-container inherit them, and again on the
    planner so they follow its own --background-primary, which a sidebar leaf changes to the sidebar's colour) */
-/* Glass material (Apple "regular material"): translucent fill + blur(16px) saturate(180%) + hairline border
-   + a 1px top highlight + two-layer shadow (contact + ambient). Blur only goes on chrome that content actually passes
-   behind (modals, menus, suggestions, the sticky all-day row); never on repeated cards or grid cells. The fill is the
-   theme's own background (--background-primary) made translucent, so the glass takes on any community theme
-   (Catppuccin Mocha, Nord, ...) instead of a fixed white / graphite; dark keeps it dark rather than a white wash. */
+/* Glass material, calm: the theme's own background (--background-primary) nearly solid with a light blur and no colour
+   boost, a hairline border and a soft shadow; flat buttons and switches, no glossy rims or sheens. Blur only goes on
+   chrome that content actually passes behind (modals, menus, suggestions, the sticky all-day row); never on repeated
+   cards or grid cells. Following the theme's background keeps it native on any community theme. */
 .theme-dark, .theme-dark .dp-container {
-    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 62%, transparent);
+    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
     --dp-glass-border: rgba(255, 255, 255, 0.10);
-    --dp-glass-highlight: rgba(255, 255, 255, 0.07);
-    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.24), 0 6px 20px rgba(0, 0, 0, 0.22);
-    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.28), 0 24px 60px rgba(0, 0, 0, 0.45);
-    --dp-glass-blur: blur(16px) saturate(180%);
+    --dp-glass-highlight: transparent;
+    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.20), 0 4px 12px rgba(0, 0, 0, 0.16);
+    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.22), 0 10px 28px rgba(0, 0, 0, 0.28);
+    --dp-glass-blur: blur(8px);
     --dp-segment-track: rgba(255, 255, 255, 0.05);
     --dp-segment-active: rgba(255, 255, 255, 0.12);
-    /* Glass segmented controls: a frosted track and a raised, glossy thumb (light from above: bright rim on top,
-       darker lip below) */
-    --dp-glass-track: linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.04));
-    --dp-glass-track-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.12),
-        0 1px 3px rgba(0, 0, 0, 0.18);
-    /* Glass button: the page colour at 80% with a faint shine (never a white wash), a 0.5px hairline, one soft drop
-       shadow, light along the top and a slightly darker bottom edge */
-    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04)),
-        color-mix(in srgb, var(--background-primary) 80%, transparent);
-    --dp-glass-thumb-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06)),
-        color-mix(in srgb, color-mix(in srgb, var(--background-primary) 93%, var(--text-normal)) 85%, transparent);
-    --dp-glass-thumb-shadow: 0 2px 8px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.08),
-        inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.12),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.10);
-    /* The same shine over a coloured fill (accent / red buttons) */
-    --dp-glass-gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
-    --dp-glass-gloss-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06));
-    /* Pop-ups: a faint sheen down the panel; fields sit in it as darker frosted wells */
-    --dp-panel-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 160px);
+    /* Segmented controls and neutral buttons: a flat track, a flat thumb with a hairline and one small shadow */
+    --dp-glass-track: var(--dp-segment-track);
+    --dp-glass-track-shadow: inset 0 0 0 1px var(--dp-glass-border);
+    --dp-glass-thumb: var(--dp-segment-active);
+    --dp-glass-thumb-hover: var(--background-modifier-hover);
+    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--dp-glass-border);
+    /* No shine over coloured fills (accent / red buttons) or down pop-up panels; kept as empty layers */
+    --dp-glass-gloss: linear-gradient(transparent, transparent);
+    --dp-glass-gloss-hover: linear-gradient(transparent, transparent);
+    --dp-panel-sheen: linear-gradient(transparent, transparent);
     --dp-glass-well: rgba(0, 0, 0, 0.18);
-    --dp-glass-well-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.05);
+    --dp-glass-well-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.20);
     --dp-card-bg: rgba(255, 255, 255, 0.06);
     --dp-card-border: rgba(255, 255, 255, 0.16);
     /* Share of an item's colour (task colour / calendar colour) in its card fill; dark needs more to show */
@@ -104,30 +94,24 @@ body {
     --dp-item-edge: 45%;
 }
 .theme-light, .theme-light .dp-container {
-    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 68%, transparent);
+    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
     --dp-glass-border: rgba(0, 0, 0, 0.08);
-    --dp-glass-highlight: rgba(255, 255, 255, 0.7);
-    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 6px 20px rgba(0, 0, 0, 0.08);
-    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.08), 0 24px 60px rgba(0, 0, 0, 0.18);
-    --dp-glass-blur: blur(16px) saturate(180%);
+    --dp-glass-highlight: transparent;
+    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.06);
+    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.08), 0 10px 28px rgba(0, 0, 0, 0.12);
+    --dp-glass-blur: blur(8px);
     --dp-segment-track: rgba(0, 0, 0, 0.05);
     --dp-segment-active: color-mix(in srgb, var(--background-primary) 95%, transparent);
-    --dp-glass-track: linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.45)), rgba(0, 0, 0, 0.03);
-    --dp-glass-track-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.9),
-        0 1px 3px rgba(0, 0, 0, 0.06);
-    --dp-glass-thumb: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04)),
-        color-mix(in srgb, var(--background-primary) 80%, transparent);
-    --dp-glass-thumb-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06)),
-        color-mix(in srgb, color-mix(in srgb, var(--background-primary) 93%, var(--text-normal)) 85%, transparent);
-    /* Light: the hairline is the dark edge (a white one vanishes on a white page), the top light stronger */
-    --dp-glass-thumb-shadow: 0 2px 8px rgba(0, 0, 0, 0.10), 0 0 0 0.5px rgba(0, 0, 0, 0.10),
-        inset 0 0 0 0.5px rgba(255, 255, 255, 0.60), inset 0 1px 0 rgba(255, 255, 255, 0.70),
-        inset 0 -1px 2px rgba(0, 0, 0, 0.06);
-    --dp-glass-gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.04));
-    --dp-glass-gloss-hover: linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06));
-    --dp-panel-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 160px);
+    --dp-glass-track: var(--dp-segment-track);
+    --dp-glass-track-shadow: inset 0 0 0 1px var(--dp-glass-border);
+    --dp-glass-thumb: var(--dp-segment-active);
+    --dp-glass-thumb-hover: var(--background-modifier-hover);
+    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--dp-glass-border);
+    --dp-glass-gloss: linear-gradient(transparent, transparent);
+    --dp-glass-gloss-hover: linear-gradient(transparent, transparent);
+    --dp-panel-sheen: linear-gradient(transparent, transparent);
     --dp-glass-well: rgba(0, 0, 0, 0.035);
-    --dp-glass-well-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.07), 0 1px 0 rgba(255, 255, 255, 0.8);
+    --dp-glass-well-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
     --dp-card-bg: rgba(0, 0, 0, 0.03);
     --dp-card-border: rgba(0, 0, 0, 0.14);
     /* Light: a paler fill keeps dark text readable on any colour, with a stronger edge to hold the card's shape */
@@ -6648,21 +6632,9 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     border-color: var(--dp-glass-border);
 }
 
-/* Calmer glass in the side drawer and the phone More sheet: a nearly solid sheet with a light blur and no colour
-   boost, no glossy top rims, a flat switch thumb and a quieter focus-card glow (pop-ups and modals keep theirs) */
+/* Phone More sheet: a soft upward shadow; the focus card glows only faintly */
 .dp-more-sheet {
-    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
-    --dp-glass-blur: blur(8px);
     --dp-glass-shadow-lg: 0 -2px 12px rgba(0, 0, 0, 0.12);
-}
-.dp-side-drawer,
-.dp-more-sheet {
-    --dp-glass-highlight: transparent;
-    --dp-glass-track: var(--dp-segment-track);
-    --dp-glass-track-shadow: inset 0 0 0 1px var(--dp-glass-border);
-    --dp-glass-thumb: var(--dp-segment-active);
-    --dp-glass-thumb-hover: var(--background-modifier-hover);
-    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--dp-glass-border);
 }
 .dp-side-drawer .dp-drawer-card.is-focus-hero {
     box-shadow: 0 1px 4px color-mix(in srgb, var(--color-red) 8%, transparent);
