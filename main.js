@@ -62,17 +62,17 @@ body {
 }
 /* Glass design tokens (declared on theme roots so modals/menus outside .dp-container inherit them, and again on the
    planner so they follow its own --background-primary, which a sidebar leaf changes to the sidebar's colour) */
-/* Glass material, calm: the theme's own background (--background-primary) nearly solid with a light blur and no colour
+/* Glass material, calm: the theme's own background (--background-primary) at 80% with a soft blur and no colour
    boost, a hairline border and a soft shadow; flat buttons and switches, no glossy rims or sheens. Blur only goes on
    chrome that content actually passes behind (modals, menus, suggestions, the sticky all-day row); never on repeated
    cards or grid cells. Following the theme's background keeps it native on any community theme. */
 .theme-dark, .theme-dark .dp-container {
-    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
+    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 80%, transparent);
     --dp-glass-border: rgba(255, 255, 255, 0.10);
     --dp-glass-highlight: transparent;
-    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.20), 0 4px 12px rgba(0, 0, 0, 0.16);
-    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.22), 0 10px 28px rgba(0, 0, 0, 0.28);
-    --dp-glass-blur: blur(8px);
+    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.10);
+    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.16), 0 10px 28px rgba(0, 0, 0, 0.18);
+    --dp-glass-blur: blur(12px);
     --dp-segment-track: rgba(255, 255, 255, 0.05);
     --dp-segment-active: rgba(255, 255, 255, 0.12);
     /* Segmented controls and neutral buttons: a flat track, a flat thumb with a hairline and one small shadow */
@@ -94,12 +94,12 @@ body {
     --dp-item-edge: 45%;
 }
 .theme-light, .theme-light .dp-container {
-    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 92%, transparent);
+    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 80%, transparent);
     --dp-glass-border: rgba(0, 0, 0, 0.08);
     --dp-glass-highlight: transparent;
-    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.06);
-    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.08), 0 10px 28px rgba(0, 0, 0, 0.12);
-    --dp-glass-blur: blur(8px);
+    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.04);
+    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.06), 0 10px 28px rgba(0, 0, 0, 0.08);
+    --dp-glass-blur: blur(12px);
     --dp-segment-track: rgba(0, 0, 0, 0.05);
     --dp-segment-active: color-mix(in srgb, var(--background-primary) 95%, transparent);
     --dp-glass-track: var(--dp-segment-track);
@@ -120,8 +120,8 @@ body {
 }
 /* No blur support, or the OS asks for less transparency: same surfaces, near-opaque fills, no blur */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .theme-dark, .theme-dark .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 94%, transparent); }
-    .theme-light, .theme-light .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 95%, transparent); }
+    .theme-dark, .theme-dark .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 90%, transparent); }
+    .theme-light, .theme-light .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 90%, transparent); }
 }
 @media (prefers-reduced-transparency: reduce) {
     /* Glass buttons go solid */
