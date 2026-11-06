@@ -132,6 +132,19 @@ body {
     .theme-dark, .theme-dark .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
     .theme-light, .theme-light .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
 }
+/* Sticky bars over the hourly grid (Daily all-day row, Weekly / N-day day headers + all-day row): the theme's own
+   background (image) shows through like Monthly's header; only a faint tint and a blur keep cards scrolling under
+   them out of the way. Without blur, or with less transparency asked for, they fall back to the solid glass. */
+.dp-container {
+    --dp-sticky-bg: color-mix(in srgb, var(--background-primary) 14%, transparent);
+    --dp-sticky-blur: blur(18px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .dp-container { --dp-sticky-bg: var(--dp-glass-bg); --dp-sticky-blur: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+    .dp-container { --dp-sticky-bg: var(--dp-glass-bg); --dp-sticky-blur: none; }
+}
 
 .dp-container {
     display: flex;
@@ -363,6 +376,22 @@ body.dp-has-main-bg .mod-root .dp-container {
     padding: 12px;
     position: relative;
 }
+/* Hour grids (the Daily pane, the Weekly / N-day inner scroller): their scrollbar takes the pane's right padding, so the
+   grid ends 12px from the edge like Monthly's instead of 24px (padding + scrollbar). The gutter stays reserved, so
+   the grid never shifts when a short day needs no scrollbar. Desktop only: mobile scrollbars float over the content. */
+body:not(.is-mobile) .dp-container:not(.dp-compact-shell) :is(.day-planner-pane-daily, .day-planner-pane-weekly, .day-planner-pane-multiDay).dp-content {
+    padding-right: 0;
+}
+body:not(.is-mobile) .dp-container:not(.dp-compact-shell) .day-planner-pane-daily.dp-content {
+    scrollbar-gutter: stable;
+}
+body:not(.is-mobile) .dp-container:not(.dp-compact-shell) .day-planner-pane-daily.dp-content > .dp-daily-allday {
+    margin-right: 0;
+    padding-right: 0;
+}
+body:not(.is-mobile) .dp-container:not(.dp-compact-shell) .dp-weekly-container > .dp-content {
+    scrollbar-gutter: stable;
+}
 /* GPU-composited (threaded) scrolling at every display scale: below 150% Chromium keeps a scroller without an opaque
    background on the main thread to preserve LCD text (grayscale AA is the trade-off there), repainting every card and
    sticky row each frame. Leaf views only; code blocks scroll inside the note's own scroller. */
@@ -565,12 +594,11 @@ body.dp-has-main-bg .mod-root .dp-container {
     grid-template-columns: 48px 1fr; /* 48px = hour column, same as .dp-weekly-allday-grid's label column */
     margin: -12px -12px 8px;
     padding: 0 12px;
-    /* Real glass: the hourly grid scrolls under this one sticky bar (a single element, so the blur stays cheap) */
-    background-color: var(--dp-glass-bg);
-    backdrop-filter: var(--dp-glass-blur);
-    -webkit-backdrop-filter: var(--dp-glass-blur);
+    /* See-through: the hourly grid scrolls under this one sticky bar (a single element, so the blur stays cheap) */
+    background-color: var(--dp-sticky-bg, var(--dp-glass-bg));
+    backdrop-filter: var(--dp-sticky-blur, var(--dp-glass-blur));
+    -webkit-backdrop-filter: var(--dp-sticky-blur, var(--dp-glass-blur));
     border-bottom: 1px solid var(--dp-glass-border);
-    box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.35); /* soft lip: lifts the bar off the grid sliding underneath */
 }
 /* Inline code blocks render the daily timeline in an unpadded scroller */
 .dp-codeblock-container .dp-daily-allday {
@@ -1090,9 +1118,9 @@ body.dp-has-main-bg .mod-root .dp-container {
     position: sticky;
     top: 0;
     z-index: 100;
-    background-color: var(--dp-glass-bg);
-    backdrop-filter: var(--dp-glass-blur);
-    -webkit-backdrop-filter: var(--dp-glass-blur);
+    background-color: var(--dp-sticky-bg, var(--dp-glass-bg));
+    backdrop-filter: var(--dp-sticky-blur, var(--dp-glass-blur));
+    -webkit-backdrop-filter: var(--dp-sticky-blur, var(--dp-glass-blur));
 }
 .dp-weekly-header-grid {
     display: grid;
