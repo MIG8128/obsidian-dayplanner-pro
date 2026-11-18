@@ -65,31 +65,32 @@ body {
 }
 /* Glass design tokens (declared on theme roots so modals/menus outside .dp-container inherit them, and again on the
    planner so they follow its own --background-primary, which a sidebar leaf changes to the sidebar's colour) */
-/* Glass material, calm: the theme's own background (--background-primary) at 80% with a soft blur and no colour
-   boost, a hairline border and a soft shadow; flat buttons and switches, no glossy rims or sheens. Blur only goes on
-   chrome that content actually passes behind (modals, menus, suggestions, the sticky all-day row); never on repeated
-   cards or grid cells. Following the theme's background keeps it native on any community theme. */
+/* Glass material: the theme's own glass (--glass-bg-strong / --glass-border / --glass-shadow / --glass-blur ..., as
+   Goguryeo publishes them, so its opacity and blur settings reach every Dayloom surface). Dayloom never defines
+   --glass-*; the values after the comma are only the fallback for themes without glass: the theme's background at
+   80% with a soft blur, a hairline border and a soft shadow. Blur only goes on chrome that content actually passes
+   behind (modals, menus, suggestions, the sticky all-day row); never on repeated cards or grid cells. */
 .theme-dark, .theme-dark .dp-container {
-    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 80%, transparent);
-    --dp-glass-border: rgba(255, 255, 255, 0.10);
+    --dp-glass-bg: var(--glass-bg-strong, color-mix(in srgb, var(--background-primary) 80%, transparent));
+    --dp-glass-border: var(--glass-border, rgba(255, 255, 255, 0.10));
     --dp-glass-highlight: transparent;
-    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.10);
-    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.16), 0 10px 28px rgba(0, 0, 0, 0.18);
-    --dp-glass-blur: blur(12px);
+    --dp-glass-shadow: var(--glass-shadow, 0 1px 2px rgba(0, 0, 0, 0.14), 0 4px 12px rgba(0, 0, 0, 0.10));
+    --dp-glass-shadow-lg: var(--glass-shadow, 0 2px 6px rgba(0, 0, 0, 0.16), 0 10px 28px rgba(0, 0, 0, 0.18));
+    --dp-glass-blur: var(--glass-blur, blur(12px));
     --dp-segment-track: rgba(255, 255, 255, 0.05);
     --dp-segment-active: rgba(255, 255, 255, 0.12);
     /* Segmented controls and neutral buttons: a flat track, a flat thumb with a hairline and one small shadow */
-    --dp-glass-track: var(--dp-segment-track);
-    --dp-glass-track-shadow: inset 0 0 0 1px var(--dp-glass-border);
-    --dp-glass-thumb: var(--dp-segment-active);
-    --dp-glass-thumb-hover: var(--background-modifier-hover);
-    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--dp-glass-border);
+    --dp-glass-track: var(--glass-track, var(--dp-segment-track));
+    --dp-glass-track-shadow: var(--glass-track-shadow, inset 0 0 0 1px var(--dp-glass-border));
+    --dp-glass-thumb: var(--glass-thumb, var(--dp-segment-active));
+    --dp-glass-thumb-hover: var(--glass-thumb-hover, var(--background-modifier-hover));
+    --dp-glass-thumb-shadow: var(--glass-thumb-shadow, 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--dp-glass-border));
     /* No shine over coloured fills (accent / red buttons) or down pop-up panels; kept as empty layers */
     --dp-glass-gloss: linear-gradient(transparent, transparent);
     --dp-glass-gloss-hover: linear-gradient(transparent, transparent);
     --dp-panel-sheen: linear-gradient(transparent, transparent);
-    --dp-glass-well: rgba(0, 0, 0, 0.18);
-    --dp-glass-well-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.20);
+    --dp-glass-well: var(--glass-well, rgba(0, 0, 0, 0.18));
+    --dp-glass-well-shadow: var(--glass-well-shadow, inset 0 1px 2px rgba(0, 0, 0, 0.20));
     --dp-card-bg: rgba(255, 255, 255, 0.06);
     --dp-card-border: rgba(255, 255, 255, 0.16);
     /* Share of an item's colour (task colour / calendar colour) in its card fill; dark needs more to show */
@@ -97,24 +98,24 @@ body {
     --dp-item-edge: 45%;
 }
 .theme-light, .theme-light .dp-container {
-    --dp-glass-bg: color-mix(in srgb, var(--background-primary) 80%, transparent);
-    --dp-glass-border: rgba(0, 0, 0, 0.08);
+    --dp-glass-bg: var(--glass-bg-strong, color-mix(in srgb, var(--background-primary) 80%, transparent));
+    --dp-glass-border: var(--glass-border, rgba(0, 0, 0, 0.08));
     --dp-glass-highlight: transparent;
-    --dp-glass-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.04);
-    --dp-glass-shadow-lg: 0 2px 6px rgba(0, 0, 0, 0.06), 0 10px 28px rgba(0, 0, 0, 0.08);
-    --dp-glass-blur: blur(12px);
+    --dp-glass-shadow: var(--glass-shadow, 0 1px 2px rgba(0, 0, 0, 0.05), 0 4px 12px rgba(0, 0, 0, 0.04));
+    --dp-glass-shadow-lg: var(--glass-shadow, 0 2px 6px rgba(0, 0, 0, 0.06), 0 10px 28px rgba(0, 0, 0, 0.08));
+    --dp-glass-blur: var(--glass-blur, blur(12px));
     --dp-segment-track: rgba(0, 0, 0, 0.05);
     --dp-segment-active: color-mix(in srgb, var(--background-primary) 95%, transparent);
-    --dp-glass-track: var(--dp-segment-track);
-    --dp-glass-track-shadow: inset 0 0 0 1px var(--dp-glass-border);
-    --dp-glass-thumb: var(--dp-segment-active);
-    --dp-glass-thumb-hover: var(--background-modifier-hover);
-    --dp-glass-thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--dp-glass-border);
+    --dp-glass-track: var(--glass-track, var(--dp-segment-track));
+    --dp-glass-track-shadow: var(--glass-track-shadow, inset 0 0 0 1px var(--dp-glass-border));
+    --dp-glass-thumb: var(--glass-thumb, var(--dp-segment-active));
+    --dp-glass-thumb-hover: var(--glass-thumb-hover, var(--background-modifier-hover));
+    --dp-glass-thumb-shadow: var(--glass-thumb-shadow, 0 1px 2px rgba(0, 0, 0, 0.10), inset 0 0 0 1px var(--dp-glass-border));
     --dp-glass-gloss: linear-gradient(transparent, transparent);
     --dp-glass-gloss-hover: linear-gradient(transparent, transparent);
     --dp-panel-sheen: linear-gradient(transparent, transparent);
-    --dp-glass-well: rgba(0, 0, 0, 0.035);
-    --dp-glass-well-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+    --dp-glass-well: var(--glass-well, rgba(0, 0, 0, 0.035));
+    --dp-glass-well-shadow: var(--glass-well-shadow, inset 0 1px 2px rgba(0, 0, 0, 0.05));
     --dp-card-bg: rgba(0, 0, 0, 0.03);
     --dp-card-border: rgba(0, 0, 0, 0.14);
     /* Light: a paler fill keeps dark text readable on any colour, with a stronger edge to hold the card's shape */
@@ -123,24 +124,24 @@ body {
 }
 /* No blur support, or the OS asks for less transparency: same surfaces, near-opaque fills, no blur */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    .theme-dark, .theme-dark .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 90%, transparent); }
-    .theme-light, .theme-light .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 90%, transparent); }
+    .theme-dark, .theme-dark .dp-container { --dp-glass-bg: var(--glass-bg-strong, color-mix(in srgb, var(--background-primary) 90%, transparent)); }
+    .theme-light, .theme-light .dp-container { --dp-glass-bg: var(--glass-bg-strong, color-mix(in srgb, var(--background-primary) 90%, transparent)); }
 }
 @media (prefers-reduced-transparency: reduce) {
     /* Glass buttons go solid */
     .theme-dark, .theme-light, .dp-container {
-        --dp-glass-thumb: var(--background-secondary);
-        --dp-glass-thumb-hover: var(--background-modifier-border);
+        --dp-glass-thumb: var(--glass-thumb, var(--background-secondary));
+        --dp-glass-thumb-hover: var(--glass-thumb-hover, var(--background-modifier-border));
     }
-    .theme-dark, .theme-dark .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
-    .theme-light, .theme-light .dp-container { --dp-glass-bg: color-mix(in srgb, var(--background-primary) 97%, transparent); --dp-glass-blur: none; }
+    .theme-dark, .theme-dark .dp-container { --dp-glass-bg: var(--glass-bg-strong, color-mix(in srgb, var(--background-primary) 97%, transparent)); --dp-glass-blur: var(--glass-blur, none); }
+    .theme-light, .theme-light .dp-container { --dp-glass-bg: var(--glass-bg-strong, color-mix(in srgb, var(--background-primary) 97%, transparent)); --dp-glass-blur: var(--glass-blur, none); }
 }
 /* Sticky bars over the hourly grid (Daily all-day row, Weekly / N-day day headers + all-day row): the theme's own
    background (image) shows through like Monthly's header; only a faint tint and a blur keep cards scrolling under
    them out of the way. Without blur, or with less transparency asked for, they fall back to the solid glass. */
 .dp-container {
-    --dp-sticky-bg: color-mix(in srgb, var(--background-primary) 14%, transparent);
-    --dp-sticky-blur: blur(18px);
+    --dp-sticky-bg: var(--glass-bg, color-mix(in srgb, var(--background-primary) 14%, transparent));
+    --dp-sticky-blur: var(--glass-blur, blur(18px));
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     .dp-container { --dp-sticky-bg: var(--dp-glass-bg); --dp-sticky-blur: none; }
@@ -6725,47 +6726,6 @@ body.dp-touch-ui .dp-my-picker button.dp-my-title {
 .dp-pointer-dragging,
 .dp-pointer-dragging * {
     cursor: grabbing !important;
-}
-
-/* Glass segmented tokens (ported from Web Novel Helper's --wnh-glass-*). Named --dp-gseg-* because --dp-glass-*
-   already holds this plugin's own glass material (cards, modals, menus) */
-.dp-container,
-.dp-settings {
-    /* A faint tint under the gloss so the glass reads on a plain background */
-    --dp-gseg-btn:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.1)),
-        color-mix(in srgb, var(--text-normal) 7%, transparent);
-    --dp-gseg-btn-hover:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.15)),
-        color-mix(in srgb, var(--text-normal) 11%, transparent);
-    --dp-gseg-border: rgba(255, 255, 255, 0.85);
-    --dp-gseg-edge: rgba(15, 23, 42, 0.1);
-    --dp-gseg-highlight: rgba(255, 255, 255, 0.95);
-    --dp-gseg-shadow: 0 2px 6px rgba(15, 23, 42, 0.1);
-    --dp-gseg-blur: blur(12px) saturate(1.6);
-}
-.theme-dark .dp-container,
-.theme-dark .dp-settings {
-    --dp-gseg-btn:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03)),
-        rgba(255, 255, 255, 0.05);
-    --dp-gseg-btn-hover:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05)),
-        rgba(255, 255, 255, 0.08);
-    --dp-gseg-border: rgba(255, 255, 255, 0.12);
-    --dp-gseg-edge: rgba(0, 0, 0, 0.4);
-    --dp-gseg-highlight: rgba(255, 255, 255, 0.18);
-    --dp-gseg-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-}
-@media (prefers-reduced-transparency: reduce) {
-    .dp-container, .dp-settings,
-    .theme-dark .dp-container, .theme-dark .dp-settings {
-        --dp-gseg-btn: var(--background-modifier-hover);
-        --dp-gseg-btn-hover: var(--background-modifier-border);
-        --dp-gseg-border: transparent;
-        --dp-gseg-highlight: transparent;
-        --dp-gseg-blur: none;
-    }
 }
 
 /* Settings page: top tab bar (DayPlannerSettingTab.createSettingsTabs) and two-way switches built with PillTabs, the
