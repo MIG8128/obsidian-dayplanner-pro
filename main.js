@@ -4188,7 +4188,6 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
 }
 .dp-mc-dot.is-focus {
     background-color: var(--color-red);
-    box-shadow: 0 0 4px color-mix(in srgb, var(--color-red) 70%, transparent);
 }
 .dp-mc-dot.is-done {
     opacity: 0.4;
@@ -5672,9 +5671,7 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
 /* MIT: an open \u{1F53A} Highest task reads as today's core focus wherever its card appears */
 .dp-drawer-card.is-mit {
     overflow: hidden;
-    background: linear-gradient(120deg, color-mix(in srgb, var(--color-red) 5%, var(--background-primary)), var(--background-primary) 60%);
-    border-color: color-mix(in srgb, var(--color-red) 20%, var(--background-modifier-border));
-    box-shadow: 0 1px 6px color-mix(in srgb, var(--color-red) 6%, transparent);
+    border-color: color-mix(in srgb, var(--color-red) 22%, var(--background-modifier-border)); /* flat: no glow or gradient */
 }
 .dp-drawer-card.is-mit::before {
     content: '';
@@ -5683,12 +5680,11 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
     bottom: 0;
     left: 0;
     width: 3px;
-    background: linear-gradient(to bottom, var(--color-red), var(--color-orange));
+    background: var(--color-red);
     opacity: 0.55;
 }
 .dp-drawer-card.is-mit:hover {
     border-color: color-mix(in srgb, var(--color-red) 38%, var(--background-modifier-border));
-    box-shadow: 0 2px 10px color-mix(in srgb, var(--color-red) 10%, transparent);
 }
 .dp-drawer-card.is-mit .dp-drawer-card-title {
     font-weight: var(--font-semibold, 600);
@@ -5736,25 +5732,17 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
 .dp-drawer-focus-slot.dp-drop-target {
     background-color: color-mix(in srgb, var(--color-red) 6%, transparent);
 }
-/* Focus hero card: same box as every drawer card (width, margins, radius), lifted by a translucent warm tint and a
-   soft ambient glow instead of a strong border; the \u{1F3AF} FOCUS pill sits inside it. .dp-side-drawer-qualified so it also
+/* Focus hero card: same box as every drawer card (width, margins, radius), marked by a flat faint red tint and a
+   tinted hairline (no glow, no gradient); the \u{1F3AF} FOCUS pill sits inside it. .dp-side-drawer-qualified so it also
    wins over the More sheet's glass cards. */
 .dp-side-drawer .dp-drawer-card.is-focus-hero {
-    background:
-        linear-gradient(120deg, color-mix(in srgb, var(--color-red) 9%, transparent), color-mix(in srgb, var(--color-orange) 4%, transparent) 55%, transparent 85%),
-        var(--dp-card-bg, var(--background-primary));
-    border-color: color-mix(in srgb, var(--color-red) 14%, var(--dp-glass-border, var(--background-modifier-border)));
-    box-shadow:
-        0 2px 6px color-mix(in srgb, var(--color-red) 8%, transparent),
-        0 8px 22px -6px color-mix(in srgb, var(--color-red) 18%, transparent),
-        inset 0 1px 0 var(--dp-glass-highlight);
+    background: color-mix(in srgb, var(--color-red) 6%, var(--background-primary));
+    border-color: color-mix(in srgb, var(--color-red) 22%, var(--dp-glass-border, var(--background-modifier-border)));
+    box-shadow: none;
 }
 .dp-side-drawer .dp-drawer-card.is-focus-hero:hover {
-    border-color: color-mix(in srgb, var(--color-red) 24%, var(--dp-glass-border, var(--background-modifier-border)));
-    box-shadow:
-        0 2px 8px color-mix(in srgb, var(--color-red) 10%, transparent),
-        0 10px 26px -6px color-mix(in srgb, var(--color-red) 24%, transparent),
-        inset 0 1px 0 var(--dp-glass-highlight);
+    border-color: color-mix(in srgb, var(--color-red) 38%, var(--dp-glass-border, var(--background-modifier-border)));
+    box-shadow: none;
 }
 .dp-side-drawer .dp-drawer-card.is-focus-hero::before {
     content: none; /* the tint and the pill mark it; no accent bar */
@@ -7563,15 +7551,9 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
     border-color: var(--dp-glass-border);
 }
 
-/* Phone More sheet: a soft upward shadow; the focus card glows only faintly */
+/* Phone More sheet: a soft upward shadow */
 .dp-more-sheet {
     --dp-glass-shadow-lg: 0 -2px 12px rgba(0, 0, 0, 0.12);
-}
-.dp-side-drawer .dp-drawer-card.is-focus-hero {
-    box-shadow: 0 1px 4px color-mix(in srgb, var(--color-red) 8%, transparent);
-}
-.dp-side-drawer .dp-drawer-card.is-focus-hero:hover {
-    box-shadow: 0 2px 6px color-mix(in srgb, var(--color-red) 12%, transparent);
 }
 
 /* Rounder controls everywhere, as on phones: view tabs and the Board mode toggle are pills */
@@ -7678,9 +7660,7 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
 /* \u23EB High: the amber sibling of the \u{1F53A} Highest (MIT) card, one step quieter */
 .dp-drawer-card.is-high {
     overflow: hidden;
-    background: linear-gradient(120deg, color-mix(in srgb, var(--color-orange) 4%, var(--background-primary)), var(--background-primary) 60%);
-    border-color: color-mix(in srgb, var(--color-orange) 18%, var(--background-modifier-border));
-    box-shadow: 0 1px 5px color-mix(in srgb, var(--color-orange) 5%, transparent);
+    border-color: color-mix(in srgb, var(--color-orange) 20%, var(--background-modifier-border)); /* flat: no glow or gradient */
 }
 .dp-drawer-card.is-high::before {
     content: '';
@@ -7689,12 +7669,11 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
     bottom: 0;
     left: 0;
     width: 3px;
-    background: linear-gradient(to bottom, var(--color-orange), var(--color-yellow));
+    background: var(--color-orange);
     opacity: 0.5;
 }
 .dp-drawer-card.is-high:hover {
     border-color: color-mix(in srgb, var(--color-orange) 34%, var(--background-modifier-border));
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--color-orange) 9%, transparent);
 }
 .dp-drawer-card.is-high .dp-drawer-card-title {
     font-weight: var(--font-medium, 500);
