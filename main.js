@@ -4593,11 +4593,11 @@ body.dp-touch-ui .dp-scal button.dp-scal-title {
     visibility: hidden;
 }
 .dp-my-cal-day.is-written {
-    background: var(--color-blue);
+    background: var(--color-green);
 }
 .dp-my-cal-day.is-empty {
     background: none;
-    box-shadow: inset 0 0 0 1px var(--color-blue);
+    box-shadow: inset 0 0 0 1px var(--color-green);
 }
 .dp-my-cal-day.is-future {
     opacity: 0.35;
