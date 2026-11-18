@@ -4514,11 +4514,11 @@ body.dp-touch-ui .dp-scal button.dp-scal-title {
     height: 4px;
 }
 .dp-my-strip-day.is-written {
-    background: var(--interactive-accent);
+    background: var(--color-blue);
 }
 .dp-my-strip-day.is-empty {
     background: none;
-    box-shadow: inset 0 0 0 1px var(--interactive-accent);
+    box-shadow: inset 0 0 0 1px var(--color-blue);
 }
 .dp-my-strip-day.is-future {
     opacity: 0.35;
