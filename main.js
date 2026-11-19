@@ -3930,7 +3930,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
    Desktop side drawer (drawer.ts): hangs under the header on the right; the panes and the tracker bar make room
    with a right margin. Motion standard: the drawer springs in and pushes the panes aside (their margin animates with
    it), and on closing slides out while they widen back. No transition while the width grip is dragged.
-   No blur: nothing scrolls behind it, so it gets the solid fill of the theme's own sidebars.
+   No fill of its own: like the rest of the planner it is transparent, so the theme's own background shows through.
    ------------------------------------------------------------- */
 .dp-container:not(.dp-compact-shell) > :is(.day-planner-view-pane, .dp-current-task-bar) {
     transition: margin-right var(--dp-motion-out) var(--dp-ease-settle);
@@ -3960,7 +3960,7 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     display: flex;
     flex-direction: column;
     box-sizing: border-box;
-    background-color: var(--dp-sidebar-bg, var(--background-secondary));
+    background-color: transparent;
     border-left: 1px solid var(--background-modifier-border);
     transform: translateX(100%);
     visibility: hidden;
@@ -3970,11 +3970,6 @@ body.dp-hide-gcal-id .dataview.inline-field:has(> .inline-field-key[data-dv-key=
     transform: none;
     visibility: visible;
     transition: transform var(--dp-motion-in) var(--dp-ease-spring), visibility 0s;
-}
-/* The spring carries the drawer ~20px past its place: a hard shadow in its own colour fills the gap it leaves at
-   the right edge (past the container's edge, so it is never seen at rest) */
-.dp-container > .dp-side-drawer {
-    box-shadow: 32px 0 0 var(--dp-sidebar-bg, var(--background-secondary));
 }
 /* Width grip on the drawer's left border (drawer.ts mountDrawerResizer); the accent line shows on hover / drag */
 .dp-drawer-resizer {
