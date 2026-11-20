@@ -7867,14 +7867,8 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
     border-left: none;
 }
 
-/* Sheet interior on the frosted surface: translucent inner cards with a hairline and a top highlight (the
-   stats cards' and modal sections' material) instead of the desktop drawer's opaque fills */
-.dp-sheet-actions > button.dp-sheet-action,
-.dp-sheet-zoom {
-    background-color: var(--dp-card-bg);
-    border-color: var(--dp-glass-border);
-    box-shadow: inset 0 1px 0 var(--dp-glass-highlight);
-}
+/* Sheet interior: translucent inner cards with a hairline (the stats cards' material; the Search / Sync / zoom tiles
+   take it too, see "More sheet tiles" further down) */
 .dp-sheet-actions > button.dp-sheet-action:active {
     background-color: var(--dp-segment-active);
 }
@@ -8643,14 +8637,12 @@ body.dp-touch-ui .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
    over the accent, Delete a red-tinted glass */
 .modal button.dp-modal-btn.is-secondary,
 .dp-side-drawer button.dp-drawer-card-action,
-.dp-sheet-drawer button.dp-drawer-card-action,
-.dp-sheet-actions > button.dp-sheet-action {
+.dp-sheet-drawer button.dp-drawer-card-action {
     background: var(--dp-glass-thumb);
     border: none;
     box-shadow: var(--dp-glass-thumb-shadow);
 }
-.modal button.dp-modal-btn.is-secondary:hover:not(:disabled),
-.dp-sheet-actions > button.dp-sheet-action:hover {
+.modal button.dp-modal-btn.is-secondary:hover:not(:disabled) {
     background: var(--dp-glass-thumb-hover);
     border: none;
     box-shadow: var(--dp-glass-thumb-shadow);
@@ -8684,12 +8676,19 @@ body.dp-touch-ui .dp-compact-shell .dp-board-toggle > .dp-board-toggle-btn {
         inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 2px rgba(0, 0, 0, 0.12);
 }
 
-/* Sheet zoom row: one glossy tile like Search / Sync; the slider inside sits flat on it (no nested track), and stays
-   full-width when tapped, focused or hovered */
+/* More sheet tiles (Search, Sync, the zoom row): the sheet has no fill of its own (like the side drawer), so the tiles
+   take the drawer cards' material below them (faint fill, hairline), not a glossy button of their own. The zoom
+   slider inside sits flat on its tile (no nested track) and stays full-width when tapped, focused or hovered. */
+.dp-sheet-actions > button.dp-sheet-action,
 .dp-sheet-zoom {
-    background: var(--dp-glass-thumb);
-    border: none;
-    box-shadow: var(--dp-glass-thumb-shadow);
+    background: var(--dp-card-bg);
+    border: 1px solid var(--dp-glass-border);
+    box-shadow: none;
+}
+.dp-sheet-actions > button.dp-sheet-action:hover {
+    background: var(--background-modifier-hover);
+}
+.dp-sheet-zoom {
     padding-right: 12px;
 }
 .dp-sheet-zoom-label {
