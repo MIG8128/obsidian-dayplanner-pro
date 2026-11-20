@@ -7660,7 +7660,7 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
     position: absolute;
     inset: 0;
     z-index: 110; /* above the current-task bar (100), the header and the bottom bar (30) */
-    background-color: rgba(0, 0, 0, 0.18); /* light dim, like the plugin's modals: the frost picks up the planner behind */
+    background-color: transparent; /* no dim: catches the tap that closes the sheet, the planner stays as it is */
 }
 .dp-more-sheet-backdrop.is-entering {
     animation: dp-sheet-fade-in 0.2s ease-out;
@@ -7676,7 +7676,9 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
     height: min(80%, 680px);
     padding: 0 0 env(safe-area-inset-bottom, 0px);
     box-sizing: border-box;
-    background-color: var(--dp-glass-bg);
+    /* The planner's own page colour (in a sidebar the sidebar's, see --dp-sidebar-bg), near-opaque: the sheet reads as
+       the same surface as the planner around it, set apart only by its rounded top edge, hairline and shadow */
+    background-color: color-mix(in srgb, var(--background-primary) 97%, transparent);
     backdrop-filter: var(--dp-glass-blur);
     -webkit-backdrop-filter: var(--dp-glass-blur);
     border: 1px solid var(--dp-glass-border);
