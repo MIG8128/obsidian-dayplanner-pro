@@ -8030,6 +8030,24 @@ body:not(.is-mobile) .dp-side-drawer .dp-drawer-body {
 .dp-drawer-card.is-high .dp-drawer-card-actions {
     background: linear-gradient(to right, transparent, var(--background-primary) 12px);
 }
+/* Overdue cards in the side drawer: a solid red bar on the left edge (over a priority bar), whatever the priority */
+.dp-drawer-section[data-section="overdue"] .dp-drawer-card {
+    overflow: hidden;
+    border-color: color-mix(in srgb, var(--color-red) 30%, var(--background-modifier-border));
+}
+.dp-drawer-section[data-section="overdue"] .dp-drawer-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 3px;
+    background: var(--color-red);
+    opacity: 1;
+}
+.dp-drawer-section[data-section="overdue"] .dp-drawer-card:hover {
+    border-color: color-mix(in srgb, var(--color-red) 50%, var(--background-modifier-border));
+}
 /* Their priority badge becomes a tinted pill */
 .dp-side-drawer .dp-drawer-card.is-mit button.dp-priority-trigger,
 .dp-side-drawer .dp-drawer-card.is-high button.dp-priority-trigger {
