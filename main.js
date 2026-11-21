@@ -5478,7 +5478,8 @@ body.dp-touch-ui .dp-scal button.dp-scal-title {
     text-overflow: ellipsis;
 }
 /* Before 1901: one backplate per century behind the page, the decade cards see-through over it */
-.dp-my-grid.has-backplate {
+/* Only the live page: the sliding / zooming copy of an old page must stay absolute (or it takes half the height) */
+.dp-my-grid.has-backplate:not(.dp-page-ghost):not(.dp-my-ghost) {
     position: relative;
 }
 .dp-my-backplate {
