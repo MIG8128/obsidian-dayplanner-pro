@@ -5335,7 +5335,17 @@ body.dp-touch-ui .dp-scal button.dp-scal-title {
     color: var(--dp-tm-card, #fbfaf5);
     border: 6px dashed color-mix(in srgb, var(--dp-tm-card, #fbfaf5) 85%, transparent);
     border-radius: 50%;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--text-normal) 30%, transparent);
+    /* Only the round chip: no square button background, outline or theme pseudo-element around it */
+    clip-path: circle(50%);
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: none;
+    outline: none;
+    box-shadow: none;
+}
+.dp-tm-view button.dp-bj-btn.is-chip::before,
+.dp-tm-view button.dp-bj-btn.is-chip::after {
+    display: none;
 }
 .dp-tm-view button.dp-bj-btn.is-chip:hover {
     filter: brightness(1.12);
@@ -5343,7 +5353,7 @@ body.dp-touch-ui .dp-scal button.dp-scal-title {
 .dp-tm-view button.dp-bj-btn.is-c0 { background: var(--color-red, #c0392b); }
 .dp-tm-view button.dp-bj-btn.is-c1 { background: var(--color-blue, #2f6fd6); }
 .dp-tm-view button.dp-bj-btn.is-c2 { background: var(--color-purple, #8e44ad); }
-.dp-tm-view button.dp-bj-btn.is-c3 { width: auto; min-width: 150px; padding: 0 18px; border-radius: 999px; background: var(--color-yellow, #e0b000); color: var(--dp-tm-ink, #1d1d24); }
+.dp-tm-view button.dp-bj-btn.is-c3 { width: auto; min-width: 150px; padding: 0 18px; border-radius: 999px; clip-path: inset(0 round 999px); background: var(--color-yellow, #e0b000); color: var(--dp-tm-ink, #1d1d24); }
 /* The ending: black, a portal ring spinning, the lines one by one, then "Open your eyes" */
 .dp-tm-ending {
     position: absolute;
