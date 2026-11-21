@@ -4525,9 +4525,9 @@ body.dp-touch-ui .dp-scal button.dp-scal-title {
     margin: 0 auto;
     z-index: 6;
     width: max-content;
-    max-width: min(420px, calc(100% - 32px));
-    padding: 10px 16px;
-    font-size: var(--font-ui-medium, 15px);
+    max-width: min(480px, calc(100% - 32px));
+    padding: 12px 20px;
+    font-size: calc(var(--font-ui-medium, 15px) * 1.25);
     line-height: var(--line-height-normal);
     text-align: center;
     color: var(--text-normal);
