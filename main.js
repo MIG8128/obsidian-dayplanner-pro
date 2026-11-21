@@ -5521,6 +5521,14 @@ body.dp-touch-ui .dp-scal button.dp-scal-title {
     background: transparent;
     border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
 }
+/* The decade labels fade so the century's era behind them stands out; full again on hover */
+.dp-my-picker .dp-my-cell.is-glass:not(.is-selected) .dp-my-cell-name {
+    opacity: 0.4;
+    transition: opacity 0.15s ease;
+}
+.dp-my-picker .dp-my-cell.is-glass:not(.is-selected):hover .dp-my-cell-name {
+    opacity: 0.85;
+}
 .dp-my-picker .dp-my-cell.is-glass:not(.is-selected):hover {
     background: color-mix(in srgb, var(--background-modifier-hover) 50%, transparent);
 }
