@@ -328,7 +328,9 @@ body.dp-has-main-bg .mod-root .dp-container {
     box-shadow: none;
     color: var(--text-muted);
     white-space: nowrap;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* padding 0s: it follows the planner's width (cqw), and animating it re-laid out the header every frame of a
+       window resize (~120ms per resize step with a busy month open, measured) */
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1), padding 0s;
 }
 .dp-tabs > .dp-tab:hover {
     background-color: var(--background-modifier-hover);
